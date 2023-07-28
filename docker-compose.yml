@@ -1,0 +1,51 @@
+version: '2.4'
+
+services:
+  django:
+    container_name: ${COMPOSE_PROJECT_NAME}_django
+    image: ${COMPOSE_PROJECT_NAME}_python
+    build:
+      context: .
+      dockerfile: Dockerfile
+    logging:
+      driver: "json-file"
+    networks:
+      - bendernetwork
+    volumes:
+      - ./src:/app
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    command: python3 manage.py runserver 0.0.0.0:8000
+    depends_on:
+      - postgres_db
+
+  postgres_db:
+    container_name: ${COMPOSE_PROJECT_NAME}_postgres
+    hostname: postgres
+    image: postgres:14.1-alpine
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "1"
+    ports:
+      - "5435:5432"
+    networks:
+      - bendernetwork
+    volumes:
+      - benderdb:/var/lib/postgres_14/data
+    environment:
+      - POSTGRES_DB=bender
+      - POSTGRES_USER=bender
+      - POSTGRES_PASSWORD=bender
+      - POSTGRES_PORT=5432
+
+networks:
+  bendernetwork:
+
+volumes:
+  benderdb:
