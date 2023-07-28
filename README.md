@@ -1,4 +1,4 @@
-# piklema_test
+# Bender Rodriguez
 
 ## Установка
 1. Создать .env
