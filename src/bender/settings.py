@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,17 +21,27 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@7^166m#gfo#^@8@4=paa$e0ij91eb(r-_7*%qe^3zdak(y9xy'
+SECRET_KEY = config(
+    'SECRET_KEY',
+    default='django-insecure-@7^166m#gfo#^@8@4=paa$e0ij91eb(r-_7*%qe^3zdak(y9xy',
+    cast=str,
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config(
+    'DEBUG',
+    default=False,
+    cast=bool,
+)
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*", ]
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'grappelli.dashboard',
+    'grappelli',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -70,17 +81,25 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bender.wsgi.application'
 
+# Grappelli
+GRAPPELLI_INDEX_DASHBOARD = 'bender.dashboard.IndexDashboard'
+GRAPPELLI_ADMIN_TITLE = 'Bender Rodriguez'
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+DEFAULT_DATABASE = 'default'
 
+DATABASES = {
+    DEFAULT_DATABASE: {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('POSTGRES_DBNAME', default='bender'),
+        'USER': config('POSTGRES_USER', default='bender'),
+        'PASSWORD': config('POSTGRES_PASSWORD', default='bender'),
+        'HOST': config('POSTGRES_HOST', default='postgres_db'),
+        'PORT': config('POSTGRES_PORT', default=5432, cast=int),
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -104,9 +123,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
@@ -116,7 +135,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+# STATIC_URL = 'static/'
+
+STATIC_URL = '/static/'
+STATIC_ROOT = '/static'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
