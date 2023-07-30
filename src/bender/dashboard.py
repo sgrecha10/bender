@@ -1,14 +1,69 @@
+from django.utils.translation import gettext_lazy as _
+from django.urls import reverse
+
 from grappelli.dashboard import modules, Dashboard
+from grappelli.dashboard.utils import get_admin_site_name
 
 
-class IndexDashboard(Dashboard):
+class CustomIndexDashboard(Dashboard):
+    """
+    Custom index dashboard for www.
+    """
 
-    def __init__(self, **kwargs):
-        Dashboard.__init__(self, **kwargs)
+    def init_with_context(self, context):
+        site_name = get_admin_site_name(context)
 
         self.children.append(modules.AppList(
-            title='Administration',
+            'Рыночные данные',
             column=1,
+            collapsible=True,
+            models=('trading_pairs.models.TradingPair',),
+        ))
+
+        self.children.append(modules.AppList(
+            'Администрирование',
+            column=2,
             collapsible=True,
             models=('django.contrib.*',),
         ))
+
+        self.children.append(modules.LinkList(
+            'Media Management',
+            column=2,
+            children=[
+                {
+                    'title': 'FileBrowser',
+                    'url': '/admin/filebrowser/browse/',
+                    'external': False,
+                },
+            ]
+        ))
+
+        self.children.append(modules.LinkList(
+            'Support',
+            column=3,
+            children=[
+                {
+                    'title': 'Django Documentation',
+                    'url': 'http://docs.djangoproject.com/',
+                    'external': True,
+                },
+                {
+                    'title': 'Grappelli Documentation',
+                    'url': 'http://packages.python.org/django-grappelli/',
+                    'external': True,
+                },
+                {
+                    'title': 'Grappelli Google-Code',
+                    'url': 'http://code.google.com/p/django-grappelli/',
+                    'external': True,
+                },
+            ]
+        ))
+
+        # self.children.append(modules.RecentActions(
+        #     _('Recent actions'),
+        #     limit=5,
+        #     collapsible=False,
+        #     column=3,
+        # ))

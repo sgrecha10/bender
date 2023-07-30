@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'trading_pairs'
 ]
 
 MIDDLEWARE = [
@@ -82,7 +83,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'bender.wsgi.application'
 
 # Grappelli
-GRAPPELLI_INDEX_DASHBOARD = 'bender.dashboard.IndexDashboard'
+GRAPPELLI_INDEX_DASHBOARD = 'bender.dashboard.CustomIndexDashboard'
 GRAPPELLI_ADMIN_TITLE = 'Bender Rodriguez'
 
 # Database
