@@ -7,6 +7,6 @@ from .models import TradingPair
 class TradingPairAdmin(admin.ModelAdmin):
     list_display = (
         'symbol', 'binance_id', 'base', 'quote', 'is_margin_trade',
-        'is_buy_allowed', 'is_sell_allowed', 'is_favorites', 'updated', 'created',
+        'is_buy_allowed', 'is_sell_allowed', 'updated', 'created',
     )
     readonly_fields = ('id',) + list_display

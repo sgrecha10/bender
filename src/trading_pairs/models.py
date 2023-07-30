@@ -32,10 +32,6 @@ class TradingPair(models.Model):
         verbose_name='Разрешена продажа',
         default=False,
     )
-    is_favorites = models.BooleanField(
-        verbose_name='Избранное',
-        default=False,
-    )
     updated = models.DateTimeField(
         verbose_name='Обновлено',
         auto_now=True,
