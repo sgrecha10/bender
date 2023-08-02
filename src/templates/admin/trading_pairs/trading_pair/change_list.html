@@ -3,6 +3,6 @@
 {% block object-tools-items %}
     {{ block.super }}
     <li>
-        <a href="" class="grp-button grp-state-focus">Обновить все</a>
+        <a href="{% url 'admin:update_quote' %}" class="grp-button grp-state-focus">Обновить все</a>
     </li>
 {% endblock %}
