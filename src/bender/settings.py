@@ -145,3 +145,10 @@ STATIC_ROOT = '/static'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+BINANCE_CLIENT = {
+    'uri': config('BINANCE_CLIENT_URI', default='', cast=str),
+    'api_key': config('BINANCE_CLIENT_API_KEY', default='', cast=str),
+    'secret_key': config('BINANCE_CLIENT_SECRET_KEY', default='', cast=str),
+    'hmac': config('BINANCE_CLIENT_HMAC', default='', cast=str),
+}
