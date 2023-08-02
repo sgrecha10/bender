@@ -2,3 +2,4 @@ Django==4.2.3
 python-decouple==3.8
 psycopg==3.1.9
 django-grappelli==3.0.6
+requests==2.31.0
