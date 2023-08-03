@@ -4,13 +4,12 @@ import requests
 
 
 class BinanceClient:
-
     def __init__(self, credentials: dict, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.uri = credentials['uri']
-        self.api_key= credentials['api_key']
-        self.secret_key = credentials['secret_key']
-        self.hmac = credentials['hmac']
+        self.api_key = credentials['api_key']
+        # self.secret_key = credentials['secret_key']
+        # self.hmac = credentials['hmac']
 
     def _request(self, data: dict, urn: str, method: str) -> Tuple[dict, bool]:
         with requests.Session() as session:
@@ -27,7 +26,11 @@ class BinanceClient:
             )
             json_data = res.json()
 
-            return (json_data, True) if res.status_code == 200 else (json_data, False)
+            return (
+                (json_data, True)
+                if res.status_code == 200
+                else (json_data, False)
+            )
 
     def ping(self):
         urn = '/api/v3/ping'

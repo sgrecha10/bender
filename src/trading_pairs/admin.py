@@ -1,19 +1,27 @@
-from django.contrib import admin
-from django.contrib import messages
+from django.conf import settings
+from django.contrib import admin, messages
 from django.http.response import HttpResponseRedirect
 from django.urls import path, reverse
 
-from .models import TradingPair
 from core.clients.binance import BinanceClient
-from django.conf import settings
+
+from .models import TradingPair
 
 
 @admin.register(TradingPair)
 class TradingPairAdmin(admin.ModelAdmin):
     change_list_template = "admin/trading_pairs/trading_pair/change_list.html"
     list_display = (
-        'id', 'symbol', 'binance_id', 'base', 'quote', 'is_margin_trade',
-        'is_buy_allowed', 'is_sell_allowed', 'updated', 'created',
+        'id',
+        'symbol',
+        'binance_id',
+        'base',
+        'quote',
+        'is_margin_trade',
+        'is_buy_allowed',
+        'is_sell_allowed',
+        'updated',
+        'created',
     )
     readonly_fields = list_display
     list_display_links = ('symbol',)
@@ -42,11 +50,11 @@ class TradingPairAdmin(admin.ModelAdmin):
         result, is_ok = client.get_symbols()
 
         if not is_ok:
-            messages.error(
-                request, 'Нет соединения с Binance'
-            )
+            messages.error(request, 'Нет соединения с Binance')
             meta = self.model._meta
-            url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
+            url = reverse(
+                f'admin:{meta.app_label}_{meta.model_name}_changelist'
+            )
             return HttpResponseRedirect(url)
 
         for item in result:
@@ -59,12 +67,10 @@ class TradingPairAdmin(admin.ModelAdmin):
                     'is_margin_trade': item['isMarginTrade'],
                     'is_buy_allowed': item['isBuyAllowed'],
                     'is_sell_allowed': item['isSellAllowed'],
-                }
+                },
             )
 
-        messages.success(
-            request, 'Запущено обновление торговых пар'
-        )
+        messages.success(request, 'Запущено обновление торговых пар')
         meta = self.model._meta
         url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
         return HttpResponseRedirect(url)

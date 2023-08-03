@@ -4,26 +4,75 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
             name='TradingPair',
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('binance_id', models.CharField(max_length=100, unique=True, verbose_name='Binance ID')),
-                ('symbol', models.CharField(max_length=50, unique=True, verbose_name='Идентификатор')),
-                ('base', models.CharField(max_length=50, verbose_name='Основание')),
-                ('quote', models.CharField(max_length=50, verbose_name='Котировка')),
-                ('is_margin_trade', models.BooleanField(default=False, verbose_name='Маржинальная торговля')),
-                ('is_buy_allowed', models.BooleanField(default=False, verbose_name='Разрешена покупка')),
-                ('is_sell_allowed', models.BooleanField(default=False, verbose_name='Разрешена продажа')),
-                ('updated', models.DateTimeField(auto_now=True, verbose_name='Обновлено')),
-                ('created', models.DateTimeField(auto_now_add=True, verbose_name='Создано')),
+                (
+                    'id',
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name='ID',
+                    ),
+                ),
+                (
+                    'binance_id',
+                    models.CharField(
+                        max_length=100, unique=True, verbose_name='Binance ID'
+                    ),
+                ),
+                (
+                    'symbol',
+                    models.CharField(
+                        max_length=50,
+                        unique=True,
+                        verbose_name='Идентификатор',
+                    ),
+                ),
+                (
+                    'base',
+                    models.CharField(max_length=50, verbose_name='Основание'),
+                ),
+                (
+                    'quote',
+                    models.CharField(max_length=50, verbose_name='Котировка'),
+                ),
+                (
+                    'is_margin_trade',
+                    models.BooleanField(
+                        default=False, verbose_name='Маржинальная торговля'
+                    ),
+                ),
+                (
+                    'is_buy_allowed',
+                    models.BooleanField(
+                        default=False, verbose_name='Разрешена покупка'
+                    ),
+                ),
+                (
+                    'is_sell_allowed',
+                    models.BooleanField(
+                        default=False, verbose_name='Разрешена продажа'
+                    ),
+                ),
+                (
+                    'updated',
+                    models.DateTimeField(
+                        auto_now=True, verbose_name='Обновлено'
+                    ),
+                ),
+                (
+                    'created',
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name='Создано'
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Кросс-пара',

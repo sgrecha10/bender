@@ -1,14 +1,18 @@
-from django.test.testcases import SimpleTestCase
-from core.clients.binance import BinanceClient
-from django.conf import settings
-from typing import Union
 import json
+from typing import Union
+
+from django.conf import settings
+from django.test.testcases import SimpleTestCase
+
+from core.clients.binance import BinanceClient
 
 
 class DummyHTTPResponse:
     status_code = 200
 
-    def __init__(self, data: Union[list, dict, str, None] = None, **kwargs) -> None:
+    def __init__(
+        self, data: Union[list, dict, str, None] = None, **kwargs
+    ) -> None:
         self.data = data
         self.text = data
         for key, val in kwargs.items():

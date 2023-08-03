@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+
 from decouple import config
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config(
     'SECRET_KEY',
-    default='django-insecure-@7^166m#gfo#^@8@4=paa$e0ij91eb(r-_7*%qe^3zdak(y9xy',
+    default='django-insecure-@7^166m#gfo#^@8@4=paa$e0ij91eb(r-_7*%qe^3zdak(y9xy',  # noqa
     cast=str,
 )
 
@@ -34,7 +35,9 @@ DEBUG = config(
     cast=bool,
 )
 
-ALLOWED_HOSTS = ["*", ]
+ALLOWED_HOSTS = [
+    "*",
+]
 
 
 # Application definition
@@ -48,7 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'trading_pairs'
+    'trading_pairs',
 ]
 
 MIDDLEWARE = [
@@ -66,8 +69,7 @@ ROOT_URLCONF = 'bender.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates']
-        ,
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -107,16 +109,16 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',  # noqa
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',  # noqa
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',  # noqa
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',  # noqa
     },
 ]
 
