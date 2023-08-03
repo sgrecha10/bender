@@ -1,5 +1,6 @@
 import json
 from typing import Union
+from unittest import mock
 
 from django.conf import settings
 from django.test.testcases import SimpleTestCase
@@ -19,9 +20,9 @@ class DummyHTTPResponse:
             setattr(self, key, val)
 
     def json(self):
-        if isinstance(self.data, (dict, list, str)):
+        if isinstance(self.data, (dict, list)):
             return self.data
-        raise json.JSONDecodeError('', '', 0)
+        raise ValueError
 
     @property
     def ok(self):
@@ -32,10 +33,15 @@ class BinanceClientTest(SimpleTestCase):
     def setUp(self):
         self.client = BinanceClient(settings.BINANCE_CLIENT)
 
-    def test_ping(self):
-        res, is_ok = self.client.ping()
+    @mock.patch('requests.sessions.Session.send')
+    def test_get_status(self, mock_send):
+        resp_data = {
+            'msg': 'normal', 'status': 0
+        }
+        mock_send.return_value = DummyHTTPResponse(resp_data)
+        res, is_ok = self.client.get_status()
         self.assertTrue(is_ok)
-        self.assertEqual(res, {})
+        self.assertEqual(res, resp_data)
 
     def test_get_symbols(self):
         res, is_ok = self.client.get_symbols()

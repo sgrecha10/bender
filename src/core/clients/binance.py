@@ -32,12 +32,13 @@ class BinanceClient:
                 else (json_data, False)
             )
 
-    def ping(self):
-        urn = '/api/v3/ping'
+    def get_status(self):
+        urn = '/sapi/v1/system/status'
         method = 'GET'
         data = {}
 
-        return self._request(data, urn, method)
+        res, is_ok = self._request(data, urn, method)
+        return (res, True) if res['status'] is 0 else (res, False)
 
     def get_symbols(self):
         urn = '/sapi/v1/margin/allPairs'
