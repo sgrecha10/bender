@@ -38,7 +38,14 @@ class BinanceClient:
         data = {}
 
         res, is_ok = self._request(data, urn, method)
-        return (res, True) if res['status'] is 0 else (res, False)
+        return (res, True) if res['status'] == 0 else (res, False)
+
+    def get_coins(self):
+        urn = '/sapi/v1/capital/config/getall'
+        method = 'GET'
+        data = {}
+
+        return self._request(data, urn, method)
 
     def get_symbols(self):
         urn = '/sapi/v1/margin/allPairs'
@@ -46,6 +53,3 @@ class BinanceClient:
         data = {}
 
         return self._request(data, urn, method)
-
-    def _prepare_data(self):
-        pass

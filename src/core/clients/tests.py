@@ -1,4 +1,3 @@
-import json
 from typing import Union
 from unittest import mock
 
@@ -35,9 +34,7 @@ class BinanceClientTest(SimpleTestCase):
 
     @mock.patch('requests.sessions.Session.send')
     def test_get_status(self, mock_send):
-        resp_data = {
-            'msg': 'normal', 'status': 0
-        }
+        resp_data = {'msg': 'normal', 'status': 0}
         mock_send.return_value = DummyHTTPResponse(resp_data)
         res, is_ok = self.client.get_status()
         self.assertTrue(is_ok)

@@ -33,11 +33,11 @@ class TradingPair(models.Model):
         default=False,
     )
     updated = models.DateTimeField(
-        verbose_name='Обновлено',
+        verbose_name='Дата обновления',
         auto_now=True,
     )
     created = models.DateTimeField(
-        verbose_name='Создано',
+        verbose_name='Дата создания',
         auto_now_add=True,
     )
 

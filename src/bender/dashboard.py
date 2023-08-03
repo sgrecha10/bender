@@ -13,6 +13,15 @@ class CustomIndexDashboard(Dashboard):
 
         self.children.append(
             modules.AppList(
+                'Кошелек',
+                column=1,
+                collapsible=True,
+                models=('wallet.models.Coin',),
+            )
+        )
+
+        self.children.append(
+            modules.AppList(
                 'Рыночные данные',
                 column=1,
                 collapsible=True,
