@@ -158,3 +158,7 @@ BINANCE_CLIENT = {
     'secret_key': config('BINANCE_CLIENT_SECRET_KEY', default='', cast=str),
     'hmac': config('BINANCE_CLIENT_HMAC', default='', cast=str),
 }
+
+PERIODIC_CELERY_TASKS_DEBUG = config(
+    'PERIODIC_CELERY_TASKS_DEBUG', default=False, cast=bool
+)
