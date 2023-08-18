@@ -149,6 +149,9 @@ STATIC_ROOT = '/static'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+BROKER_URL = config('BROKER_URL', default='amqp://guest:guest@rabbitmq:5672/')
+# BROKER_URL = config('BROKER_URL', default='redis://redis:6379/0')
+
 BINANCE_CLIENT = {
     'uri': config('BINANCE_CLIENT_URI', default='', cast=str),
     'api_key': config('BINANCE_CLIENT_API_KEY', default='', cast=str),
