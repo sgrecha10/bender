@@ -15,7 +15,7 @@ if settings.PERIODIC_CELERY_TASKS_DEBUG:
         {
             'periodic_debug_task': {
                 'task': 'wallet.tasks.debug_task',
-                'schedule': crontab(),
+                'schedule': 1.0,
             },
         }
     )
