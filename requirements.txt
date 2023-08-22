@@ -11,3 +11,7 @@ black==23.7.0
 celery==5.3.1
 flower==1.0.0
 redis==5.0.0
+
+binance-connector==3.3.0
+
+pycryptodome>=3.15.0

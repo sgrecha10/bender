@@ -6,6 +6,9 @@ from django.urls import path, reverse
 from core.clients.binance import BinanceClient
 
 from .models import Coin
+from binance.spot import Spot
+from pprint import pprint
+from wallet.tasks import task_get_coins
 
 
 @admin.register(Coin)
@@ -48,35 +51,12 @@ class CoinAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def set_update_coins(self, request, *_):
-        client = BinanceClient(settings.BINANCE_CLIENT)
-        result, is_ok = client.get_coins()
+        # client = Spot(api_key=settings.BINANCE_CLIENT['api_key'], api_secret=settings.BINANCE_CLIENT['secret_key'])
+        # pprint(client.account())
+        #
+        # return
 
-        if not is_ok:
-            messages.error(request, 'Нет соединения с Binance')
-            meta = self.model._meta
-            url = reverse(
-                f'admin:{meta.app_label}_{meta.model_name}_changelist'
-            )
-            return HttpResponseRedirect(url)
-
-        for item in result:
-            Coin.objects.update_or_create(
-                coin=item['coin'],
-                defaults={
-                    'deposit_all_enable': item['depositAllEnable'],
-                    'free': item['free'],
-                    'freeze': item['freeze'],
-                    'ipoable': item['ipoable'],
-                    'ipoing': item['ipoing'],
-                    'is_legal_money': item['isLegalMoney'],
-                    'locked': item['locked'],
-                    'name': item['name'],
-                    'storage': item['storage'],
-                    'trading': item['trading'],
-                    'withdraw_all_enable': item['withdrawAllEnable'],
-                    'withdrawing': item['withdrawing'],
-                },
-            )
+        task_get_coins.delay()
 
         messages.success(request, 'Запущено обновление торговых пар')
         meta = self.model._meta
