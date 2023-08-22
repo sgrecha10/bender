@@ -36,8 +36,8 @@ class CoinAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    # def has_delete_permission(self, request, obj=None):
+    #     return False
 
     def get_urls(self):
         urls = super().get_urls()
@@ -53,7 +53,6 @@ class CoinAdmin(admin.ModelAdmin):
     def set_update_coins(self, request, *_):
         # client = Spot(api_key=settings.BINANCE_CLIENT['api_key'], api_secret=settings.BINANCE_CLIENT['secret_key'])
         # pprint(client.account())
-        #
         # return
 
         task_get_coins.delay()

@@ -10,21 +10,26 @@ from .models import Coin
 
 
 @app.task(bind=True)
-def task_get_coins(
-        self
-):
+def debug_task(self):
+    res = 'I`m OK'
+    print(res)
+    return res
+
+
+@app.task(bind=True)
+def task_get_coins(self):
     client = BinanceClient(settings.BINANCE_CLIENT)
     result, is_ok = client.get_coins()
 
     if not is_ok:
         return result
 
+    i = 0
     for item in result:
         Coin.objects.update_or_create(
             coin=item['coin'],
             defaults={
                 'deposit_all_enable': item['depositAllEnable'],
-    ## 'asset': 'BTC'
                 'free': item['free'],
                 'freeze': item['freeze'],
                 'ipoable': item['ipoable'],
@@ -38,16 +43,6 @@ def task_get_coins(
                 'withdrawing': item['withdrawing'],
             },
         )
+        i += 1
 
-
-
-
-
-
-
-
-@app.task(bind=True)
-def debug_task(self):
-    res = 'I`m OK'
-    print(res)
-    return res
+    return {'result': f'Обновлено {i} записей.'}
