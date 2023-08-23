@@ -5,7 +5,7 @@ from django.urls import path, reverse
 
 from core.clients.binance import BinanceClient
 
-from .models import Coin
+from .models import Coin, TradeFee
 from binance.spot import Spot
 from pprint import pprint
 from wallet.tasks import task_get_coins
@@ -61,3 +61,15 @@ class CoinAdmin(admin.ModelAdmin):
         meta = self.model._meta
         url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
         return HttpResponseRedirect(url)
+
+
+@admin.register(TradeFee)
+class TradeFeeAdmin(admin.ModelAdmin):
+    list_display = ('id', 'symbol', 'maker_commission', 'taker_commission')
+    readonly_fields = list_display
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

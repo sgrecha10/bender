@@ -1,7 +1,8 @@
 from django.db import models
+from core.utils.db_utils import BaseModel
 
 
-class Coin(models.Model):
+class Coin(BaseModel):
     coin = models.CharField(
         verbose_name='coin',
         max_length=50,
@@ -15,7 +16,6 @@ class Coin(models.Model):
         max_digits=12,
         decimal_places=10,
     )
-
     freeze = models.DecimalField(
         verbose_name='freeze',
         max_digits=12,
@@ -60,18 +60,34 @@ class Coin(models.Model):
         decimal_places=10,
     )
 
-    updated = models.DateTimeField(
-        verbose_name='Дата обновления',
-        auto_now=True,
-    )
-    created = models.DateTimeField(
-        verbose_name='Дата создания',
-        auto_now_add=True,
-    )
-
     class Meta:
         verbose_name = 'Монета'
         verbose_name_plural = 'Монеты'
 
     def __str__(self):
         return self.coin
+
+
+class TradeFee(BaseModel):
+    symbol = models.CharField(
+        verbose_name='symbol',
+        max_length=50,
+        unique=True,
+    )
+    maker_commission = models.DecimalField(
+        verbose_name='maker_commission',
+        max_digits=5,
+        decimal_places=4,
+    )
+    taker_commission = models.DecimalField(
+        verbose_name='taker_commission',
+        max_digits=5,
+        decimal_places=4,
+    )
+
+    class Meta:
+        verbose_name = 'Торговая комиссия'
+        verbose_name_plural = 'Торговые комиссии'
+
+    def __str__(self):
+        return self.symbol
