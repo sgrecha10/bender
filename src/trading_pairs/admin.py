@@ -3,7 +3,7 @@ from django.contrib import admin, messages
 from django.http.response import HttpResponseRedirect
 from django.urls import path, reverse
 
-from core.clients.binance import BinanceClient
+from core.clients.binance.restapi import BinanceClient
 
 from .models import TradingPair
 

@@ -156,7 +156,6 @@ BINANCE_CLIENT = {
     'uri': config('BINANCE_CLIENT_URI', default='', cast=str),
     'api_key': config('BINANCE_CLIENT_API_KEY', default='', cast=str),
     'secret_key': config('BINANCE_CLIENT_SECRET_KEY', default='', cast=str),
-    'hmac': config('BINANCE_CLIENT_HMAC', default='', cast=str),
 }
 
 PERIODIC_CELERY_TASKS_DEBUG = config(

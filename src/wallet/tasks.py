@@ -2,7 +2,7 @@ import requests
 from django.conf import settings
 
 from bender.celery_entry import app
-from core.clients.binance import BinanceClient
+from core.clients.binance.restapi import BinanceClient
 from .models import Coin, TradeFee
 
 
