@@ -1,11 +1,8 @@
-from bender.celery_entry import app
+import requests
 from django.conf import settings
-from django.contrib import admin, messages
-from django.http.response import HttpResponseRedirect
-from django.urls import path, reverse
 
+from bender.celery_entry import app
 from core.clients.binance import BinanceClient
-
 from .models import Coin
 
 
@@ -16,7 +13,12 @@ def debug_task(self):
     return res
 
 
-@app.task(bind=True)
+@app.task(bind=True,
+          autoretry_for=(
+              requests.ConnectionError,
+              requests.ReadTimeout,
+          ),
+          retry_kwargs={'max_retries': 10, 'countdown': 1})
 def task_get_coins(self):
     client = BinanceClient(settings.BINANCE_CLIENT)
     result, is_ok = client.get_coins()
