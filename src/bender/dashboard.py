@@ -16,7 +16,10 @@ class CustomIndexDashboard(Dashboard):
                 'Кошелек',
                 column=1,
                 collapsible=True,
-                models=('wallet.models.Coin',),
+                models=(
+                    'wallet.models.Coin',
+                    'wallet.models.TradeFee',
+                ),
             )
         )
 

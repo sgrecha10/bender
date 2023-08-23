@@ -3,7 +3,7 @@ from django.conf import settings
 
 from bender.celery_entry import app
 from core.clients.binance import BinanceClient
-from .models import Coin
+from .models import Coin, TradeFee
 
 
 @app.task(bind=True)
@@ -43,6 +43,33 @@ def task_get_coins(self):
                 'trading': item['trading'],
                 'withdraw_all_enable': item['withdrawAllEnable'],
                 'withdrawing': item['withdrawing'],
+            },
+        )
+        i += 1
+
+    return {'result': f'Обновлено {i} записей.'}
+
+
+@app.task(bind=True,
+          autoretry_for=(
+              requests.ConnectionError,
+              requests.ReadTimeout,
+          ),
+          retry_kwargs={'max_retries': 10, 'countdown': 1})
+def task_update_trade_fee(self):
+    client = BinanceClient(settings.BINANCE_CLIENT)
+    result, is_ok = client.get_trade_fee()
+
+    if not is_ok:
+        return result
+
+    i = 0
+    for item in result:
+        TradeFee.objects.update_or_create(
+            symbol=item['symbol'],
+            defaults={
+                'maker_commission': item['makerCommission'],
+                'taker_commission': item['takerCommission'],
             },
         )
         i += 1

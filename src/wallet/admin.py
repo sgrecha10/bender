@@ -1,22 +1,20 @@
-from django.conf import settings
 from django.contrib import admin, messages
 from django.http.response import HttpResponseRedirect
 from django.urls import path, reverse
 
-from core.clients.binance import BinanceClient
-
+from wallet.tasks import (
+    task_get_coins,
+    task_update_trade_fee,
+)
 from .models import Coin, TradeFee
-from binance.spot import Spot
-from pprint import pprint
-from wallet.tasks import task_get_coins
 
 
 @admin.register(Coin)
 class CoinAdmin(admin.ModelAdmin):
     change_list_template = "admin/wallet/coin/change_list.html"
     list_display = (
-        'id',
         'coin',
+        'name',
         'deposit_all_enable',
         'free',
         'freeze',
@@ -24,7 +22,6 @@ class CoinAdmin(admin.ModelAdmin):
         'ipoing',
         'is_legal_money',
         'locked',
-        'name',
         'storage',
         'trading',
         'withdraw_all_enable',
@@ -32,6 +29,7 @@ class CoinAdmin(admin.ModelAdmin):
         'updated',
     )
     readonly_fields = list_display
+    search_fields = ('coin', 'name')
 
     def has_add_permission(self, request):
         return False
@@ -56,7 +54,6 @@ class CoinAdmin(admin.ModelAdmin):
         # return
 
         task_get_coins.delay()
-
         messages.success(request, 'Запущено обновление торговых пар')
         meta = self.model._meta
         url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
@@ -65,11 +62,33 @@ class CoinAdmin(admin.ModelAdmin):
 
 @admin.register(TradeFee)
 class TradeFeeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'symbol', 'maker_commission', 'taker_commission')
+    change_list_template = "admin/wallet/trade_fee/change_list.html"
+    list_display = ('symbol', 'maker_commission', 'taker_commission', 'updated')
     readonly_fields = list_display
+    search_fields = ('symbol',)
+    list_filter = ('symbol', 'maker_commission', 'taker_commission')
 
     def has_add_permission(self, request):
         return False
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        added_urls = [
+            path(
+                'update_trade_fee/',
+                self.update_trade_fee,
+                name='update_trade_fee',
+            ),
+        ]
+        return added_urls + urls
+
+    def update_trade_fee(self, request, *_):
+        task_update_trade_fee.delay()
+
+        messages.success(request, 'Update started..')
+        meta = self.model._meta
+        url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
+        return HttpResponseRedirect(url)
