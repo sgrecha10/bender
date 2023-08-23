@@ -23,7 +23,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "updated",
-                    models.DateTimeField(auto_now=True, verbose_name="Дата обновления"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Дата обновления"
+                    ),
                 ),
                 (
                     "created",
@@ -33,18 +35,24 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "symbol",
-                    models.CharField(max_length=50, unique=True, verbose_name="symbol"),
+                    models.CharField(
+                        max_length=50, unique=True, verbose_name="symbol"
+                    ),
                 ),
                 (
                     "maker_commission",
                     models.DecimalField(
-                        decimal_places=4, max_digits=5, verbose_name="maker_commission"
+                        decimal_places=4,
+                        max_digits=5,
+                        verbose_name="maker_commission",
                     ),
                 ),
                 (
                     "taker_commission",
                     models.DecimalField(
-                        decimal_places=4, max_digits=5, verbose_name="taker_commission"
+                        decimal_places=4,
+                        max_digits=5,
+                        verbose_name="taker_commission",
                     ),
                 ),
             ],

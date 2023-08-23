@@ -38,7 +38,11 @@ class BinanceBaseRestClient:
 
     # TODO ed25519_signature
     def _get_sign(self, payload):
-        m = hmac.new(self.secret_key.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256)
+        m = hmac.new(
+            self.secret_key.encode("utf-8"),
+            payload.encode("utf-8"),
+            hashlib.sha256,
+        )
         return m.hexdigest()
 
     def _sign_request(self, http_method, url_path, payload=None):
@@ -57,7 +61,9 @@ class BinanceBaseRestClient:
             "POST": self.session.post,
         }.get(http_method, "GET")
 
-    def _send_request(self, method: str, urn: str, data: dict) -> Tuple[dict, bool]:
+    def _send_request(
+        self, method: str, urn: str, data: dict
+    ) -> Tuple[dict, bool]:
         url = self.uri + urn
 
         params = self.clean_none_value(
@@ -85,5 +91,5 @@ class BinanceBaseRestClient:
 
         return {
             'status_code': response.status_code,
-            'reason': response.reason
+            'reason': response.reason,
         }, False

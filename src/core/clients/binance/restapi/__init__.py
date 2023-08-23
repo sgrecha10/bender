@@ -6,5 +6,4 @@ class BinanceClient(BinanceBaseRestClient):
         super().__init__(*args, **kwargs)
 
     # Wallet
-    from core.clients.binance.restapi.wallet import get_coins
-    from core.clients.binance.restapi.wallet import get_trade_fee
+    from core.clients.binance.restapi.wallet import get_coins, get_trade_fee
