@@ -26,6 +26,6 @@ def get_coins(self):
 def get_trade_fee(self, symbol=None):
     urn = '/sapi/v1/asset/tradeFee'
     method = 'GET'
-    payload = {'symbol': symbol} if symbol else {}
+    payload = {'symbol': symbol}
 
     return self._sign_request(method, urn, payload)
