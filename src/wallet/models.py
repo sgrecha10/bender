@@ -3,7 +3,7 @@ from django.db import models
 from core.utils.db_utils import BaseModel
 
 
-class Coin(BaseModel):
+class SpotBalance(BaseModel):
     coin = models.CharField(
         verbose_name='coin',
         max_length=50,
@@ -62,8 +62,8 @@ class Coin(BaseModel):
     )
 
     class Meta:
-        verbose_name = 'Монета'
-        verbose_name_plural = 'Монеты'
+        verbose_name = 'SPOT Баланс'
+        verbose_name_plural = 'SPOT Баланс'
 
     def __str__(self):
         return self.coin

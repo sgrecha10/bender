@@ -17,7 +17,7 @@ class CustomIndexDashboard(Dashboard):
                 column=1,
                 collapsible=True,
                 models=(
-                    'wallet.models.Coin',
+                    'wallet.models.SpotBalance',
                     'wallet.models.TradeFee',
                 ),
             )

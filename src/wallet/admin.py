@@ -2,12 +2,12 @@ from django.contrib import admin, messages
 from django.http.response import HttpResponseRedirect
 from django.urls import path, reverse
 
-from wallet.tasks import task_get_coins, task_update_trade_fee
+from wallet.tasks import task_get_capital_config_getall, task_update_trade_fee
 
-from .models import Coin, TradeFee
+from .models import SpotBalance, TradeFee
 
 
-@admin.register(Coin)
+@admin.register(SpotBalance)
 class CoinAdmin(admin.ModelAdmin):
     change_list_template = "admin/wallet/coin/change_list.html"
     list_display = (
@@ -39,14 +39,14 @@ class CoinAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         added_urls = [
             path(
-                'update_coins/',
-                self.set_update_coins,
-                name='update_coins',
+                'update_all/',
+                self.set_capital_config_getall,
+                name='update_all',
             ),
         ]
         return added_urls + urls
 
-    def set_update_coins(self, request, *_):
+    def set_capital_config_getall(self, request, *_):
         # client = Spot(
         #     api_key=settings.BINANCE_CLIENT['api_key'],
         #     api_secret=settings.BINANCE_CLIENT['secret_key'],
@@ -54,8 +54,8 @@ class CoinAdmin(admin.ModelAdmin):
         # pprint(client.account())
         # return
 
-        task_get_coins.delay()
-        messages.success(request, 'Запущено обновление торговых пар')
+        task_get_capital_config_getall.delay()
+        messages.success(request, 'Update started..')
         meta = self.model._meta
         url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
         return HttpResponseRedirect(url)

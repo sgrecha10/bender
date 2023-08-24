@@ -1,5 +1,7 @@
 import urllib.parse
+
 from core.utils.value_utils import clean_none_value
+
 
 def get_exchange_info(self, symbol=None, symbols=None, permissions=None):
     method = 'GET'
