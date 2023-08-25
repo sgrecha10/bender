@@ -23,7 +23,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "updated",
-                    models.DateTimeField(auto_now=True, verbose_name="Дата обновления"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Дата обновления"
+                    ),
                 ),
                 (
                     "created",
@@ -33,7 +35,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "coin",
-                    models.CharField(max_length=50, unique=True, verbose_name="coin"),
+                    models.CharField(
+                        max_length=50, unique=True, verbose_name="coin"
+                    ),
                 ),
                 (
                     "deposit_all_enable",
@@ -54,7 +58,9 @@ class Migration(migrations.Migration):
                 (
                     "ipoable",
                     models.DecimalField(
-                        decimal_places=10, max_digits=12, verbose_name="ipoable"
+                        decimal_places=10,
+                        max_digits=12,
+                        verbose_name="ipoable",
                     ),
                 ),
                 (
@@ -63,7 +69,10 @@ class Migration(migrations.Migration):
                         decimal_places=10, max_digits=12, verbose_name="ipoing"
                     ),
                 ),
-                ("is_legal_money", models.BooleanField(verbose_name="isLegalMoney")),
+                (
+                    "is_legal_money",
+                    models.BooleanField(verbose_name="isLegalMoney"),
+                ),
                 (
                     "locked",
                     models.DecimalField(
@@ -74,7 +83,9 @@ class Migration(migrations.Migration):
                 (
                     "storage",
                     models.DecimalField(
-                        decimal_places=10, max_digits=12, verbose_name="storage"
+                        decimal_places=10,
+                        max_digits=12,
+                        verbose_name="storage",
                     ),
                 ),
                 ("trading", models.BooleanField(verbose_name="trading")),
@@ -85,7 +96,9 @@ class Migration(migrations.Migration):
                 (
                     "withdrawing",
                     models.DecimalField(
-                        decimal_places=10, max_digits=12, verbose_name="withdrawing"
+                        decimal_places=10,
+                        max_digits=12,
+                        verbose_name="withdrawing",
                     ),
                 ),
             ],
@@ -108,7 +121,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "updated",
-                    models.DateTimeField(auto_now=True, verbose_name="Дата обновления"),
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Дата обновления"
+                    ),
                 ),
                 (
                     "created",
@@ -118,18 +133,24 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "symbol",
-                    models.CharField(max_length=50, unique=True, verbose_name="symbol"),
+                    models.CharField(
+                        max_length=50, unique=True, verbose_name="symbol"
+                    ),
                 ),
                 (
                     "maker_commission",
                     models.DecimalField(
-                        decimal_places=4, max_digits=5, verbose_name="maker_commission"
+                        decimal_places=4,
+                        max_digits=5,
+                        verbose_name="maker_commission",
                     ),
                 ),
                 (
                     "taker_commission",
                     models.DecimalField(
-                        decimal_places=4, max_digits=5, verbose_name="taker_commission"
+                        decimal_places=4,
+                        max_digits=5,
+                        verbose_name="taker_commission",
                     ),
                 ),
             ],

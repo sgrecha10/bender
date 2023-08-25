@@ -1,7 +1,8 @@
+from django.conf import settings
 from django.db import models
+
 from core.clients.binance.restapi import BinanceClient
 from core.utils.db_utils import BaseModel
-from django.conf import settings
 
 
 class SpotBalance(BaseModel):

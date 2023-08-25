@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
+
 from .models import SpotBalance, TradeFee
 
 

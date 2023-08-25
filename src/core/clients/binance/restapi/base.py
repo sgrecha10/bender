@@ -56,7 +56,9 @@ class BinanceBaseRestClient:
         payload["signature"] = self._get_sign(query_string)
         return self.send_request(http_method, url_path, payload)
 
-    def send_request(self, http_method, url_path, payload=None) -> Tuple[dict, bool]:
+    def send_request(
+        self, http_method, url_path, payload=None
+    ) -> Tuple[dict, bool]:
         if payload is None:
             payload = {}
 
@@ -72,7 +74,9 @@ class BinanceBaseRestClient:
             'X-MBX-APIKEY': self.api_key,
             'Content-Type': 'application/json;charset=utf-8',
         }
-        self.session.headers.update(headers)  # TO DO настроить количество повторов в requests
+        self.session.headers.update(
+            headers
+        )  # TO DO настроить количество повторов в requests
         response = self._dispatch_request(http_method)(**params)
 
         if response.ok:
