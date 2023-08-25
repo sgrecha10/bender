@@ -1,15 +1,13 @@
-from django.contrib import admin, messages
-from django.http.response import HttpResponseRedirect
-from django.urls import path, reverse
+from django.contrib import admin
+from django.urls import path
 
-from wallet.tasks import task_get_capital_config_getall, task_update_trade_fee
-
+from core.utils.admin_utils import redirect_to_change_list
 from .models import SpotBalance, TradeFee
 
 
 @admin.register(SpotBalance)
-class CoinAdmin(admin.ModelAdmin):
-    change_list_template = "admin/wallet/coin/change_list.html"
+class SpotBalanceAdmin(admin.ModelAdmin):
+    change_list_template = "admin/wallet/spot_balance/change_list.html"
     list_display = (
         'coin',
         'name',
@@ -39,26 +37,24 @@ class CoinAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         added_urls = [
             path(
-                'update_all/',
-                self.set_capital_config_getall,
-                name='update_all',
+                'update_capital_config_getall/',
+                self.update_capital_config_getall,
+                name='update_capital_config_getall',
             ),
         ]
         return added_urls + urls
 
-    def set_capital_config_getall(self, request, *_):
+    def update_capital_config_getall(self, request):
+        result, is_ok = self.model.get_update()
+        message = f'Обновили {result} записей' if is_ok else result
+        return redirect_to_change_list(request, self.model, message, is_ok)
+
         # client = Spot(
         #     api_key=settings.BINANCE_CLIENT['api_key'],
         #     api_secret=settings.BINANCE_CLIENT['secret_key'],
         # )
         # pprint(client.account())
         # return
-
-        task_get_capital_config_getall.delay()
-        messages.success(request, 'Update started..')
-        meta = self.model._meta
-        url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
-        return HttpResponseRedirect(url)
 
 
 @admin.register(TradeFee)
@@ -80,6 +76,14 @@ class TradeFeeAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
+    @admin.display(description='maker_commission', ordering='maker_commission')
+    def get_maker_commission(self, obj):
+        return f'{obj.maker_commission:.2%}'
+
+    @admin.display(description='taker_commission', ordering='taker_commission')
+    def get_taker_commission(self, obj):
+        return f'{obj.taker_commission:.2%}'
+
     def get_urls(self):
         urls = super().get_urls()
         added_urls = [
@@ -91,18 +95,7 @@ class TradeFeeAdmin(admin.ModelAdmin):
         ]
         return added_urls + urls
 
-    def update_trade_fee(self, request, *_):
-        task_update_trade_fee.delay()
-
-        messages.success(request, 'Update started..')
-        meta = self.model._meta
-        url = reverse(f'admin:{meta.app_label}_{meta.model_name}_changelist')
-        return HttpResponseRedirect(url)
-
-    @admin.display(description='maker_commission', ordering='maker_commission')
-    def get_maker_commission(self, obj):
-        return f'{obj.maker_commission:.2%}'
-
-    @admin.display(description='taker_commission', ordering='taker_commission')
-    def get_taker_commission(self, obj):
-        return f'{obj.taker_commission:.2%}'
+    def update_trade_fee(self, request, symbol=None):
+        result, is_ok = self.model.get_update(symbol)
+        message = f'Обновили {result} записей' if is_ok else result
+        return redirect_to_change_list(request, self.model, message, is_ok)

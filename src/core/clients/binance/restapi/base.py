@@ -47,16 +47,16 @@ class BinanceBaseRestClient:
             "POST": self.session.post,
         }.get(http_method, "GET")
 
-    def _sign_request(self, http_method, url_path, payload=None):
+    def sign_request(self, http_method, url_path, payload=None):
         if payload is None:
             payload = {}
 
         payload["timestamp"] = self._get_timestamp()
         query_string = self._prepare_params(payload)
         payload["signature"] = self._get_sign(query_string)
-        return self._send_request(http_method, url_path, payload)
+        return self.send_request(http_method, url_path, payload)
 
-    def _send_request(self, http_method, url_path, payload=None) -> Tuple[dict, bool]:
+    def send_request(self, http_method, url_path, payload=None) -> Tuple[dict, bool]:
         if payload is None:
             payload = {}
 

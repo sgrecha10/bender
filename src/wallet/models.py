@@ -1,6 +1,7 @@
 from django.db import models
-
+from core.clients.binance.restapi import BinanceClient
 from core.utils.db_utils import BaseModel
+from django.conf import settings
 
 
 class SpotBalance(BaseModel):
@@ -68,6 +69,34 @@ class SpotBalance(BaseModel):
     def __str__(self):
         return self.coin
 
+    @classmethod
+    def get_update(cls):
+        client = BinanceClient(settings.BINANCE_CLIENT)
+        result, is_ok = client.get_capital_config_getall()  # noqa
+        i = 0
+        if is_ok:
+            for item in result:
+                cls.objects.update_or_create(
+                    coin=item['coin'],
+                    defaults={
+                        'deposit_all_enable': item['depositAllEnable'],
+                        'free': item['free'],
+                        'freeze': item['freeze'],
+                        'ipoable': item['ipoable'],
+                        'ipoing': item['ipoing'],
+                        'is_legal_money': item['isLegalMoney'],
+                        'locked': item['locked'],
+                        'name': item['name'],
+                        'storage': item['storage'],
+                        'trading': item['trading'],
+                        'withdraw_all_enable': item['withdrawAllEnable'],
+                        'withdrawing': item['withdrawing'],
+                    },
+                )
+                i += 1
+
+        return i if is_ok else result, is_ok
+
 
 class TradeFee(BaseModel):
     symbol = models.CharField(
@@ -92,3 +121,21 @@ class TradeFee(BaseModel):
 
     def __str__(self):
         return self.symbol
+
+    @classmethod
+    def get_update(cls, symbol=None):
+        client = BinanceClient(settings.BINANCE_CLIENT)
+        result, is_ok = client.get_trade_fee(symbol)  # noqa
+        i = 0
+        if is_ok:
+            for item in result:
+                cls.objects.update_or_create(
+                    symbol=item['symbol'],
+                    defaults={
+                        'maker_commission': item['makerCommission'],
+                        'taker_commission': item['takerCommission'],
+                    },
+                )
+                i += 1
+
+        return i if is_ok else result, is_ok
