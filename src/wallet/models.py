@@ -64,8 +64,8 @@ class SpotBalance(BaseModel):
     )
 
     class Meta:
-        verbose_name = 'SPOT Баланс'
-        verbose_name_plural = 'SPOT Баланс'
+        verbose_name = 'SPOT баланс'
+        verbose_name_plural = 'SPOT баланс'
 
     def __str__(self):
         return self.coin
