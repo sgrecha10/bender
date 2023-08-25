@@ -72,7 +72,7 @@ class BinanceBaseRestClient:
             'X-MBX-APIKEY': self.api_key,
             'Content-Type': 'application/json;charset=utf-8',
         }
-        self.session.headers.update(headers)
+        self.session.headers.update(headers)  # TO DO настроить количество повторов в requests
         response = self._dispatch_request(http_method)(**params)
 
         if response.ok:
