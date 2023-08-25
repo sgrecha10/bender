@@ -13,12 +13,23 @@ class CustomIndexDashboard(Dashboard):
 
         self.children.append(
             modules.AppList(
-                'Кошелек',
+                'WALLET',
                 column=1,
                 collapsible=True,
                 models=(
                     'wallet.models.SpotBalance',
                     'wallet.models.TradeFee',
+                ),
+            )
+        )
+
+        self.children.append(
+            modules.AppList(
+                'MARKET DATA',
+                column=1,
+                collapsible=True,
+                models=(
+                    'market_data.models.ExchangeInfo',
                 ),
             )
         )

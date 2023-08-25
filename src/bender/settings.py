@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'base',
     'wallet',
+    'market_data',
 ]
 
 MIDDLEWARE = [
