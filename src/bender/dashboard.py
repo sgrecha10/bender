@@ -25,15 +25,6 @@ class CustomIndexDashboard(Dashboard):
 
         self.children.append(
             modules.AppList(
-                'Рыночные данные',
-                column=1,
-                collapsible=True,
-                models=('trading_pairs.models.TradingPair',),
-            )
-        )
-
-        self.children.append(
-            modules.AppList(
                 'Администрирование',
                 column=2,
                 collapsible=True,

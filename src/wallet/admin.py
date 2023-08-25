@@ -69,6 +69,7 @@ class TradeFeeAdmin(admin.ModelAdmin):
     readonly_fields = list_display
     search_fields = ('symbol',)
     list_filter = ('symbol', 'maker_commission', 'taker_commission')
+    actions = ('action_update_trade_fee',)
 
     def has_add_permission(self, request):
         return False
@@ -99,3 +100,11 @@ class TradeFeeAdmin(admin.ModelAdmin):
         result, is_ok = self.model.get_update(symbol)
         message = f'Обновили {result} записей' if is_ok else result
         return redirect_to_change_list(request, self.model, message, is_ok)
+
+    @admin.action(description='Обновить')
+    def action_update_trade_fee(self, request, symbol_query=None):
+        if symbol_query.count() > 1:
+            message = 'Выборочное обновление только по 1 строке'
+            return redirect_to_change_list(request, self.model, message, False)
+
+        self.update_trade_fee(request, symbol_query[0].symbol)
