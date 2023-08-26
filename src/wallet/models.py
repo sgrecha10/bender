@@ -3,6 +3,7 @@ from django.db import models
 
 from core.clients.binance.restapi import BinanceClient
 from core.utils.db_utils import BaseModel
+import requests
 
 
 class SpotBalance(BaseModel):
@@ -73,7 +74,11 @@ class SpotBalance(BaseModel):
     @classmethod
     def get_update(cls):
         client = BinanceClient(settings.BINANCE_CLIENT)
-        result, is_ok = client.get_capital_config_getall()  # noqa
+        try:
+            result, is_ok = client.get_capital_config_getall()  # noqa
+        except requests.ConnectionError as e:
+            return e, False
+
         i = 0
         if is_ok:
             for item in result:
@@ -126,7 +131,11 @@ class TradeFee(BaseModel):
     @classmethod
     def get_update(cls, symbol=None):
         client = BinanceClient(settings.BINANCE_CLIENT)
-        result, is_ok = client.get_trade_fee(symbol)  # noqa
+        try:
+            result, is_ok = client.get_trade_fee(symbol)  # noqa
+        except requests.ConnectionError as e:
+            return e, False
+
         i = 0
         if is_ok:
             for item in result:

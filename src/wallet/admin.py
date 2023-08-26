@@ -27,6 +27,7 @@ class SpotBalanceAdmin(admin.ModelAdmin):
     )
     readonly_fields = list_display
     search_fields = ('coin', 'name')
+    ordering = ('-free',)
 
     def has_add_permission(self, request):
         return False
@@ -71,6 +72,7 @@ class TradeFeeAdmin(admin.ModelAdmin):
     search_fields = ('symbol',)
     list_filter = ('symbol', 'maker_commission', 'taker_commission')
     actions = ('action_update_trade_fee',)
+    ordering = ('-updated',)
 
     def has_add_permission(self, request):
         return False
