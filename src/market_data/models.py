@@ -1,13 +1,17 @@
-from core.utils.db_utils import BaseModel
+import requests
+from django.conf import settings
 from django.contrib.postgres.fields import ArrayField, HStoreField
 from django.db import models
+
+from core.clients.binance.restapi import BinanceClient
+from core.utils.db_utils import BaseModel
 
 
 class ExchangeInfo(BaseModel):
     rate_limits = ArrayField(
         HStoreField(),
         null=True, blank=True,
-        verbose_name='rate_limits',
+        verbose_name='rateLimits',
     )
     # exchange_filters = ArrayField(
     #     models.CharField(max_length=255),
@@ -119,4 +123,48 @@ class ExchangeInfo(BaseModel):
         verbose_name_plural = 'Exchange Information'
 
     def __str__(self):
-        return
+        return self.symbol
+
+    @classmethod
+    def get_update(cls, symbol=None, symbols=None, permissions=None):
+        client = BinanceClient(settings.BINANCE_CLIENT)
+        try:
+            result, is_ok = client.get_exchange_info(symbol, symbols, permissions)  # noqa
+        except requests.ConnectionError as e:
+            return e, False
+
+        i = 0
+        if is_ok:
+            for item in result['symbols']:
+                cls.objects.update_or_create(
+                    symbol=item['symbol'],
+                    defaults={
+                        'server_time': result['serverTime'],
+                        'rate_limits': result['rateLimits'],
+                        # 'exchange_filters': item['exchange_filters'],
+                        'symbol': item['symbol'],
+                        'status': item['status'],
+                        'base_asset': item['baseAsset'],
+                        'base_asset_precision': item['baseAssetPrecision'],
+                        'quoteAsset': item['quoteAsset'],
+                        'quote_precision': item['quotePrecision'],
+                        'quote_asset_precision': item['quoteAssetPrecision'],
+                        'base_commission_precision': item['baseCommissionPrecision'],
+                        'quote_commission_precision': item['quoteCommissionPrecision'],
+                        'order_types': item['orderTypes'],
+                        'iceberg_allowed': item['icebergAllowed'],
+                        'oco_allowed': item['ocoAllowed'],
+                        'quote_order_qty_market_allowed': item['quoteOrderQtyMarketAllowed'],
+                        'allow_trailing_stop': item['allowTrailingStop'],
+                        'cancel_replace_allowed': item['cancelReplaceAllowed'],
+                        'is_spot_trading_allowed': item['isSpotTradingAllowed'],
+                        'is_margin_trading_allowed': item['isMarginTradingAllowed'],
+                        # 'filters': item['filters'],
+                        'permissions': item['permissions'],
+                        'default_self_trade_prevention_mode': item['defaultSelfTradePreventionMode'],
+                        'allowed_self_trade_prevention_modes': item['allowedSelfTradePreventionModes'],
+                    },
+                )
+                i += 1
+
+        return i if is_ok else result, is_ok

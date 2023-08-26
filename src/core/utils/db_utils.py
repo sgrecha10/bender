@@ -2,7 +2,7 @@ from django.db import models
 
 
 class BaseModel(models.Model):
-    server_time = models.DateTimeField(
+    server_time = models.BigIntegerField(
         verbose_name='serverTime',
         null=True, blank=True, default=None,
     )
