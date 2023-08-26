@@ -8,8 +8,10 @@ from market_data.models import ExchangeInfo
 @admin.register(ExchangeInfo)
 class ExchangeInfoAdmin(admin.ModelAdmin):
     change_list_template = "admin/market_data/exchange_info/change_list.html"
-    list_display = ('id', 'symbol', 'updated')
+    list_display = ('id', 'symbol', 'status', 'updated')
     actions = ('action_update_exchange_info',)
+    list_filter = ('status', 'base_asset', 'quoteAsset')
+    search_fields = ('symbol',)
 
     # def has_add_permission(self, request):
     #     return False
