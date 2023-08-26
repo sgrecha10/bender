@@ -11,11 +11,11 @@ class ExchangeInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'symbol', 'updated')
     actions = ('action_update_exchange_info',)
 
-    def has_add_permission(self, request):
-        return False
+    # def has_add_permission(self, request):
+    #     return False
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    # def has_delete_permission(self, request, obj=None):
+    #     return False
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -40,3 +40,8 @@ class ExchangeInfoAdmin(admin.ModelAdmin):
         result, is_ok = self.model.get_update(symbol, symbols, permissions)
         message = f'Обновили {result} записей' if is_ok else result
         return redirect_to_change_list(request, self.model, message, is_ok)
+
+    def save_model(self, request, obj, form, change):
+        symbol = form.cleaned_data['symbol']
+        if not change:
+            self.model.get_update(symbol=symbol)
