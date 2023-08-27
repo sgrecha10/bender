@@ -156,6 +156,7 @@ BROKER_URL = config('BROKER_URL', default='amqp://guest:guest@rabbitmq:5672/')
 
 BINANCE_CLIENT = {
     'uri': config('BINANCE_CLIENT_URI', default='', cast=str),
+    'websocket_uri': config('BINANCE_CLIENT_WEBSOCKET_URI', default='', cast=str),
     'api_key': config('BINANCE_CLIENT_API_KEY', default='', cast=str),
     'secret_key': config('BINANCE_CLIENT_SECRET_KEY', default='', cast=str),
 }

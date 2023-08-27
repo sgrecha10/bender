@@ -51,6 +51,7 @@ class SpotBalanceAdmin(admin.ModelAdmin):
         message = f'Обновили {result} записей' if is_ok else result
         return redirect_to_change_list(request, self.model, message, is_ok)
 
+        from binance.spot import Spot
         # client = Spot(
         #     api_key=settings.BINANCE_CLIENT['api_key'],
         #     api_secret=settings.BINANCE_CLIENT['secret_key'],
