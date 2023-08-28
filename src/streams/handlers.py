@@ -3,6 +3,7 @@ from collections import defaultdict
 import os
 from core.clients.binance.websocket.spot.websocket_stream import SpotWebsocketStreamClient
 from pprint import pprint
+from .models import StreamTest
 
 output_dict = defaultdict()
 
@@ -10,6 +11,7 @@ def message_handler(_, message):
     # logging.info(message)
 
     json_data = json.loads(message)
+    StreamTest.objects.create(result=json_data)
     print(json_data)
     # print('bid', json_data['b'])
 

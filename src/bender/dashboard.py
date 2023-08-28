@@ -33,6 +33,16 @@ class CustomIndexDashboard(Dashboard):
                 ),
             )
         )
+        self.children.append(
+            modules.AppList(
+                'WEBSOCKET',
+                column=1,
+                collapsible=True,
+                models=(
+                    'streams.models.StreamTest',
+                ),
+            )
+        )
 
         self.children.append(
             modules.AppList(

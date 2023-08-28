@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'base',
     'wallet',
     'market_data',
+    'streams',
 ]
 
 MIDDLEWARE = [

@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import StreamTest
 
-# Register your models here.
+
+@admin.register(StreamTest)
+class StreamTestAdmin(admin.ModelAdmin):
+    pass
