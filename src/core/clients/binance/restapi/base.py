@@ -1,6 +1,6 @@
 import hashlib
 import hmac
-import time
+from core.utils.client_utils import get_timestamp
 from typing import Tuple
 from urllib.parse import urlencode
 
@@ -18,10 +18,6 @@ class BinanceBaseRestClient:
         self.uri = credentials['uri']
         self.api_key = credentials['api_key']
         self.secret_key = credentials['secret_key']
-
-    @staticmethod
-    def _get_timestamp():
-        return int(time.time() * 1000)
 
     @staticmethod
     def encoded_string(query):
@@ -51,7 +47,7 @@ class BinanceBaseRestClient:
         if payload is None:
             payload = {}
 
-        payload["timestamp"] = self._get_timestamp()
+        payload["timestamp"] = get_timestamp()
         query_string = self._prepare_params(payload)
         payload["signature"] = self._get_sign(query_string)
         return self.send_request(http_method, url_path, payload)
