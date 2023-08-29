@@ -1,4 +1,4 @@
-FROM python:3.10.1-alpine3.15
+FROM python:3.10.1-buster
 
 ENV PYTHONUNBUFFERED=1 \
    LANG=ru_RU.UTF-8 \
@@ -11,11 +11,12 @@ WORKDIR /app
 
 COPY requirements.txt /app/requirements.txt
 
-RUN apk add --no-cache --virtual .build-deps \
-   gcc\
-   g++\
-   postgresql-dev\
-   linux-headers\
-   libffi-dev
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends gcc git libssl-dev g++ make && \
+  cd /tmp && git clone https://github.com/edenhill/librdkafka && \
+  cd librdkafka && git checkout tags/v2.0.2 && \
+  ./configure && make && make install && \
+  ldconfig &&\
+  cd ../ && rm -rf librdkafka
 RUN python -m pip install --upgrade pip
 RUN pip install -r /app/requirements.txt --no-cache-dir
