@@ -101,19 +101,8 @@ class TradeFeeAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def update_trade_fee(self, request, symbol=None):
-        # временно, для проверки работы таски
-        # from wallet.tasks import endless_cycle
-        from streams.handlers import start_stream
-        start_stream('bnbusdt')
-        start_stream('BTCUSDT')
-        # endless_cycle.delay()
-        # endless_cycle.delay()
-
-        message = 'hello grecha'
-        is_ok = True
-
-        # result, is_ok = self.model.get_update(symbol)
-        # message = f'Обновили {result} записей' if is_ok else result
+        result, is_ok = self.model.get_update(symbol)
+        message = f'Обновили {result} записей' if is_ok else result
         return redirect_to_change_list(request, self.model, message, is_ok)
 
     @admin.action(description='Обновить')
