@@ -12,6 +12,10 @@ redis==5.0.0
 pycryptodome>=3.15.0
 websocket-client==1.6.2
 
+# это для запуска селери в потоках, а не тредах. проверить производительность, выпилить при необходимости
+# command: celery -A bender.celery_entry worker -l info --pool=eventlet
+eventlet==0.33.3
+
 # pika
 
 # websockets
