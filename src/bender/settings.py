@@ -162,6 +162,11 @@ BINANCE_CLIENT = {
     'secret_key': config('BINANCE_CLIENT_SECRET_KEY', default='', cast=str),
 }
 
+KAFKA_CLIENT = {
+    'bootstrap.servers': config('KAFKA_CLIENT_BOOTSTRAP_SERVERS', default='kafka:9092', cast=str),
+}
+
+
 PERIODIC_CELERY_TASKS_DEBUG = config(
     'PERIODIC_CELERY_TASKS_DEBUG', default=False, cast=bool
 )
