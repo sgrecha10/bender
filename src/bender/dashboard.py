@@ -39,7 +39,7 @@ class CustomIndexDashboard(Dashboard):
                 column=1,
                 collapsible=True,
                 models=(
-                    'streams.models.StreamTest',
+                    'streams.models.TaskManagement',
                 ),
             )
         )
@@ -51,7 +51,17 @@ class CustomIndexDashboard(Dashboard):
                 children=[
                     {
                         'title': 'Запустить поток',
-                        'url': '/streams/',
+                        'url': '/streams?action=start',
+                        'external': False,
+                    },
+                    {
+                        'title': 'Остановить поток',
+                        'url': '/streams?action=stop',
+                        'external': False,
+                    },
+                    {
+                        'title': 'Стакан',
+                        'url': '/streams/dom/',
                         'external': False,
                     },
                 ],

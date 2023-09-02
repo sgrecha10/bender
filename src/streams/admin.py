@@ -1,7 +1,7 @@
 from django.contrib import admin
-from .models import StreamTest
+from .models import TaskManagement
 
 
-@admin.register(StreamTest)
-class StreamTestAdmin(admin.ModelAdmin):
-    pass
+@admin.register(TaskManagement)
+class TaskManagementAdmin(admin.ModelAdmin):
+    list_display = ('codename', 'is_working', 'updated', 'created')

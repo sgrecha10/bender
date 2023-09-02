@@ -3,7 +3,6 @@ from collections import defaultdict
 import os
 from core.clients.binance.websocket.spot.websocket_stream import SpotWebsocketStreamClient
 from pprint import pprint
-from .models import StreamTest
 import time
 
 output_dict = defaultdict()
