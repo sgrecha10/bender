@@ -45,6 +45,20 @@ class CustomIndexDashboard(Dashboard):
         )
 
         self.children.append(
+            modules.LinkList(
+                'HANDLERS',
+                column=1,
+                children=[
+                    {
+                        'title': 'Запустить поток',
+                        'url': '/streams/',
+                        'external': False,
+                    },
+                ],
+            ),
+        )
+
+        self.children.append(
             modules.AppList(
                 'Администрирование',
                 column=2,
@@ -92,7 +106,7 @@ class CustomIndexDashboard(Dashboard):
         )
 
         # self.children.append(modules.RecentActions(
-        #     _('Recent actions'),
+        #     'Recent actions',
         #     limit=5,
         #     collapsible=False,
         #     column=3,

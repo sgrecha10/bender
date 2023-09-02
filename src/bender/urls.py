@@ -21,4 +21,5 @@ from django.urls import path
 urlpatterns = [
     path('grappelli/', include('grappelli.urls')),
     path('admin/', admin.site.urls),
+    path('streams/', include('streams.urls')),
 ]
