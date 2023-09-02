@@ -9,7 +9,7 @@ from core.clients.kafka.kafka_client import KafkaProducerClient
 
 @app.task(bind=True)
 def task_diff_book_depth(self, symbol):
-    kafka_client = KafkaProducerClient(settings.KAFKA_CLIENT)
+    kafka_client = KafkaProducerClient(settings.KAFKA_CLIENT, topic=symbol)
     my_client = SpotWebsocketStreamClient(on_message=kafka_client.message_handler)
     my_client.diff_book_depth(symbol=symbol)
     time.sleep(10)

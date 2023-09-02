@@ -6,9 +6,10 @@ import json
 
 
 class KafkaProducerClient:
-    def __init__(self, credentials: dict):
+    def __init__(self, credentials: dict, topic: str = None):
         self.bootstrap_servers = credentials['bootstrap.servers']
         self.client_id = socket.gethostname(),
+        self.topic = topic if topic else 'default'
 
         self.producer = Producer(self.get_config())
 
@@ -22,11 +23,8 @@ class KafkaProducerClient:
         json_data = json.loads(message)
         print(json_data)
 
-        # ЗДЕСЬ НАДО ДЕЛИТЬ НА ТОПИКИ
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         self.producer.produce(
-            topic='hello_topic',
+            topic=self.topic,
             value=message,
             # key=key,
             # on_delivery=callback,  # def callback(err, event):
@@ -41,7 +39,7 @@ class KafkaConsumerClient:
         self.auto_offset_reset = 'smallest'
         self.enable_auto_commit = False
 
-        self.producer = Producer(self.get_config())
+        self.consumer = Consumer(self.get_config())
 
     def get_config(self):
         return {
@@ -50,3 +48,6 @@ class KafkaConsumerClient:
             'auto.offset.reset': self.auto_offset_reset,
             'enable.auto.commit': self.enable_auto_commit,
         }
+
+    def get_topic(self):
+        pass
