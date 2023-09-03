@@ -7,7 +7,7 @@ class RedisClient:
         self.host = credentials['host']
         self.port = credentials['port']
 
-    def get_pool_connection(self, db_number: int):
+    def get_pool_connection(self, db_number: int = 0):
         return redis.Redis(
             host=self.host,
             port=self.port,
