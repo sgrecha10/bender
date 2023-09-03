@@ -166,6 +166,10 @@ KAFKA_CLIENT = {
     'bootstrap.servers': config('KAFKA_CLIENT_BOOTSTRAP_SERVERS', default='kafka:9092', cast=str),
 }
 
+REDIS_CLIENT = {
+    'host': config('REDIS_CLIENT_HOST', default='redis', cast=str),
+    'port': config('REDIS_CLIENT_PORT', default='6379', cast=str),
+}
 
 PERIODIC_CELERY_TASKS_DEBUG = config(
     'PERIODIC_CELERY_TASKS_DEBUG', default=False, cast=bool
