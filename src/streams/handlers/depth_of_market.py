@@ -1,5 +1,5 @@
-from streams.tasks import task_diff_book_depth
 from streams.models import TaskManagement
+from streams.tasks import task_diff_book_depth
 
 
 class DepthOfMarket:

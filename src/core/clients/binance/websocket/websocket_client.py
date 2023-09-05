@@ -1,7 +1,8 @@
 import json
 import logging
-from core.utils.client_utils import get_timestamp
+
 from core.clients.binance.websocket.binance_socket_manager import BinanceSocketManager
+from core.utils.client_utils import get_timestamp
 
 
 class BinanceWebsocketClient:
