@@ -152,6 +152,20 @@ STATIC_ROOT = '/static'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
 BROKER_URL = config('BROKER_URL', default='amqp://guest:guest@rabbitmq:5672/')
 # BROKER_URL = config('BROKER_URL', default='redis://redis:6379/0')
 

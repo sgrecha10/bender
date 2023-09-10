@@ -1,8 +1,9 @@
-from confluent_kafka import Consumer, OFFSET_BEGINNING, KafkaException
+import logging
 import socket
-from django.conf import settings
+
+from confluent_kafka import Consumer
 from confluent_kafka import Producer
-import json
+from django.conf import settings
 
 
 class KafkaProducerClient:
@@ -20,8 +21,8 @@ class KafkaProducerClient:
         }
 
     def message_handler(self, _, message):
-        json_data = json.loads(message)
-        print(json_data)
+        # json_data = json.loads(message)
+        # print(json_data)
 
         self.producer.produce(
             topic=self.topic,
@@ -32,14 +33,17 @@ class KafkaProducerClient:
         self.producer.flush()
 
 
-class KafkaConsumerClient:
-    def __init__(self, credentials: dict):
-        self.bootstrap_servers = credentials['bootstrap.servers']
+class KafkaConsumerClient:  # ЭТО НАДО ВЫЗЫВАТЬ В НОВОЙ ТАСКЕ
+    def __init__(self, logger=None):
+        self.bootstrap_servers = settings.KAFKA_CLIENT['bootstrap.servers']
         self.group_id = "hello_group"
         self.auto_offset_reset = 'smallest'
         self.enable_auto_commit = False
 
         self.consumer = Consumer(self.get_config())
+
+        if not logger:
+            self.logger = logging.getLogger(__name__)
 
     def get_config(self):
         return {
@@ -49,5 +53,21 @@ class KafkaConsumerClient:
             'enable.auto.commit': self.enable_auto_commit,
         }
 
-    def get_topic(self):
-        pass
+    def get_topic(self, topic: str, message_handler, *args, **kwargs):
+        self.consumer.subscribe([topic])
+        try:
+            prev_message = None
+            while True:
+                msg = self.consumer.poll(1.0)
+                if msg is None:
+                    self.logger.info('Empty message')
+                elif msg.error():
+                    self.logger.info("ERROR: %s".format(msg.error()))
+                else:
+                    message = msg.value().decode('utf-8')
+                    message_handler(message, prev_message, *args, **kwargs)
+                    prev_message = message
+        except KeyboardInterrupt:
+            pass
+        finally:
+            self.consumer.close()
