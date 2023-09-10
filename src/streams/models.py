@@ -44,18 +44,18 @@ class DepthOfMarket(BaseModel):
     def __str__(self):
         return self.symbol.symbol
 
-    def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-        TrainingData.objects.create(
-            depth_of_market=self,
-            depth=self.depth,
-        )
+    # def save(self, *args, **kwargs):
+    #     super().save(*args, **kwargs)
+    #     TrainingData.objects.create(
+    #         depth_of_market=self,
+    #         depth=self.depth,
+    #     )
 
 
 class TrainingData(BaseModel):
     depth_of_market = models.ForeignKey(
         DepthOfMarket, on_delete=models.CASCADE,
-        verbose_name='Depth of market'
+        verbose_name='Depth of market',
     )
     is_active = models.BooleanField(
         verbose_name='Status',
@@ -72,6 +72,9 @@ class TrainingData(BaseModel):
     class Meta:
         verbose_name = 'Тестовые данные'
         verbose_name_plural = 'Тестовые данные'
+        unique_together = [
+            ('depth_of_market', 'depth'),
+        ]
 
     def __str__(self):
         return self.depth_of_market.symbol.symbol
