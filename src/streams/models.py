@@ -16,8 +16,8 @@ class TaskManagement(BaseModel):
     )
 
     class Meta:
-        verbose_name = 'Управление задачей'
-        verbose_name_plural = 'Управление задачами'
+        verbose_name = 'Task management'
+        verbose_name_plural = 'Tasks management'
 
     def __str__(self):
         return self.codename
@@ -43,3 +43,35 @@ class DepthOfMarket(BaseModel):
 
     def __str__(self):
         return self.symbol.symbol
+
+    def save(self, force_insert=True, *args, **kwargs):
+        super().save(force_insert, *args, **kwargs)
+        TrainingData.objects.create(
+            depth_of_market=self,
+            depth=self.depth,
+        )
+
+
+class TrainingData(BaseModel):
+    depth_of_market = models.ForeignKey(
+        DepthOfMarket, on_delete=models.CASCADE,
+        verbose_name='Depth of market'
+    )
+    is_active = models.BooleanField(
+        verbose_name='Status',
+        default=False,
+    )
+    amount = models.PositiveIntegerField(
+        verbose_name='Amount',
+        default=0,
+    )
+    depth = models.PositiveSmallIntegerField(
+        verbose_name='Depth',
+        default=100,
+    )
+    class Meta:
+        verbose_name = 'Тестовые данные'
+        verbose_name_plural = 'Тестовые данные'
+
+    def __str__(self):
+        return self.depth_of_market.symbol.symbol

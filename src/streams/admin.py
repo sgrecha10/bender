@@ -1,6 +1,7 @@
 from django.contrib import admin
-from .models import TaskManagement, DepthOfMarket
+from .models import TaskManagement, DepthOfMarket, TrainingData
 from core.utils.admin_utils import redirect_to_change_list
+from django.utils.safestring import mark_safe
 
 
 @admin.register(TaskManagement)
@@ -10,11 +11,18 @@ class TaskManagementAdmin(admin.ModelAdmin):
 
 @admin.register(DepthOfMarket)
 class DepthOfMarketAdmin(admin.ModelAdmin):
-    list_display = ('id', 'symbol', 'is_active', 'depth', 'updated', 'created')
+    list_display = ('id', 'symbol', 'is_active', 'depth', 'market_glass', 'updated', 'created')
     raw_id_fields = ('symbol',)
     actions = ('action_run', 'action_stop')
 
-    @admin.action(description='Запустить глубину рынка')
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description='Market glass')
+    def market_glass(self, obj):
+        return mark_safe(f'<a href="" target="_blank">открыть</a>')
+
+    @admin.action(description='Запустить "Глубину рынка"')
     def action_run(self, request, query=None):
         symbols = [item.symbol for item in query]
         query.update(is_active=True)
@@ -22,7 +30,39 @@ class DepthOfMarketAdmin(admin.ModelAdmin):
         is_ok = True
         return redirect_to_change_list(request, self.model, message, is_ok)
 
-    @admin.action(description='Остановить глубину рынка')
+    @admin.action(description='Остановить "Глубину рынка"')
+    def action_stop(self, request, query=None):
+        symbols = [item.symbol for item in query]
+        query.update(is_active=False)
+        message = f'action_stop {symbols}'
+        is_ok = False
+        return redirect_to_change_list(request, self.model, message, is_ok)
+
+
+@admin.register(TrainingData)
+class TrainingDataAdmin(admin.ModelAdmin):
+    list_display = ('id', 'depth_of_market', 'is_active', 'amount', 'depth', 'market_glass', 'updated', 'created')
+    actions = ('action_run', 'action_stop')
+
+    # def has_add_permission(self, request):
+    #     return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description='Market glass')
+    def market_glass(self, obj):
+        return mark_safe(f'<a href="" target="_blank">открыть</a>')
+
+    @admin.action(description='Запустить "Тестовые данные"')
+    def action_run(self, request, query=None):
+        symbols = [item.symbol for item in query]
+        query.update(is_active=True)
+        message = f'action_run {query}'
+        is_ok = True
+        return redirect_to_change_list(request, self.model, message, is_ok)
+
+    @admin.action(description='Остановить "Тестовые данные"')
     def action_stop(self, request, query=None):
         symbols = [item.symbol for item in query]
         query.update(is_active=False)

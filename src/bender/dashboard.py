@@ -35,11 +35,12 @@ class CustomIndexDashboard(Dashboard):
         )
         self.children.append(
             modules.AppList(
-                'WEBSOCKET',
+                'STREAMS',
                 column=1,
                 collapsible=True,
                 models=(
                     'streams.models.DepthOfMarket',
+                    'streams.models.TrainingData',
                     'streams.models.TaskManagement',
                 ),
             )
