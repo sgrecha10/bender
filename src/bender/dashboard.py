@@ -39,6 +39,7 @@ class CustomIndexDashboard(Dashboard):
                 column=1,
                 collapsible=True,
                 models=(
+                    'streams.models.DepthOfMarket',
                     'streams.models.TaskManagement',
                 ),
             )
