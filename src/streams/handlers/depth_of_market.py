@@ -11,11 +11,15 @@ import json
 from core.clients.kafka.kafka_client import KafkaConsumerClient
 
 
-class WebSoketError(Exception):
+class DepthOfMarketStreamError(Exception):
     #  Сбой стакана
-    pass
+    def __init__(self, msg):
+        self.msg = msg
 
-class DepthOfMarket:
+
+class DepthOfMarketStream:
+    logger = logging.getLogger(__name__)
+
     def __init__(self, logger: logging = None):
         self.is_start_to_redis = False  # флаг, устанавливается когда начинается запись стакана в Redis
         self.redis_conn = RedisClient()
@@ -27,26 +31,30 @@ class DepthOfMarket:
         if not logger:
             self.logger = logging.getLogger(__name__)
 
-    def run(self, symbol: str, depth: int = 100):
-        self.logger.info(
+    @classmethod
+    def run(cls, symbol: str, depth: int = 100):
+        cls.logger.info(
             'Depth Of Market runned: symbol = %s, depth = %s', symbol, depth
         )
 
-        if self._websocket_start(symbol):
-            self.logger.info('Websocket started..')
-            time.sleep(5)
+        # if cls._websocket_start(symbol):
+        #     cls.logger.info('Websocket started..')
+        #     time.sleep(5)
+        #
+        # if last_update_id := cls._get_snapshot(symbol, depth):
+        #     cls.logger.info('Snapshot received..')
+        #
+        #     if cls._process(last_update_id, symbol):
+        #         cls.logger.info('Process started.')
+    @classmethod
+    def stop(cls, symbol: str):
+        pass
+        # cls._websocket_stop(symbol)
 
-        if last_update_id := self._get_snapshot(symbol, depth):
-            self.logger.info('Snapshot received..')
-
-            if self._process(last_update_id, symbol):
-                self.logger.info('Process started.')
-
-    def stop(self, symbol: str):
-        if self._websocket_stop(symbol):
-            self.logger.info(
-                'Websocket stopped: symbol = %s', symbol
-            )
+        # if cls._websocket_stop(symbol):
+        #     cls.logger.info(
+        #         'Websocket stopped: symbol = %s', symbol
+        #     )
 
     def _websocket_start(self, symbol: str):
         codename = f'diff_book_depth_{symbol}'.lower()

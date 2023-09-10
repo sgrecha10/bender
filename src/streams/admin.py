@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import TaskManagement, DepthOfMarket, TrainingData
 from core.utils.admin_utils import redirect_to_change_list
 from django.utils.safestring import mark_safe
+from streams.handlers.depth_of_market import DepthOfMarketStream, DepthOfMarketStreamError
 
 
 @admin.register(TaskManagement)
@@ -14,6 +15,7 @@ class DepthOfMarketAdmin(admin.ModelAdmin):
     list_display = ('id', 'symbol', 'is_active', 'depth', 'market_glass', 'updated', 'created')
     raw_id_fields = ('symbol',)
     actions = ('action_run', 'action_stop')
+    ordering = ('-is_active', 'id')
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -24,19 +26,35 @@ class DepthOfMarketAdmin(admin.ModelAdmin):
 
     @admin.action(description='Запустить "Глубину рынка"')
     def action_run(self, request, query=None):
-        symbols = [item.symbol for item in query]
-        query.update(is_active=True)
-        message = f'action_run {query}'
-        is_ok = True
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        msg = []
+        status = True
+        for dom in query:
+            try:
+                DepthOfMarketStream.run(dom.symbol)
+                dom.is_active = True
+                dom.save(update_fields=['is_active'])
+            except DepthOfMarketStreamError as e:
+                msg.append(e)
+                status = False
+        message = msg, status
+
+        return redirect_to_change_list(request, self.model, message)
 
     @admin.action(description='Остановить "Глубину рынка"')
     def action_stop(self, request, query=None):
-        symbols = [item.symbol for item in query]
-        query.update(is_active=False)
-        message = f'action_stop {symbols}'
-        is_ok = False
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        msg = []
+        status = True
+        for dom in query:
+            try:
+                DepthOfMarketStream.stop(dom.symbol)
+                dom.is_active = False
+                dom.save(update_fields=['is_active'])
+            except DepthOfMarketStreamError as e:
+                msg.append(e.msg)
+                status = False
+        message = msg, status
+
+        return redirect_to_change_list(request, self.model, message)
 
 
 @admin.register(TrainingData)
@@ -56,7 +74,7 @@ class TrainingDataAdmin(admin.ModelAdmin):
 
     @admin.action(description='Запустить "Тестовые данные"')
     def action_run(self, request, query=None):
-        symbols = [item.symbol for item in query]
+        # symbols = [item.symbol for item in query]
         query.update(is_active=True)
         message = f'action_run {query}'
         is_ok = True
@@ -64,8 +82,8 @@ class TrainingDataAdmin(admin.ModelAdmin):
 
     @admin.action(description='Остановить "Тестовые данные"')
     def action_stop(self, request, query=None):
-        symbols = [item.symbol for item in query]
+        # symbols = [item.symbol for item in query]
         query.update(is_active=False)
-        message = f'action_stop {symbols}'
+        message = f'action_stop {query}'
         is_ok = False
         return redirect_to_change_list(request, self.model, message, is_ok)

@@ -5,7 +5,7 @@ from django.views.generic import TemplateView
 from django.views.generic.base import View
 
 from core.clients.redis_client import RedisClient
-from streams.handlers.depth_of_market import DepthOfMarket
+from streams.handlers.depth_of_market import DepthOfMarketStream
 
 
 class DepthOfMarketView(View):
@@ -15,7 +15,7 @@ class DepthOfMarketView(View):
         if not (symbol := request.GET.get('symbol')):
             symbol = 'BTCUSDT'
 
-        depth_of_market = DepthOfMarket()
+        depth_of_market = DepthOfMarketStream()
         if action == 'start':
             depth_of_market.run(symbol)
         elif action == 'stop':
