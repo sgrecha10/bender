@@ -44,13 +44,6 @@ class DepthOfMarket(BaseModel):
     def __str__(self):
         return self.symbol.symbol
 
-    # def save(self, *args, **kwargs):
-    #     super().save(*args, **kwargs)
-    #     TrainingData.objects.create(
-    #         depth_of_market=self,
-    #         depth=self.depth,
-    #     )
-
 
 class TrainingData(BaseModel):
     depth_of_market = models.ForeignKey(

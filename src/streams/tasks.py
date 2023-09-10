@@ -9,14 +9,13 @@ from streams.models import TaskManagement
 
 
 @app.task(bind=True)
-def task_diff_book_depth(self, symbol: str):
-    kafka_client = KafkaProducerClient(settings.KAFKA_CLIENT, topic=symbol)
+def task_websoket_management(self, method: str, codename: str, *args, **kwargs):
+    kafka_client = KafkaProducerClient(settings.KAFKA_CLIENT, topic=codename)
     my_client = SpotWebsocketStreamClient(on_message=kafka_client.message_handler)
-    my_client.diff_book_depth(symbol=symbol)
+    getattr(my_client, method)(*args, **kwargs)
 
     is_working = True
     while is_working:
-        codename = f'diff_book_depth_{symbol}'.lower()
         is_working = TaskManagement.objects.only('is_working').get(codename=codename).is_working
         time.sleep(1)
 

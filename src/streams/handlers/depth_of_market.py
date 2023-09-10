@@ -1,7 +1,7 @@
 import time
 
 from streams.models import TaskManagement
-from streams.tasks import task_diff_book_depth
+from streams.tasks import task_websoket_management
 from core.clients.redis_client import RedisClient
 from core.clients.binance.restapi import BinanceClient
 from django.conf import settings
@@ -12,7 +12,6 @@ from core.clients.kafka.kafka_client import KafkaConsumerClient
 
 
 class DepthOfMarketStreamError(Exception):
-    #  Сбой стакана
     def __init__(self, msg):
         self.msg = msg
 
@@ -33,50 +32,43 @@ class DepthOfMarketStream:
 
     @classmethod
     def run(cls, symbol: str, depth: int = 100):
-        cls.logger.info(
-            'Depth Of Market runned: symbol = %s, depth = %s', symbol, depth
-        )
+        cls._websocket_start(symbol, depth)
+        # time.sleep(5)
 
-        # if cls._websocket_start(symbol):
-        #     cls.logger.info('Websocket started..')
-        #     time.sleep(5)
-        #
         # if last_update_id := cls._get_snapshot(symbol, depth):
         #     cls.logger.info('Snapshot received..')
         #
         #     if cls._process(last_update_id, symbol):
         #         cls.logger.info('Process started.')
     @classmethod
-    def stop(cls, symbol: str):
-        pass
-        # cls._websocket_stop(symbol)
+    def stop(cls, symbol: str, depth: int):
+        cls._websocket_stop(symbol, depth)
 
-        # if cls._websocket_stop(symbol):
-        #     cls.logger.info(
-        #         'Websocket stopped: symbol = %s', symbol
-        #     )
-
-    def _websocket_start(self, symbol: str):
-        codename = f'diff_book_depth_{symbol}'.lower()
+    @classmethod
+    def _websocket_start(cls, symbol: str, depth: int):
+        codename = f'diff_book_depth_{symbol}_{depth}'
         task_management, _ = TaskManagement.objects.get_or_create(codename=codename)
         if task_management.is_working:
-            # TODO LOG уже запущена
-            return
+            raise DepthOfMarketStreamError(f'Websocket уже запущен, codename = {codename}')
         task_management.is_working = True
         task_management.save(update_fields=['is_working'])
-        task_diff_book_depth.delay(symbol)
+        task_websoket_management.delay('diff_book_depth', codename, symbol=symbol)
 
+        cls.logger.info('Websocket is running: codename = %s', codename)
         return True
 
-    def _websocket_stop(self, symbol: str):
-        codename = f'diff_book_depth_{symbol}'.lower()
+    @classmethod
+    def _websocket_stop(cls, symbol: str, depth: int):
+        codename = f'diff_book_depth_{symbol}_{depth}'
         try:
             task_management = TaskManagement.objects.get(codename=codename)
             task_management.is_working = False
             task_management.save(update_fields=['is_working'])
-            return True
         except TaskManagement.DoesNotExist:
-            return
+            raise DepthOfMarketStreamError(f'Websocket не найден, codename = {codename}')
+
+        cls.logger.info('Websocket stopped: codename = %s', codename)
+        return True
 
     def _get_snapshot(self, symbol, depth) -> int | requests.ConnectionError:
         try:
