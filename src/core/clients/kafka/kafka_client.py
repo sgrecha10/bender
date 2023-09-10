@@ -26,7 +26,7 @@ class KafkaProducerClient:
 
         self.producer.produce(
             topic=self.topic,
-            value=message,
+            value=message,  # str, byte
             # key=key,
             # on_delivery=callback,  # def callback(err, event):
         )

@@ -52,7 +52,7 @@ class CustomIndexDashboard(Dashboard):
                     {
                         'title': 'Запустить поток',
                         'url': '/streams?action=start',
-                        'external': False,
+                        'external': True,
                     },
                     {
                         'title': 'Остановить поток',
