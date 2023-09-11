@@ -30,7 +30,8 @@ class DepthOfMarketAdmin(admin.ModelAdmin):
         status = True
         for dom in query:
             try:
-                DepthOfMarketStream.run(dom.symbol.symbol, dom.depth)
+                dom_stream = DepthOfMarketStream(dom.symbol.symbol, dom.depth)
+                dom_stream.run()
                 dom.is_active = True
                 dom.save(update_fields=['is_active'])
             except DepthOfMarketStreamError as e:
@@ -46,7 +47,8 @@ class DepthOfMarketAdmin(admin.ModelAdmin):
         status = True
         for dom in query:
             try:
-                DepthOfMarketStream.stop(dom.symbol, dom.depth)
+                dom_stream = DepthOfMarketStream(dom.symbol.symbol, dom.depth)
+                dom_stream.stop()
                 dom.is_active = False
                 dom.save(update_fields=['is_active'])
             except DepthOfMarketStreamError as e:

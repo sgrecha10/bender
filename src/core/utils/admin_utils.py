@@ -1,10 +1,13 @@
 from django.contrib import messages
 from django.http.response import HttpResponseRedirect
 from django.urls import reverse
+from django.utils.safestring import mark_safe
 
 
 def redirect_to_change_list(request, model, message=None):
     msg = message[0]
+    if isinstance(msg, list):
+        msg = mark_safe('<br>'.join(msg))
     if msg:
         if message[1]:
             messages.success(request, msg)

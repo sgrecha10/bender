@@ -117,6 +117,28 @@ class CustomIndexDashboard(Dashboard):
             )
         )
 
+        self.children.append(
+            modules.LinkList(
+                'Services',
+                column=3,
+                children=[
+                    {
+                        'title': 'Flower',
+                        'url': 'http://localhost:5555/',
+                        'external': True,
+                        'target': '_blank',
+                    },
+                    {
+                        'title': 'Kafka GUI',
+                        'url': 'http://localhost:8080/',
+                        'external': True,
+                        'target': 'blank',
+                    },
+                ],
+            )
+        )
+
+
         # self.children.append(modules.RecentActions(
         #     'Recent actions',
         #     limit=5,
