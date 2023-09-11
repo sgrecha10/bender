@@ -127,7 +127,7 @@ class ExchangeInfo(BaseModel):
 
     @classmethod
     def get_update(cls, symbol=None, symbols=None, permissions=None):
-        client = BinanceClient(settings.BINANCE_CLIENT)
+        client = BinanceClient()
         try:
             result, is_ok = client.get_exchange_info(symbol, symbols, permissions)  # noqa
         except requests.ConnectionError as e:

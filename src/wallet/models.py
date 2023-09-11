@@ -73,7 +73,7 @@ class SpotBalance(BaseModel):
 
     @classmethod
     def get_update(cls):
-        client = BinanceClient(settings.BINANCE_CLIENT)
+        client = BinanceClient()
         try:
             result, is_ok = client.get_capital_config_getall()  # noqa
         except requests.ConnectionError as e:
@@ -130,7 +130,7 @@ class TradeFee(BaseModel):
 
     @classmethod
     def get_update(cls, symbol=None):
-        client = BinanceClient(settings.BINANCE_CLIENT)
+        client = BinanceClient()
         try:
             result, is_ok = client.get_trade_fee(symbol)  # noqa
         except requests.ConnectionError as e:

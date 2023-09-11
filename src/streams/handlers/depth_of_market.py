@@ -1,14 +1,18 @@
+import json
+import logging
 import time
 
+import requests
+from django.conf import settings
+
+from core.clients.binance.restapi import BinanceClient
+from core.clients.kafka.kafka_client import (
+    KafkaProducerClient,
+    KafkaConsumerClient,
+)
+from core.clients.redis_client import RedisClient
 from streams.models import TaskManagement
 from streams.tasks import task_websoket_management
-from core.clients.redis_client import RedisClient
-from core.clients.binance.restapi import BinanceClient
-from django.conf import settings
-import requests
-import logging
-import json
-from core.clients.kafka.kafka_client import KafkaConsumerClient
 
 
 class DepthOfMarketStreamError(Exception):
@@ -27,21 +31,20 @@ class DepthOfMarketStream:
         self.redis_conn = RedisClient()
         self.redis_conn.flushall()
 
-        self.binance_client = BinanceClient(settings.BINANCE_CLIENT)
-        self.kafka_client = KafkaConsumerClient()
+        self.binance_client = BinanceClient()
+        self.kafka_consumer_client = KafkaConsumerClient()
+        self.kafka_producer_client = KafkaProducerClient(topic=self.codename_websocket_task)
 
         if not logger:
             self.logger = logging.getLogger(__name__)
 
     def run(self):
         self._websocket_start()
-        # time.sleep(5)
+        time.sleep(1)
 
-        # if last_update_id := cls._get_snapshot(symbol, depth):
-        #     cls.logger.info('Snapshot received..')
-        #
-        #     if cls._process(last_update_id, symbol):
-        #         cls.logger.info('Process started.')
+        if last_update_id := self._get_snapshot():
+            print(last_update_id)
+        #     self._process(last_update_id, symbol)
 
     def stop(self):
         self._websocket_stop()
@@ -68,15 +71,25 @@ class DepthOfMarketStream:
         self.logger.info('Websocket stopped: codename = %s', self.codename_websocket_task)
         return True
 
-    def _get_snapshot(self, symbol, depth) -> int | requests.ConnectionError:
+    def _get_snapshot(self) -> int | DepthOfMarketStreamError:
         try:
-            result, is_ok = self.binance_client.get_order_book(symbol, depth)
+            result, is_ok = self.binance_client.get_order_book(self.symbol, self.depth)
         except requests.ConnectionError as e:
-            return e
+            raise DepthOfMarketStreamError(f'Snapshot не получен. Error: {e}')
+
         if is_ok:
-            self._poll_redis(result, 'asks', 'ask')
-            self._poll_redis(result, 'bids', 'bid')
-        return result.get('lastUpdateId')
+            self.kafka_producer_client.message_handler(None, message=result)
+            self.logger.info('Snapshot received: codename = %s', self.codename_websocket_task)
+            return result.get('lastUpdateId')
+
+        raise DepthOfMarketStreamError('Snapshot не получен, is_ok = False')
+
+
+        # if is_ok:
+        #     self._poll_redis(result, 'asks', 'ask')
+        #     self._poll_redis(result, 'bids', 'bid')
+
+
 
     def _consumer_message_handler(self, message, prev_message=None, last_update_id=None):
         # print(message, last_update_id)
@@ -107,7 +120,7 @@ class DepthOfMarketStream:
         # raise WebSoketError('Depth Of Market failed!')
 
     def _process(self, last_update_id, symbol):
-        self.kafka_client.get_topic(symbol, self._consumer_message_handler, last_update_id)
+        self.kafka_consumer_client.get_topic(symbol, self._consumer_message_handler, last_update_id)
 
     def _poll_redis(self, data: dict, lookup_field: str, redis_key: str):
         print(data.get(lookup_field), lookup_field, redis_key)

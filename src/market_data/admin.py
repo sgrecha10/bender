@@ -40,8 +40,9 @@ class ExchangeInfoAdmin(admin.ModelAdmin):
 
     def update_exchange_info(self, request, symbol=None, symbols=None, permissions=None):
         result, is_ok = self.model.get_update(symbol, symbols, permissions)
-        message = f'Обновили {result} записей' if is_ok else result
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        msg = f'Обновили {result} записей' if is_ok else result
+        message = msg, is_ok
+        return redirect_to_change_list(request, self.model, message)
 
     def save_model(self, request, obj, form, change):
         symbol = form.cleaned_data['symbol']

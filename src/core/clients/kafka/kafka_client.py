@@ -1,14 +1,14 @@
+import json
 import logging
 import socket
 
-from confluent_kafka import Consumer
-from confluent_kafka import Producer
+from confluent_kafka import Producer, Consumer
 from django.conf import settings
 
 
 class KafkaProducerClient:
-    def __init__(self, credentials: dict, topic: str = None):
-        self.bootstrap_servers = credentials['bootstrap.servers']
+    def __init__(self, topic: str = None):
+        self.bootstrap_servers = settings.KAFKA_CLIENT['bootstrap.servers']
         self.client_id = socket.gethostname(),
         self.topic = topic if topic else 'default'
 
@@ -21,14 +21,11 @@ class KafkaProducerClient:
         }
 
     def message_handler(self, _, message):
-        # json_data = json.loads(message)
-        # print(json_data)
-
+        if not isinstance(message, bytes):
+            message = json.dumps(message).encode('utf-8')
         self.producer.produce(
             topic=self.topic,
             value=message,
-            # key=key,
-            # on_delivery=callback,  # def callback(err, event):
         )
         self.producer.flush()
 

@@ -78,14 +78,12 @@ class TrainingDataAdmin(admin.ModelAdmin):
     def action_run(self, request, query=None):
         # symbols = [item.symbol for item in query]
         query.update(is_active=True)
-        message = f'action_run {query}'
-        is_ok = True
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        message = f'action_run {query}', True
+        return redirect_to_change_list(request, self.model, message)
 
     @admin.action(description='Остановить "Тестовые данные"')
     def action_stop(self, request, query=None):
         # symbols = [item.symbol for item in query]
         query.update(is_active=False)
-        message = f'action_stop {query}'
-        is_ok = False
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        message = f'action_stop {query}', False
+        return redirect_to_change_list(request, self.model, message)

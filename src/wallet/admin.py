@@ -48,8 +48,9 @@ class SpotBalanceAdmin(admin.ModelAdmin):
 
     def update_capital_config_getall(self, request):
         result, is_ok = self.model.get_update()
-        message = f'Обновили {result} записей' if is_ok else result
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        msg = f'Обновили {result} записей' if is_ok else result
+        message = msg, is_ok
+        return redirect_to_change_list(request, self.model, message)
 
         # from binance.spot import Spot
         # client = Spot(
@@ -102,13 +103,14 @@ class TradeFeeAdmin(admin.ModelAdmin):
 
     def update_trade_fee(self, request, symbol=None):
         result, is_ok = self.model.get_update(symbol)
-        message = f'Обновили {result} записей' if is_ok else result
-        return redirect_to_change_list(request, self.model, message, is_ok)
+        msg = f'Обновили {result} записей' if is_ok else result
+        message = msg, is_ok
+        return redirect_to_change_list(request, self.model, message)
 
     @admin.action(description='Обновить')
     def action_update_trade_fee(self, request, symbol_query=None):
         if symbol_query.count() > 1:
-            message = 'Выборочное обновление только по 1 строке'
-            return redirect_to_change_list(request, self.model, message, False)
+            message = 'Выборочное обновление только по 1 строке', False
+            return redirect_to_change_list(request, self.model, message)
 
         self.update_trade_fee(request, symbol_query[0].symbol)

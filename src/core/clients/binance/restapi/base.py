@@ -1,23 +1,23 @@
 import hashlib
 import hmac
-from core.utils.client_utils import get_timestamp
 from typing import Tuple
 from urllib.parse import urlencode
 
 import requests
+from django.conf import settings
 
+from core.utils.client_utils import get_timestamp
 from core.utils.value_utils import clean_none_value
 
 
 class BinanceBaseRestClient:
     timeout = 10
 
-    def __init__(self, credentials: dict, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
         self.session = requests.Session()
-        self.uri = credentials['uri']
-        self.api_key = credentials['api_key']
-        self.secret_key = credentials['secret_key']
+        self.uri = settings.BINANCE_CLIENT['uri']
+        self.api_key = settings.BINANCE_CLIENT['api_key']
+        self.secret_key = settings.BINANCE_CLIENT['secret_key']
 
     @staticmethod
     def encoded_string(query):

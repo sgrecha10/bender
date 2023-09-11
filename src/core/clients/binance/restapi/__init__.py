@@ -2,9 +2,6 @@ from core.clients.binance.restapi.base import BinanceBaseRestClient
 
 
 class BinanceClient(BinanceBaseRestClient):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
     # Wallet
     from core.clients.binance.restapi.wallet import (
         get_capital_config_getall,
