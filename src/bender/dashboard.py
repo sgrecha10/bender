@@ -67,6 +67,16 @@ class CustomIndexDashboard(Dashboard):
                 ],
             ),
         )
+        self.children.append(
+            modules.AppList(
+                'STRATEGIES',
+                column=1,
+                collapsible=True,
+                models=(
+                    'strategies.models.Strategy',
+                ),
+            )
+        )
 
         self.children.append(
             modules.AppList(
