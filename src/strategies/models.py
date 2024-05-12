@@ -38,7 +38,15 @@ class Strategy(BaseModel):
         super().save(*args, **kwargs)
 
 
-class StrategyCommonVars(models.Model):
+class AveragePrice(BaseModel):
+    strategy = models.ForeignKey(
+        Strategy, on_delete=models.PROTECT,
+        verbose_name='Strategy',
+    )
+    name = models.CharField(
+        verbose_name='Name',
+        max_length=255,
+    )
     codename = models.CharField(
         verbose_name='Codename',
         max_length=100,
@@ -47,14 +55,10 @@ class StrategyCommonVars(models.Model):
         verbose_name='Value',
         max_length=255,
     )
-    group = models.CharField(
-        verbose_name='Group',
-        max_length=255,
-    )
 
     class Meta:
-        verbose_name = 'Strategy Common Vars'
-        verbose_name_plural = 'Strategy Common Vars'
+        verbose_name = 'AveragePrice'
+        verbose_name_plural = 'AveragePrice'
 
     def __str__(self):
-        return self.codename
+        return self.name

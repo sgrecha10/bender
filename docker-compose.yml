@@ -10,7 +10,7 @@ services:
     logging:
       driver: "json-file"
     networks:
-      - bendernetwork
+      - default
     volumes:
       - ./src:/app
     env_file:
@@ -36,7 +36,7 @@ services:
     ports:
       - "6379:6379"
     networks:
-      - bendernetwork
+      - default
 
   celery:
     container_name: ${COMPOSE_PROJECT_NAME}_celery
@@ -54,7 +54,7 @@ services:
         max-size: "1m"
         max-file: "1"
     networks:
-      - bendernetwork
+      - default
     volumes:
       - ./src:/app
     env_file:
@@ -75,7 +75,7 @@ services:
         max-size: "1m"
         max-file: "1"
     networks:
-      - bendernetwork
+      - default
     volumes:
       - ./src:/app
     env_file:
@@ -94,7 +94,7 @@ services:
     ports:
       - "5435:5432"
     networks:
-      - bendernetwork
+      - default
     volumes:
       - benderdb:/var/lib/postgres_14/data
     environment:
@@ -114,7 +114,7 @@ services:
     ports:
       - "${RABBITMQ_PUBLIC_PORT:-15672}:15672"
     networks:
-      - bendernetwork
+      - default
 
   flower:
     container_name: ${COMPOSE_PROJECT_NAME}_flower
@@ -130,7 +130,7 @@ services:
         max-size: "1m"
         max-file: "1"
     networks:
-      - bendernetwork
+      - default
     volumes:
       - ./src:/app
     env_file:
@@ -143,7 +143,7 @@ services:
     image: bitnami/kafka:3.4.1
     container_name: ${COMPOSE_PROJECT_NAME}_kafka
     networks:
-      - bendernetwork
+      - default
     ports:
       - "9092:9092"
     environment:
@@ -153,11 +153,7 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://:9092
-#      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
-#      - KAFKA_CFG_BROKER_ID=0
-#      - ALLOW_PLAINTEXT_LISTENER=yes
-#      - KAFKA_KRAFT_CLUSTER_ID=L0ZEQh1yTbGhNNUE7-6wSQ
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
     volumes:
        - kafkadb:/bitnami/kafka
 
@@ -170,12 +166,13 @@ services:
       - KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS=kafka:9092
       - KAFKA_CLUSTERS_0_NAME=${COMPOSE_PROJECT_NAME}_cluster
     networks:
-      - bendernetwork
+      - default
     depends_on:
       - kafka
 
 networks:
-  bendernetwork:
+  default:
+    name: bendernetwork
     driver: bridge
 
 volumes:

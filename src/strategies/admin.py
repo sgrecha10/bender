@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Strategy, StrategyCommonVars
+from .models import Strategy, AveragePrice
 
 
 @admin.register(Strategy)
@@ -19,11 +19,12 @@ class StrategyAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(StrategyCommonVars)
-class StrategyCommonVarsAdmin(admin.ModelAdmin):
+@admin.register(AveragePrice)
+class AveragePriceAdmin(admin.ModelAdmin):
     list_display = (
         'id',
+        'name',
         'codename',
         'value',
-        'group',
+        'strategy',
     )
