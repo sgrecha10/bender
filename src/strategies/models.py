@@ -1,5 +1,6 @@
 from django.db import models
 from core.utils.db_utils import BaseModel
+from market_data.models import ExchangeInfo
 
 
 class Strategy(BaseModel):
@@ -11,10 +12,18 @@ class Strategy(BaseModel):
     codename = models.CharField(
         verbose_name='Codename',
         max_length=100,
+        unique=True,
     )
     name = models.CharField(
         verbose_name='Name',
         max_length=255,
+    )
+    symbol = models.ForeignKey(
+        ExchangeInfo,
+        on_delete=models.CASCADE,
+        verbose_name='Symbol',
+        null=True,
+        blank=True,
     )
     status = models.PositiveSmallIntegerField(
         verbose_name='Status',
@@ -50,10 +59,14 @@ class AveragePrice(BaseModel):
     codename = models.CharField(
         verbose_name='Codename',
         max_length=100,
+        unique=True,
     )
     value = models.CharField(
         verbose_name='Value',
         max_length=255,
+    )
+    description = models.TextField(
+        verbose_name='Description',
     )
 
     class Meta:
