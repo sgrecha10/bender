@@ -4,13 +4,12 @@ from django.db import migrations
 
 STRATEGY_CODENAME = 'default'
 
-NAME = 'Свечи для расчета'
-CODENAME = 'calculate_candles'
+NAME = 'Последняя свеча для расчета'
+CODENAME = 'average_price_last_candle'
 VALUE = 'realtime'
 DESCRIPTION = '''В реальном времени: 'realtime',
-По последней закрытой свече: 'last_candle',
+По последней закрытой свече: 'closed_candle',
 '''
-
 
 
 def code(apps, *_):

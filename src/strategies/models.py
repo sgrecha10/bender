@@ -51,6 +51,7 @@ class AveragePrice(BaseModel):
     strategy = models.ForeignKey(
         Strategy, on_delete=models.PROTECT,
         verbose_name='Strategy',
+        blank=True, null=True,
     )
     name = models.CharField(
         verbose_name='Name',
@@ -59,7 +60,6 @@ class AveragePrice(BaseModel):
     codename = models.CharField(
         verbose_name='Codename',
         max_length=100,
-        unique=True,
     )
     value = models.CharField(
         verbose_name='Value',
@@ -67,11 +67,13 @@ class AveragePrice(BaseModel):
     )
     description = models.TextField(
         verbose_name='Description',
+        blank=True, null=True,
     )
 
     class Meta:
         verbose_name = 'AveragePrice'
         verbose_name_plural = 'AveragePrice'
+        unique_together = ('strategy', 'codename')
 
     def __str__(self):
         return self.name
