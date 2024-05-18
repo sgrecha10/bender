@@ -74,7 +74,17 @@ class CustomIndexDashboard(Dashboard):
                 collapsible=True,
                 models=(
                     'strategies.models.Strategy',
-                    'strategies.models.AveragePrice',
+                ),
+            )
+        )
+        self.children.append(
+            modules.AppList(
+                'INDICATORS',
+                column=1,
+                collapsible=True,
+                models=(
+                    'indicators.models.AveragePrice',
+                    'indicators.models.MovingAverage',
                 ),
             )
         )

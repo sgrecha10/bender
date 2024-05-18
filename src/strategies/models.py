@@ -1,6 +1,7 @@
 from django.db import models
 from core.utils.db_utils import BaseModel
 from market_data.models import ExchangeInfo
+from strategies.choices import Interval
 
 
 class Strategy(BaseModel):
@@ -25,6 +26,12 @@ class Strategy(BaseModel):
         null=True,
         blank=True,
     )
+    interval = models.CharField(
+        verbose_name='Interval',
+        choices=Interval.choices,
+        max_length=5,
+        blank=True,
+    )
     status = models.PositiveSmallIntegerField(
         verbose_name='Status',
         choices=Status.choices,
@@ -45,35 +52,3 @@ class Strategy(BaseModel):
     def save(self, *args, **kwargs):
         self.is_active = False if self.status == Strategy.Status.STOPPED else True
         super().save(*args, **kwargs)
-
-
-class AveragePrice(BaseModel):
-    strategy = models.ForeignKey(
-        Strategy, on_delete=models.PROTECT,
-        verbose_name='Strategy',
-        blank=True, null=True,
-    )
-    name = models.CharField(
-        verbose_name='Name',
-        max_length=255,
-    )
-    codename = models.CharField(
-        verbose_name='Codename',
-        max_length=100,
-    )
-    value = models.CharField(
-        verbose_name='Value',
-        max_length=255,
-    )
-    description = models.TextField(
-        verbose_name='Description',
-        blank=True, null=True,
-    )
-
-    class Meta:
-        verbose_name = 'AveragePrice'
-        verbose_name_plural = 'AveragePrice'
-        unique_together = ('strategy', 'codename')
-
-    def __str__(self):
-        return self.name

@@ -16,7 +16,7 @@ def code(apps, *_):
         codename=STRATEGY_CODENAME,
     )
 
-    AveragePrice = apps.get_model('strategies.AveragePrice')
+    AveragePrice = apps.get_model('indicators.AveragePrice')
     AveragePrice.objects.create(
         strategy=strategy,
         name=NAME,
@@ -28,7 +28,7 @@ def code(apps, *_):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("strategies", "0002_auto_20240512_2310"),
+        ("indicators", "0001_initial"),
     ]
 
     operations = [
