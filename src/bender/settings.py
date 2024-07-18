@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'streams',
     'strategies',
     'indicators',
+    'graphics',
 ]
 
 MIDDLEWARE = [
