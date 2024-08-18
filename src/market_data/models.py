@@ -170,6 +170,18 @@ class ExchangeInfo(BaseModel):
         return i if is_ok else result, is_ok
 
 
+class Interval(models.Model):
+    codename = models.CharField(
+        verbose_name='codename',
+        max_length=15,
+        primary_key=True,
+    )
+    value = models.CharField(
+        verbose_name='value',
+        max_length=4,
+    )
+
+
 class Kline(BaseModel):
     symbol = models.ForeignKey(
         ExchangeInfo, on_delete=models.CASCADE,

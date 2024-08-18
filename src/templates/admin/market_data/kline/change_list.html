@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %} {% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{% url 'admin:get_kline' %}" class="grp-button grp-state-focus">Загрузить данные</a>
+    </li>
+{% endblock %}

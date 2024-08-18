@@ -2,8 +2,10 @@ from django.contrib import admin
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
-from market_data.models import ExchangeInfo, Kline
+from market_data.models import ExchangeInfo, Kline, Interval
 from django.forms import ALL_FIELDS
+from django.template.response import TemplateResponse
+from .forms import MiddlePageForm
 
 
 @admin.register(ExchangeInfo)
@@ -62,4 +64,39 @@ class KlineAdmin(admin.ModelAdmin):
         'close_price',
         'volume',
         'close_time',
+    )
+    change_list_template = "admin/market_data/kline/change_list.html"
+    middle_page_template = "admin/market_data/kline/middle_page.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        added_urls = [
+            path(
+                'get_kline/',
+                self.admin_site.admin_view(self.get_kline),
+                name='get_kline',
+            ),
+        ]
+        return added_urls + urls
+
+    def get_kline(self, request):
+        if 'apply' in request.POST:
+            form = MiddlePageForm(request.POST)
+
+            # result, is_ok = self.model.get_update(symbol, symbols, permissions)
+            # message = f'Обновили {result} записей' if is_ok else result
+            message = 'grecha'
+            is_ok = True
+            return redirect_to_change_list(request, self.model, message, is_ok)
+
+        else:
+            form = MiddlePageForm()
+            return TemplateResponse(request, self.middle_page_template, {'form': form})
+
+
+@admin.register(Interval)
+class IntervalAdmin(admin.ModelAdmin):
+    list_display = (
+        'codename',
+        'value',
     )

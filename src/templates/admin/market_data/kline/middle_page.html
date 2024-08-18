@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+    <form action="" method="post">{% csrf_token %}
+        {{ form.as_table }}
+{#        <p>Новая категория будет назначена для следующих позиций:</p>#}
+{#        <ul>{{ items|unordered_list }}</ul>#}
+{#        <input type="hidden" name="action" value="move_to_category" />#}
+        <input type="submit" name="apply" value="Сохранить" />
+    </form>
+{% endblock %}
