@@ -26,7 +26,7 @@ pytz==2023.3
 confluent-kafka==2.2.0
 
 # генерация изображений
-Pillow
+Pillow==10.4.0
 
-pandas
-numpy
+pandas==2.2.2
+numpy==2.0.0
