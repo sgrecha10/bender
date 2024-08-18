@@ -181,6 +181,13 @@ class Interval(models.Model):
         max_length=4,
     )
 
+    class Meta:
+        verbose_name = 'Interval'
+        verbose_name_plural = 'Interval'
+
+    def __str__(self):
+        return self.codename
+
 
 class Kline(BaseModel):
     symbol = models.ForeignKey(

@@ -2,7 +2,7 @@
 
 {% block content %}
     <form action="" method="post">{% csrf_token %}
-        {{ form.as_table }}
+        {{ form.as_ul }}
 {#        <p>Новая категория будет назначена для следующих позиций:</p>#}
 {#        <ul>{{ items|unordered_list }}</ul>#}
 {#        <input type="hidden" name="action" value="move_to_category" />#}
