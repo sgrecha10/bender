@@ -18,6 +18,7 @@ def get_exchange_info(client, symbol=None, symbols=None, permissions=None):
 
     return client.send_request(method, urn, None)
 
+
 def get_order_book(client, symbol=None, limit=100):
     method = 'GET'
     payload = {
@@ -26,5 +27,20 @@ def get_order_book(client, symbol=None, limit=100):
     }
     params = urllib.parse.urlencode(clean_none_value(payload))
     urn = f'/api/v3/depth?{params}'
+
+    return client.send_request(method, urn, None)
+
+
+def get_klines(client, symbol=None, interval='1d', start_time=None, end_time=None, limit=1000):
+    method = 'GET'
+    payload = {
+        'symbol': symbol,
+        'interval': interval,
+        'startTime': start_time,
+        'endTime': end_time,
+        'limit': int(limit),
+    }
+    params = urllib.parse.urlencode(clean_none_value(payload))
+    urn = f'/api/v3/klines?{params}'
 
     return client.send_request(method, urn, None)

@@ -168,3 +168,64 @@ class ExchangeInfo(BaseModel):
                 i += 1
 
         return i if is_ok else result, is_ok
+
+
+class Kline(BaseModel):
+    symbol = models.ForeignKey(
+        ExchangeInfo, on_delete=models.CASCADE,
+        verbose_name='symbol',
+        related_name='klines',
+    )
+    open_time = models.DateTimeField(
+        verbose_name='openTime',
+    )
+    open_price = models.DecimalField(
+        verbose_name='openPrice',
+        max_digits=20,
+        decimal_places=10,
+    )
+    high_price = models.DecimalField(
+        verbose_name='highPrice',
+        max_digits=20,
+        decimal_places=10,
+    )
+    low_price = models.DecimalField(
+        verbose_name='lowPrice',
+        max_digits=20,
+        decimal_places=10,
+    )
+    close_price = models.DecimalField(
+        verbose_name='closePrice',
+        max_digits=20,
+        decimal_places=10,
+    )
+    volume = models.PositiveIntegerField(
+        verbose_name='volume')
+    close_time = models.DateTimeField(
+        verbose_name='closeTime',
+    )
+    quote_asset_volume = models.DecimalField(
+        verbose_name='quoteAssetVolume',
+        max_digits=20,
+        decimal_places=10,
+    )
+    number_of_trades = models.PositiveIntegerField(
+        verbose_name='numberOfTrades',
+    )
+    taker_buy_base_asset_volume = models.DecimalField(
+        verbose_name='takerBuyBaseAssetVolume',
+        max_digits=20,
+        decimal_places=10,
+    )
+    taker_buy_quote_asset_volume = models.DecimalField(
+        verbose_name='takerBuyQuoteAssetVolume',
+        max_digits=20,
+        decimal_places=10,
+    )
+    unused_field_ignore =models.BooleanField(
+        verbose_name='unusedFieldIgnore',
+    )
+
+    class Meta:
+        verbose_name = 'Kline'
+        verbose_name_plural = 'Kline'

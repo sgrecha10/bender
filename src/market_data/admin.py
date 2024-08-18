@@ -2,7 +2,8 @@ from django.contrib import admin
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
-from market_data.models import ExchangeInfo
+from market_data.models import ExchangeInfo, Kline
+from django.forms import ALL_FIELDS
 
 
 @admin.register(ExchangeInfo)
@@ -47,3 +48,18 @@ class ExchangeInfoAdmin(admin.ModelAdmin):
         symbol = form.cleaned_data['symbol']
         if not change:
             self.model.get_update(symbol=symbol)
+
+
+@admin.register(Kline)
+class KlineAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'symbol',
+        'open_time',
+        'open_price',
+        'high_price',
+        'low_price',
+        'close_price',
+        'volume',
+        'close_time',
+    )
