@@ -218,8 +218,11 @@ class Kline(BaseModel):
         max_digits=20,
         decimal_places=10,
     )
-    volume = models.PositiveIntegerField(
-        verbose_name='volume')
+    volume = models.DecimalField(
+        verbose_name='volume',
+        max_digits=20,
+        decimal_places=10,
+    )
     close_time = models.DateTimeField(
         verbose_name='closeTime',
     )

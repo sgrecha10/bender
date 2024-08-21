@@ -1,5 +1,15 @@
 from django import forms
-from .models import ExchangeInfo, Interval
+from .models import ExchangeInfo, Interval, Kline
+from django.contrib.admin.widgets import AdminDateWidget, AdminTimeWidget, AdminSplitDateTime
+
+
+class DateTimeField(forms.DateTimeField):
+    def to_python(self, value):
+        if isinstance(value, list):
+            if [x for x in value if x is not None]:
+                return ' '.join(value)
+            return
+        return value
 
 
 class MiddlePageForm(forms.Form):
@@ -11,13 +21,14 @@ class MiddlePageForm(forms.Form):
         queryset=Interval.objects.all(),
         label='Interval',
     )
-    start_time = forms.DateTimeField(
+    start_time = DateTimeField(
         label='Start Time',
-        # attrs={'class': 'form-control', 'type': 'date'}
-        widget=forms.SplitDateTimeWidget(attrs={'class': 'form-control'}),
+        widget=AdminSplitDateTime(),
     )
-    end_time = forms.DateTimeField(
+    end_time = DateTimeField(
         label='End Time',
+        widget=AdminSplitDateTime(),
+        required=False,
     )
     limit = forms.IntegerField(
         label='Limit',

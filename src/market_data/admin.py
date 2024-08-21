@@ -6,6 +6,8 @@ from market_data.models import ExchangeInfo, Kline, Interval
 from django.forms import ALL_FIELDS
 from django.template.response import TemplateResponse
 from .forms import MiddlePageForm
+from django.shortcuts import render
+from .tasks import task_get_kline
 
 
 @admin.register(ExchangeInfo)
@@ -80,18 +82,17 @@ class KlineAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def get_kline(self, request):
-        if 'apply' in request.POST:
+        if request.method == "POST":
             form = MiddlePageForm(request.POST)
-
-            # result, is_ok = self.model.get_update(symbol, symbols, permissions)
-            # message = f'Обновили {result} записей' if is_ok else result
-            message = 'grecha'
-            is_ok = True
-            return redirect_to_change_list(request, self.model, message, is_ok)
-
+            if form.is_valid():
+                cleaned_data = form.cleaned_data
+                task_get_kline(**cleaned_data)  # таска
+                message = 'Загрузка запущена'
+                return redirect_to_change_list(request, self.model, message)
         else:
             form = MiddlePageForm()
-            return TemplateResponse(request, self.middle_page_template, {'form': form})
+
+        return render(request, self.middle_page_template, {'form': form})
 
 
 @admin.register(Interval)

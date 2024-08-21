@@ -15,4 +15,5 @@ class BinanceClient(BinanceBaseRestClient):
     from core.clients.binance.restapi.market_data import (
         get_exchange_info,
         get_order_book,
+        get_klines,
     )
