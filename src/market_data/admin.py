@@ -78,6 +78,11 @@ class KlineAdmin(admin.ModelAdmin):
                 self.admin_site.admin_view(self.get_kline),
                 name='get_kline',
             ),
+            path(
+                'delete_from_table/',
+                self.admin_site.admin_view(self.delete_from_table),
+                name='delete_from_table',
+            ),
         ]
         return added_urls + urls
 
@@ -93,6 +98,10 @@ class KlineAdmin(admin.ModelAdmin):
             form = MiddlePageForm()
 
         return render(request, self.middle_page_template, {'form': form})
+
+    def delete_from_table(self, request):
+        Kline.objects.all().delete()
+        return redirect_to_change_list(request, self.model)
 
 
 @admin.register(Interval)
