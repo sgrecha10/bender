@@ -9,6 +9,10 @@ import requests
 from core.utils.value_utils import clean_none_value
 
 
+class BinanceBaseRestClientException(Exception):
+    pass
+
+
 class BinanceBaseRestClient:
     timeout = 10
 

@@ -8,6 +8,7 @@ from django.template.response import TemplateResponse
 from .forms import MiddlePageForm
 from django.shortcuts import render
 from .tasks import task_get_kline
+from market_data.datetime_utils import datetime_to_timestamp
 
 
 @admin.register(ExchangeInfo)
@@ -60,12 +61,14 @@ class KlineAdmin(admin.ModelAdmin):
         'id',
         'symbol',
         'open_time',
+        'display_open_time_timestamp',
         'open_price',
         'high_price',
         'low_price',
         'close_price',
         'volume',
         'close_time',
+        'display_close_time_timestamp',
     )
     change_list_template = "admin/market_data/kline/change_list.html"
     middle_page_template = "admin/market_data/kline/middle_page.html"
@@ -102,6 +105,14 @@ class KlineAdmin(admin.ModelAdmin):
     def delete_from_table(self, request):
         Kline.objects.all().delete()
         return redirect_to_change_list(request, self.model)
+
+    @admin.display(description='open_time_timestamp', ordering='open_time')
+    def display_open_time_timestamp(self, obj):
+        return datetime_to_timestamp(obj.open_time)
+
+    @admin.display(description='close_time_timestamp', ordering='close_time')
+    def display_close_time_timestamp(self, obj):
+        return datetime_to_timestamp(obj.close_time)
 
 
 @admin.register(Interval)
