@@ -120,4 +120,5 @@ class IntervalAdmin(admin.ModelAdmin):
     list_display = (
         'codename',
         'value',
+        'minutes_count',
     )

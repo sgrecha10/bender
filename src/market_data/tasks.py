@@ -1,17 +1,15 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
 from django.conf import settings
 
 from bender.celery_entry import app
 from core.clients.binance.restapi import BinanceClient
-from .models import Interval, ExchangeInfo, Kline
 from core.clients.binance.restapi.base import BinanceBaseRestClientException
-from django.db import transaction
 from market_data.datetime_utils import datetime_to_timestamp, timestamp_to_datetime
+from .models import Interval, ExchangeInfo, Kline
 
 
-# @transaction.atomic()
 @app.task(bind=True)
 def task_get_kline(self,
                    symbol: ExchangeInfo,
@@ -29,6 +27,9 @@ def task_get_kline(self,
     last_close_time = start_time
 
     while True:
+        if (not last_close_time) or (end_time and last_close_time >= end_time):
+            break
+
         result, is_ok = client.get_klines(
             symbol=symbol.symbol,
             interval=interval.value,
@@ -39,9 +40,6 @@ def task_get_kline(self,
 
         if not is_ok:
             raise BinanceBaseRestClientException(f'result: {result}, is_ok: {is_ok}')
-
-        if last_close_time >= end_time:
-            break
 
         bulk_data = []
         for kline in result:
@@ -63,12 +61,13 @@ def task_get_kline(self,
                     unused_field_ignore=kline[11],
                 )
             )
-            # last_close_time = (int(datetime.strftime(close_time, '%s')) * 1000) + 1000
         kline_list = Kline.objects.bulk_create(bulk_data)
+
         last_kline = Kline.objects.filter(
             id__in=[item.id for item in kline_list],
         ).order_by('close_time').last()
-        # last_kline = Kline.objects.order_by('id').last()
-        last_close_time = datetime_to_timestamp(last_kline.close_time) + 1001
+        last_close_time = datetime_to_timestamp(last_kline.close_time) if last_kline else None
+
+        print(last_close_time, end_time)
 
     return True

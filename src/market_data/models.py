@@ -180,6 +180,9 @@ class Interval(models.Model):
         verbose_name='value',
         max_length=4,
     )
+    minutes_count = models.PositiveIntegerField(
+        verbose_name='minutes_count',
+    )
 
     class Meta:
         verbose_name = 'Interval'
@@ -251,3 +254,4 @@ class Kline(BaseModel):
     class Meta:
         verbose_name = 'Kline'
         verbose_name_plural = 'Kline'
+        unique_together = ('symbol', 'open_time')
