@@ -27,6 +27,12 @@ confluent-kafka==2.2.0
 
 # генерация изображений
 Pillow==10.4.0
+matplotlib
+cufflinks
+plotly
+kaleido
+nbformat>=4.2.0
 
 pandas==2.2.2
 numpy==2.0.0
+

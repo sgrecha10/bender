@@ -23,4 +23,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('streams/', include('streams.urls')),
     path('graphics/', include('graphics.urls')),
+    path('market_data/', include('market_data.urls')),
 ]
