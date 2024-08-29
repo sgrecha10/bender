@@ -17,12 +17,8 @@ class CandleView(View):
 
     def get(self, request):
         symbol = request.GET.get('symbol') or 'BTCUSDT'
-        try:
-            exchange_info = ExchangeInfo.objects.get(symbol=symbol)
-        except ExchangeInfo.DoesNotExist:
-            return HttpResponse(f'Not found: {symbol}', status=404)
 
-        queryset = Kline.objects.filter(symbol=exchange_info).values_list(
+        df = Kline.objects.filter(symbol_id=symbol).to_dataframe(
             'open_time',
             'open_price',
             'high_price',
@@ -30,33 +26,23 @@ class CandleView(View):
             'close_price',
         )
 
-        df = pd.DataFrame(
-            data=queryset,
-            columns=[
-                'open_time',
-                'open_price',
-                'high_price',
-                'low_price',
-                'close_price',
-            ],
-        )
-
         df['open_time_hours'] = df['open_time'].dt.strftime("%Y-%m-%d %H")
         df['open_time_days'] = df['open_time'].dt.strftime("%Y-%m-%d")
         df['open_time_months'] = df['open_time'].dt.strftime("%Y-%m")
         df['open_time_years'] = df['open_time'].dt.strftime("%Y")
 
-        df.index = df['open_time']
-        df.drop(columns=['open_time'], inplace=True)
+        # df.index = df['open_time']
+        # df.drop(columns=['open_time'], inplace=True)
 
-        df_groupby = df.groupby(['open_time']).agg({
+        df_groupby = df.groupby(['open_time_hours']).agg({
             'open_price': 'first',
             'high_price': 'max',
             'low_price': 'min',
             'close_price': 'last',
         })
 
-        quotes = df_groupby[['open_price', 'high_price', 'low_price', 'close_price']]
+        # quotes = df_groupby[['open_price', 'high_price', 'low_price', 'close_price']]
+        quotes = df_groupby
 
         plyo.init_notebook_mode(connected=True)
         cf.go_offline()
@@ -78,7 +64,6 @@ class CandleView(View):
             up_color='green',
             down_color='red',
         )
-
         chart = pio.to_html(qf, include_plotlyjs=False, full_html=False)
 
         context = {

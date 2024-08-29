@@ -1,6 +1,6 @@
+import pandas as pd
 from django.db import models, connections
 from django.db.models.constants import OnConflict
-import pandas as pd
 
 
 class KlineManager(models.Manager):
@@ -8,9 +8,14 @@ class KlineManager(models.Manager):
 
 
 class KlineQuerySet(models.QuerySet):
-    def to_dataframe(self):
+    def to_dataframe(self, *args) -> pd.DataFrame:
         """Возвращает DataFrame"""
-        return 'grecha'
+        queryset = self.values_list(*args)
+        df = pd.DataFrame(
+            data=queryset,
+            columns=[*args],
+        )
+        return df
 
     def _batched_insert(
         self,
