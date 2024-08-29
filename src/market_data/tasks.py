@@ -7,7 +7,7 @@ from bender.celery_entry import app
 from core.clients.binance.restapi import BinanceClient
 from core.clients.binance.restapi.base import BinanceBaseRestClientException
 from market_data.datetime_utils import datetime_to_timestamp, timestamp_to_datetime
-from .models import Kline, ExchangeInfo
+from .models import Kline
 
 
 @app.task(bind=True)
@@ -45,7 +45,7 @@ def task_get_kline(self,
             close_time = timestamp_to_datetime(kline[6])
             bulk_data.append(
                 Kline(
-                    symbol=ExchangeInfo.objects.get(symbol=symbol),
+                    symbol_id=symbol,
                     open_time=timestamp_to_datetime(kline[0]),
                     open_price=kline[1],
                     high_price=kline[2],
@@ -60,13 +60,18 @@ def task_get_kline(self,
                     unused_field_ignore=kline[11],
                 )
             )
-        kline_list = Kline.objects.bulk_create(bulk_data, ignore_conflicts=True)
+        kline_list = Kline.objects.bulk_create(
+            bulk_data,
+            update_conflicts=True,
+            update_fields=('symbol', 'open_time'),
+            unique_fields=('symbol', 'open_time'),
+        )
 
         last_kline = Kline.objects.filter(
             id__in=[item.id for item in kline_list],
         ).order_by('close_time').last()
         last_close_time = datetime_to_timestamp(last_kline.close_time) if last_kline else None
 
-        print(last_close_time, end_time)
+        # print(last_close_time, end_time)
 
     return True

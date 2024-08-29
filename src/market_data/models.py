@@ -5,6 +5,7 @@ from django.db import models
 
 from core.clients.binance.restapi import BinanceClient
 from core.utils.db_utils import BaseModel
+from .managers import KlineManager, KlineQuerySet
 
 
 class ExchangeInfo(BaseModel):
@@ -22,6 +23,7 @@ class ExchangeInfo(BaseModel):
     symbol = models.CharField(
         verbose_name='symbol',
         max_length=20,
+        primary_key=True,
     )
     status = models.CharField(
         verbose_name='status',
@@ -117,7 +119,6 @@ class ExchangeInfo(BaseModel):
         verbose_name='allowedSelfTradePreventionModes',
     )
 
-
     class Meta:
         verbose_name = 'Exchange Information'
         verbose_name_plural = 'Exchange Information'
@@ -193,6 +194,8 @@ class Interval(models.Model):
 
 
 class Kline(BaseModel):
+    objects = KlineManager.from_queryset(KlineQuerySet)()
+
     symbol = models.ForeignKey(
         ExchangeInfo, on_delete=models.CASCADE,
         verbose_name='symbol',

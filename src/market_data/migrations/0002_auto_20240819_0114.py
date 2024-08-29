@@ -38,7 +38,7 @@ def reverse_code(apps, *_):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("market_data", "0002_interval_kline"),
+        ("market_data", "0001_initial"),
     ]
 
     operations = [

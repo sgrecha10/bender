@@ -14,7 +14,7 @@ from market_data.datetime_utils import datetime_to_timestamp
 @admin.register(ExchangeInfo)
 class ExchangeInfoAdmin(admin.ModelAdmin):
     change_list_template = "admin/market_data/exchange_info/change_list.html"
-    list_display = ('id', 'symbol', 'status', 'updated')
+    list_display = ('symbol', 'status', 'updated')
     actions = ('action_update_exchange_info',)
     list_filter = ('status', 'base_asset', 'quoteAsset')
     search_fields = ('symbol',)
@@ -94,9 +94,8 @@ class KlineAdmin(admin.ModelAdmin):
             form = GetKlineForm(request.POST)
             if form.is_valid():
                 cleaned_data = form.cleaned_data
-                # task_get_kline(**cleaned_data)  # таска !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-                task_get_kline(
+                task_get_kline.delay(
                     symbol=cleaned_data['symbol'].symbol,
                     interval=cleaned_data['interval'].value,
                     start_time=cleaned_data.get('start_time'),
@@ -104,8 +103,7 @@ class KlineAdmin(admin.ModelAdmin):
                     limit=cleaned_data.get('limit'),
                 )
 
-
-                message = 'Загрузка запущена'
+                message = 'Загрузка запущена.'
                 return redirect_to_change_list(request, self.model, message)
         else:
             form = GetKlineForm()

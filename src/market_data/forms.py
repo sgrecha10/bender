@@ -23,12 +23,12 @@ class GetKlineForm(forms.Form):
     symbol = forms.ModelChoiceField(
         queryset=ExchangeInfo.objects.all(),
         label='Symbol',
-        initial=ExchangeInfo.objects.get(symbol='BTCUSDT'),
+        initial='BTCUSDT',
     )
     interval = forms.ModelChoiceField(
         queryset=Interval.objects.all(),
         label='Interval',
-        initial=Interval.objects.get(codename='MINUTE_1'),
+        initial='1m',
     )
     start_time = DateTimeField(
         label='Start Time',
