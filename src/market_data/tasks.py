@@ -7,17 +7,16 @@ from bender.celery_entry import app
 from core.clients.binance.restapi import BinanceClient
 from core.clients.binance.restapi.base import BinanceBaseRestClientException
 from market_data.datetime_utils import datetime_to_timestamp, timestamp_to_datetime
-from .models import Interval, ExchangeInfo, Kline
+from .models import Kline, ExchangeInfo
 
 
 @app.task(bind=True)
 def task_get_kline(self,
-                   symbol: ExchangeInfo,
-                   interval: Interval,
+                   symbol: str,
+                   interval: str,
                    start_time: Optional[datetime],
                    end_time: Optional[datetime],
-                   limit,
-                   ):
+                   limit: int):
 
     client = BinanceClient(settings.BINANCE_CLIENT)
 
@@ -31,8 +30,8 @@ def task_get_kline(self,
             break
 
         result, is_ok = client.get_klines(
-            symbol=symbol.symbol,
-            interval=interval.value,
+            symbol=symbol,
+            interval=interval,
             start_time=last_close_time,
             end_time=end_time,
             limit=limit,
@@ -46,7 +45,7 @@ def task_get_kline(self,
             close_time = timestamp_to_datetime(kline[6])
             bulk_data.append(
                 Kline(
-                    symbol=symbol,
+                    symbol=ExchangeInfo.objects.get(symbol=symbol),
                     open_time=timestamp_to_datetime(kline[0]),
                     open_price=kline[1],
                     high_price=kline[2],
@@ -61,7 +60,7 @@ def task_get_kline(self,
                     unused_field_ignore=kline[11],
                 )
             )
-        kline_list = Kline.objects.bulk_create(bulk_data)
+        kline_list = Kline.objects.bulk_create(bulk_data, ignore_conflicts=True)
 
         last_kline = Kline.objects.filter(
             id__in=[item.id for item in kline_list],

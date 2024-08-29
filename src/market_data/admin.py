@@ -5,7 +5,7 @@ from core.utils.admin_utils import redirect_to_change_list
 from market_data.models import ExchangeInfo, Kline, Interval
 from django.forms import ALL_FIELDS
 from django.template.response import TemplateResponse
-from .forms import MiddlePageForm
+from .forms import GetKlineForm
 from django.shortcuts import render
 from .tasks import task_get_kline
 from market_data.datetime_utils import datetime_to_timestamp
@@ -71,7 +71,7 @@ class KlineAdmin(admin.ModelAdmin):
         'display_close_time_timestamp',
     )
     change_list_template = "admin/market_data/kline/change_list.html"
-    middle_page_template = "admin/market_data/kline/middle_page.html"
+    get_kline_template = "admin/market_data/kline/get_kline_page.html"
 
     def get_urls(self):
         urls = super().get_urls()
@@ -91,16 +91,26 @@ class KlineAdmin(admin.ModelAdmin):
 
     def get_kline(self, request):
         if request.method == "POST":
-            form = MiddlePageForm(request.POST)
+            form = GetKlineForm(request.POST)
             if form.is_valid():
                 cleaned_data = form.cleaned_data
-                task_get_kline(**cleaned_data)  # таска
+                # task_get_kline(**cleaned_data)  # таска !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+                task_get_kline(
+                    symbol=cleaned_data['symbol'].symbol,
+                    interval=cleaned_data['interval'].value,
+                    start_time=cleaned_data.get('start_time'),
+                    end_time=cleaned_data.get('end_time'),
+                    limit=cleaned_data.get('limit'),
+                )
+
+
                 message = 'Загрузка запущена'
                 return redirect_to_change_list(request, self.model, message)
         else:
-            form = MiddlePageForm()
+            form = GetKlineForm()
 
-        return render(request, self.middle_page_template, {'form': form})
+        return render(request, self.get_kline_template, {'form': form})
 
     def delete_from_table(self, request):
         Kline.objects.all().delete()

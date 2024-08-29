@@ -13,14 +13,14 @@ from django import forms
 
 
 class CandleView(View):
-    template_name = 'market_data/candle.html'
+    template_name = 'market_data/candle_1.html'
 
     def get(self, request):
         symbol = request.GET.get('symbol') or 'BTCUSDT'
         try:
             exchange_info = ExchangeInfo.objects.get(symbol=symbol)
         except ExchangeInfo.DoesNotExist:
-            return HttpResponse(f'Not found: {symbol}')
+            return HttpResponse(f'Not found: {symbol}', status=404)
 
         queryset = Kline.objects.filter(symbol=exchange_info).values_list(
             'open_time',
@@ -49,7 +49,7 @@ class CandleView(View):
         df.index = df['open_time']
         df.drop(columns=['open_time'], inplace=True)
 
-        df_groupby = df.groupby(['open_time_hours']).agg({
+        df_groupby = df.groupby(['open_time']).agg({
             'open_price': 'first',
             'high_price': 'max',
             'low_price': 'min',
@@ -64,7 +64,7 @@ class CandleView(View):
         df = cf.QuantFig(
             df=quotes,
             legend='right',
-            name='EUR/USD',
+            name=symbol,
             kind='candlestick'
         )
 
@@ -81,5 +81,8 @@ class CandleView(View):
 
         chart = pio.to_html(qf, include_plotlyjs=False, full_html=False)
 
-        context = {'chart': chart}
+        context = {
+            'title': 'График',
+            'chart': chart,
+        }
         return render(request, self.template_name, context=context)
