@@ -1,14 +1,12 @@
 from django.contrib import admin
+from django.shortcuts import render
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
-from market_data.models import ExchangeInfo, Kline, Interval
-from django.forms import ALL_FIELDS
-from django.template.response import TemplateResponse
-from .forms import GetKlineForm
-from django.shortcuts import render
-from .tasks import task_get_kline
 from market_data.datetime_utils import datetime_to_timestamp
+from market_data.models import ExchangeInfo, Kline, Interval
+from .forms import GetKlineForm
+from .tasks import task_get_kline
 
 
 @admin.register(ExchangeInfo)

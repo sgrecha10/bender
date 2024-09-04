@@ -30,6 +30,8 @@ class CustomIndexDashboard(Dashboard):
                 collapsible=True,
                 models=(
                     'market_data.models.ExchangeInfo',
+                    'market_data.models.Interval',
+                    'market_data.models.Kline',
                 ),
             )
         )

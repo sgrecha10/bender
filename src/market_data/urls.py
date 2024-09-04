@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import CandleView
+from .views import ChartView
 
 urlpatterns = [
-    path('candles', CandleView.as_view(), name='candles'),
+    path('chart', ChartView.as_view(), name='chart'),
 ]

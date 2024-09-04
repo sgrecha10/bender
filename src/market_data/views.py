@@ -1,5 +1,5 @@
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
 import pandas as pd
 import cufflinks as cf
@@ -7,67 +7,296 @@ import plotly.offline as plyo
 import numpy as np
 import plotly.io as pio
 
-from market_data.models import Kline, ExchangeInfo
+from market_data.models import Kline, ExchangeInfo, Interval
 from django.db.models import F, Q, ExpressionWrapper
 from django import forms
 
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from .forms import ChartForm
+from plotly.express import scatter
+from django.utils.safestring import mark_safe
+from datetime import datetime, timedelta
+import urllib.parse
 
-class CandleView(View):
-    template_name = 'market_data/candle_1.html'
 
-    def get(self, request):
-        symbol = request.GET.get('symbol') or 'BTCUSDT'
+class ChartView(View):
+    template_name = 'market_data/chart.html'
 
-        df = Kline.objects.filter(symbol_id=symbol).to_dataframe(
+    INTERVAL_MAP = {
+        '1m': 'open_time',
+        '1h': 'open_time_hours',
+        '1d': 'open_time_days',
+        '1M': 'open_time_months',
+        '1Y': 'open_time_years',
+    }
+
+    def get(self, request, *args, **kwargs):
+        """Show chart"""
+
+        form = ChartForm(data=request.GET)
+        context = {
+            'title': None,
+            'form': form,
+            'chart': None,
+        }
+
+        if form.is_valid():
+            cleaned_data = form.cleaned_data
+            context['title'] = cleaned_data['symbol'].symbol
+            context['chart'] = self._get_chart(cleaned_data)
+        else:
+            default_data = {
+                'symbol': ExchangeInfo.objects.get(
+                    pk=Kline.objects.values_list('symbol', flat=True).first()),
+                'interval': Interval.objects.get(pk='DAY_1'),
+                'start_time_0': (datetime.now() - timedelta(days=30)).strftime('%d.%m.%Y'),
+                'start_time_1': (datetime.now() - timedelta(days=30)).strftime('%H:%M'),
+                'end_time_0': datetime.now().strftime('%d.%m.%Y'),
+                'end_time_1': datetime.now().strftime('%H:%M'),
+            }
+            url = self.request.path + '?' + urllib.parse.urlencode(default_data)
+            return redirect(url)
+
+        return render(request, self.template_name, context=context)
+
+    def _get_chart(self, cleaned_data):
+        symbol = cleaned_data['symbol'].symbol
+        interval = cleaned_data['interval']
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+
+        qs = Kline.objects.filter(symbol_id=symbol)
+        qs = qs.filter(open_time__gte=start_time) if start_time else qs
+        qs = qs.filter(open_time__lte=end_time) if end_time else qs
+
+        df = qs.to_dataframe(
             'open_time',
             'open_price',
             'high_price',
             'low_price',
             'close_price',
+            'volume',
         )
+
+        df['points'] = None
+
+        # df.loc[0, 'points'] = 63990
+        # df.loc[3000, 'points'] = 63000
 
         df['open_time_hours'] = df['open_time'].dt.strftime("%Y-%m-%d %H")
         df['open_time_days'] = df['open_time'].dt.strftime("%Y-%m-%d")
         df['open_time_months'] = df['open_time'].dt.strftime("%Y-%m")
         df['open_time_years'] = df['open_time'].dt.strftime("%Y")
 
-        # df.index = df['open_time']
-        # df.drop(columns=['open_time'], inplace=True)
+        group = self.INTERVAL_MAP[interval.value]
 
-        df_groupby = df.groupby(['open_time_hours']).agg({
+        df = df.groupby([group]).agg({
             'open_price': 'first',
             'high_price': 'max',
             'low_price': 'min',
             'close_price': 'last',
+            'volume': 'sum',
+            'points': 'first',
         })
 
-        # quotes = df_groupby[['open_price', 'high_price', 'low_price', 'close_price']]
-        quotes = df_groupby
-
-        plyo.init_notebook_mode(connected=True)
-        cf.go_offline()
-
-        df = cf.QuantFig(
-            df=quotes,
-            legend='right',
+        candlestick = go.Candlestick(
+            x=df.index,
+            open=df['open_price'],
+            high=df['high_price'],
+            low=df['low_price'],
+            close=df['close_price'],
             name=symbol,
-            kind='candlestick'
         )
 
-        # df.add_resistance(date='2024-07-29', on='close', color='orange')
-        # Adding a support level
-        # df.add_support(date='2015-01-28', on='low', color='blue')
-
-        qf = df.iplot(
-            asFigure=True,
-            theme='white',
-            up_color='green',
-            down_color='red',
+        volume = go.Bar(
+            x=df.index,
+            y=df['volume'],
+            name='Volume',
+            # marker={
+            #     "color": "rgba(128,128,128,0.5)",
+            # },
+            opacity=0.2,
         )
-        chart = pio.to_html(qf, include_plotlyjs=False, full_html=False)
 
-        context = {
-            'title': 'График',
-            'chart': chart,
-        }
-        return render(request, self.template_name, context=context)
+        points = go.Scatter(
+            x=df.index,
+            y=df['points'],
+            mode='markers',
+            name='Points',
+            marker={
+                "color": "blue",
+            },
+        )
+
+        # fig = make_subplots(specs=[[{"secondary_y": True}]])
+        # fig.add_trace(, secondary_y=True)
+        # fig.add_trace(volume, secondary_y=False)
+        # fig.add_trace(points, secondary_y=True)
+        # fig.layout.yaxis.showgrid = False
+        # # fig.layout.yaxis2.showgrid = False
+        # # fig.layout.yaxis1.autoshift = True
+        # # fig.update_yaxes(autoshift=True)
+
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
+        fig.add_trace(candlestick, row=2, col=1)
+        # fig.add_trace(points, row=2, col=1)
+        fig.add_trace(volume, row=1, col=1)
+
+        # title = (
+        #     f'{interval.codename}, '
+        #     f'{start_time.strftime("%d.%b.%Y %H:%M")} ... {end_time.strftime("%d.%b.%Y %H:%M")}, '
+        #     f'30'
+        # )
+
+        title = '{interval} ::: {start_time} ... {end_time}'.format(
+            interval=interval.codename,
+            start_time=start_time.strftime("%d.%b.%Y %H:%M") if start_time else None,
+            end_time=end_time.strftime("%d.%b.%Y %H:%M") if end_time else None,
+        )
+
+        fig.update_layout(
+            height=800,
+            title=title,
+            yaxis_title='Volume',
+            xaxis1_rangeslider_visible=False,
+            xaxis2_rangeslider_visible=True,
+            # legend={'bgcolor': 'red'},
+        )
+
+        return pio.to_html(fig, include_plotlyjs=False, full_html=False)
+
+
+
+
+
+
+
+    # def get(self, request, *args, **kwargs):
+    #     """Plotly without volume"""
+    #     symbol = request.GET.get('symbol') or 'BTCUSDT'
+    #     df = Kline.objects.filter(symbol_id=symbol).to_dataframe(
+    #         'open_time',
+    #         'open_price',
+    #         'high_price',
+    #         'low_price',
+    #         'close_price',
+    #         'volume',
+    #     )
+    #     df['open_time_hours'] = df['open_time'].dt.strftime("%Y-%m-%d %H")
+    #     df['open_time_days'] = df['open_time'].dt.strftime("%Y-%m-%d")
+    #     df['open_time_months'] = df['open_time'].dt.strftime("%Y-%m")
+    #     df['open_time_years'] = df['open_time'].dt.strftime("%Y")
+    #
+    #     df = df.groupby(['open_time_hours']).agg({
+    #         'open_price': 'first',
+    #         'high_price': 'max',
+    #         'low_price': 'min',
+    #         'close_price': 'last',
+    #         'volume': 'sum',
+    #     })
+    #
+    #     candlestick = go.Candlestick(
+    #         x=df.index,
+    #         open=df['open_price'],
+    #         high=df['high_price'],
+    #         low=df['low_price'],
+    #         close=df['close_price'],
+    #         showlegend=True,
+    #     )
+    #
+    #     sma = go.Scatter(x=df.index,
+    #                      y=df["volume"],
+    #                      yaxis="y1",
+    #                      name="SMA"
+    #                      )
+    #
+    #     qf = go.Figure(data=[candlestick, sma])
+    #
+    #     qf.update_layout(
+    #         # width=800,
+    #         height=800,
+    #         title="Apple, March - 2020",
+    #         yaxis_title='AAPL Stock'
+    #     )
+    #
+    #     chart = pio.to_html(qf, include_plotlyjs=False, full_html=False)
+    #
+    #     context = {
+    #         'title': 'График',
+    #         'chart': chart,
+    #     }
+    #     return render(request, self.template_name, context=context)
+
+
+    # def get(self, request):
+    #     """cufflinks"""
+    #     symbol = request.GET.get('symbol') or 'BTCUSDT'
+    #
+    #     df = Kline.objects.filter(symbol_id=symbol).to_dataframe(
+    #         'open_time',
+    #         'open_price',
+    #         'high_price',
+    #         'low_price',
+    #         'close_price',
+    #         'volume',
+    #     )
+    #
+    #     df['open_time_hours'] = df['open_time'].dt.strftime("%Y-%m-%d %H")
+    #     df['open_time_days'] = df['open_time'].dt.strftime("%Y-%m-%d")
+    #     df['open_time_months'] = df['open_time'].dt.strftime("%Y-%m")
+    #     df['open_time_years'] = df['open_time'].dt.strftime("%Y")
+    #
+    #     # df.index = df['open_time']
+    #     # df.drop(columns=['open_time'], inplace=True)
+    #
+    #     df = df.groupby(['open_time_hours']).agg({
+    #         'open_price': 'first',
+    #         'high_price': 'max',
+    #         'low_price': 'min',
+    #         'close_price': 'last',
+    #         'volume': 'sum',
+    #     })
+    #
+    #     # quotes = df_groupby[['open_price', 'high_price', 'low_price', 'close_price']]
+    #     # quotes = df_groupby
+    #
+    #     plyo.init_notebook_mode(connected=True)
+    #
+    #     cf.set_config_file(theme='ggplot', sharing='public', offline=True)
+    #     # cf.go_offline()
+    #
+    #     qf = cf.QuantFig(
+    #         df=df,
+    #         legend='right',
+    #         name=symbol,
+    #         # kind='candlestick',
+    #         down_color='red',
+    #         up_color='green',
+    #         # theme='solar',  # pearl
+    #     )
+    #
+    #     # qf.add_ema(color='blue')
+    #     # qf.add_ema(periods=20, color='green')
+    #     # qf.add_bollinger_bands()
+    #     # qf.add_volume(colors={'volume': 'green'}, color='blue', up_color='red', down_color='green', column='volume')
+    #     # qf.add_volume(up_color='red', down_color='green')
+    #     # qf.add_resistance(date='2024-08-29 01', on='close')
+    #     # Adding a support level
+    #     # df.add_support(date='2015-01-28', on='low', color='blue')
+    #
+    #     # qf = qf.iplot(asFigure=True, colors={'volume': 'green'}, color='blue', up_color='red', down_color='green',)
+    #     qf = qf.iplot(asFigure=True)
+    #
+    #     # qf = df.iplot(asFigure=True, kind='bar', barmode='stack', colors={
+    #     #     'open_time': 'green',
+    #     #     'open_price': 'blue',
+    #     # })
+    #
+    #     chart = pio.to_html(qf, include_plotlyjs=False, full_html=False)
+    #
+    #     context = {
+    #         'title': 'График',
+    #         'chart': chart,
+    #     }
+    #     return render(request, self.template_name, context=context)
