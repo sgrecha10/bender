@@ -76,3 +76,10 @@ class ChartForm(forms.Form):
         widget=AdminSplitDateTime(),
         required=False,
     )
+
+    def clean(self):
+        cleaned_data = super(ChartForm, self).clean()
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+        if start_time and end_time and end_time <= start_time:
+            self.add_error('start_time', 'Incorrect dates, end_time <= start_time')

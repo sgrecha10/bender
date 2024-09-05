@@ -33,32 +33,35 @@ class ChartView(View):
 
     def get(self, request, *args, **kwargs):
         """Show chart"""
+        data = request.GET
+        if not data:
+            return redirect(self._get_default_data_url())
 
-        form = ChartForm(data=request.GET)
+        form = ChartForm(data=data)
         context = {
             'title': None,
-            'form': form,
             'chart': None,
+            'form': form,
         }
 
         if form.is_valid():
             cleaned_data = form.cleaned_data
             context['title'] = cleaned_data['symbol'].symbol
             context['chart'] = self._get_chart(cleaned_data)
-        else:
-            default_data = {
-                'symbol': ExchangeInfo.objects.get(
-                    pk=Kline.objects.values_list('symbol', flat=True).first()),
-                'interval': Interval.objects.get(pk='DAY_1'),
-                'start_time_0': (datetime.now() - timedelta(days=30)).strftime('%d.%m.%Y'),
-                'start_time_1': (datetime.now() - timedelta(days=30)).strftime('%H:%M'),
-                'end_time_0': datetime.now().strftime('%d.%m.%Y'),
-                'end_time_1': datetime.now().strftime('%H:%M'),
-            }
-            url = self.request.path + '?' + urllib.parse.urlencode(default_data)
-            return redirect(url)
 
         return render(request, self.template_name, context=context)
+
+    def _get_default_data_url(self):
+        default_data = {
+            'symbol': ExchangeInfo.objects.get(
+                pk=Kline.objects.values_list('symbol', flat=True).first()),
+            'interval': Interval.objects.get(pk='MONTH_1'),
+            # 'start_time_0': (datetime.now() - timedelta(days=30)).strftime('%d.%m.%Y'),
+            # 'start_time_1': (datetime.now() - timedelta(days=30)).strftime('%H:%M'),
+            # 'end_time_0': datetime.now().strftime('%d.%m.%Y'),
+            # 'end_time_1': datetime.now().strftime('%H:%M'),
+        }
+        return self.request.path + '?' + urllib.parse.urlencode(default_data)
 
     def _get_chart(self, cleaned_data):
         symbol = cleaned_data['symbol'].symbol
@@ -143,16 +146,10 @@ class ChartView(View):
         # fig.add_trace(points, row=2, col=1)
         fig.add_trace(volume, row=1, col=1)
 
-        # title = (
-        #     f'{interval.codename}, '
-        #     f'{start_time.strftime("%d.%b.%Y %H:%M")} ... {end_time.strftime("%d.%b.%Y %H:%M")}, '
-        #     f'30'
-        # )
-
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=interval.codename,
-            start_time=start_time.strftime("%d.%b.%Y %H:%M") if start_time else None,
-            end_time=end_time.strftime("%d.%b.%Y %H:%M") if end_time else None,
+            start_time=start_time.strftime("%d %b %Y %H:%M") if start_time else None,
+            end_time=end_time.strftime("%d %b %Y %H:%M") if end_time else None,
         )
 
         fig.update_layout(
