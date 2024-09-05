@@ -6,6 +6,14 @@ from django.contrib.admin.widgets import AdminSplitDateTime
 
 from .models import ExchangeInfo, Interval, Kline
 
+ALLOWED_INTERVAL = [
+    'MINUTE_1',
+    'HOUR_1',
+    'DAY_1',
+    'MONTH_1',
+    'YEAR_1',
+]
+
 
 class DateTimeField(forms.DateTimeField):
     """Для работы widget AdminSplitDateTime"""
@@ -47,19 +55,9 @@ class GetKlineForm(forms.Form):
     )
 
 
-ALLOWED_INTERVAL = [
-    'MINUTE_1',
-    'HOUR_1',
-    'DAY_1',
-    'MONTH_1',
-    'YEAR_1',
-]
-
-
 class ChartForm(forms.Form):
     symbol = forms.ModelChoiceField(
-        queryset=ExchangeInfo.objects.filter(
-            pk__in=list(Kline.objects.values_list('symbol', flat=True).distinct('symbol'))),
+        queryset=ExchangeInfo.objects.all(),
         label='Symbol',
     )
     interval = forms.ModelChoiceField(
