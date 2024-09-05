@@ -13,7 +13,7 @@ from django import forms
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from .forms import ChartForm
+
 from plotly.express import scatter
 from django.utils.safestring import mark_safe
 from datetime import datetime, timedelta
@@ -33,6 +33,8 @@ class ChartView(View):
 
     def get(self, request, *args, **kwargs):
         """Show chart"""
+        from .forms import ChartForm
+
         data = request.GET
         if not data:
             return redirect(self._get_default_data_url())

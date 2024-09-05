@@ -5,7 +5,6 @@ from django.urls import path
 from core.utils.admin_utils import redirect_to_change_list
 from market_data.datetime_utils import datetime_to_timestamp
 from market_data.models import ExchangeInfo, Kline, Interval
-from .forms import GetKlineForm
 from .tasks import task_get_kline
 
 
@@ -88,6 +87,8 @@ class KlineAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def get_kline(self, request):
+        from .forms import GetKlineForm  # Инициализация
+
         if request.method == "POST":
             form = GetKlineForm(request.POST)
             if form.is_valid():
