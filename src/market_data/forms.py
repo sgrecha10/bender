@@ -81,3 +81,7 @@ class ChartForm(forms.Form):
         end_time = cleaned_data.get('end_time')
         if start_time and end_time and end_time <= start_time:
             self.add_error('start_time', 'Incorrect dates, end_time <= start_time')
+
+        symbol = cleaned_data.get('symbol')
+        if not Kline.objects.filter(symbol=symbol).exists():
+            self.add_error('symbol', 'Data not found')
