@@ -1,6 +1,6 @@
 from django.db import models
 from core.utils.db_utils import BaseModel
-from market_data.models import ExchangeInfo
+from market_data.models import ExchangeInfo, Kline
 from strategies.choices import Interval
 
 
@@ -52,3 +52,30 @@ class Strategy(BaseModel):
     def save(self, *args, **kwargs):
         self.is_active = False if self.status == Strategy.Status.STOPPED else True
         super().save(*args, **kwargs)
+
+
+class StrategyResult(BaseModel):
+    strategy = models.ForeignKey(
+        Strategy, on_delete=models.CASCADE,
+        verbose_name='Strategy',
+    )
+    kline = models.ForeignKey(
+        Kline, on_delete=models.CASCADE,
+        verbose_name='Kline',
+        blank=True, null=True,
+    )
+    price = models.DecimalField(
+        verbose_name='Price',
+        max_digits=20,
+        decimal_places=10,
+    )
+
+    class Meta:
+        verbose_name = 'Strategy Result'
+        verbose_name_plural = 'Strategy Results'
+        indexes = [
+            models.Index(fields=['strategy', 'kline']),
+        ]
+
+    def __str__(self):
+        return self.strategy.name

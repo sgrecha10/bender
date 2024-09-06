@@ -76,6 +76,7 @@ class CustomIndexDashboard(Dashboard):
                 collapsible=True,
                 models=(
                     'strategies.models.Strategy',
+                    'strategies.models.StrategyResult',
                 ),
             )
         )
