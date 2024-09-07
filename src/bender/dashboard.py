@@ -35,6 +35,30 @@ class CustomIndexDashboard(Dashboard):
                 ),
             )
         )
+
+        self.children.append(
+            modules.AppList(
+                'INDICATORS',
+                column=1,
+                collapsible=True,
+                models=(
+                    'indicators.models.MovingAverage',
+                ),
+            )
+        )
+
+        self.children.append(
+            modules.AppList(
+                'STRATEGIES',
+                column=1,
+                collapsible=True,
+                models=(
+                    'strategies.models.Strategy',
+                    'strategies.models.StrategyResult',
+                ),
+            )
+        )
+        
         self.children.append(
             modules.AppList(
                 'WEBSOCKET',
@@ -68,28 +92,6 @@ class CustomIndexDashboard(Dashboard):
                     },
                 ],
             ),
-        )
-        self.children.append(
-            modules.AppList(
-                'STRATEGIES',
-                column=1,
-                collapsible=True,
-                models=(
-                    'strategies.models.Strategy',
-                    'strategies.models.StrategyResult',
-                ),
-            )
-        )
-        self.children.append(
-            modules.AppList(
-                'INDICATORS',
-                column=1,
-                collapsible=True,
-                models=(
-                    'indicators.models.AveragePrice',
-                    'indicators.models.MovingAverage',
-                ),
-            )
         )
 
         self.children.append(
