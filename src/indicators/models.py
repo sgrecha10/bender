@@ -61,4 +61,11 @@ class MovingAverage(BaseModel):
 
     def get_value(self, kline: Kline) -> Optional[Decimal]:
         """Возвращает значение рассчитанное на переданную свечу"""
+
+        """
+        1. Проверить, что размер свечи kline (close_time - open_time) соответствует self.interval
+        2. Или kline будет всегда 1 минутой?
+        3. Тогда, если interval = 1m, то все просто - считаем по переданную свечу включительно.
+        4. А если нет??
+        """
         pass

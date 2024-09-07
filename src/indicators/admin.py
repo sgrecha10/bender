@@ -24,16 +24,16 @@ class IndicatorBaseAdmin(admin.ModelAdmin):
         'copy_item',
     )
 
-    @admin.action(description='Copy %(verbose_name_plural)s')
-    def copy_item(self, request, queryset):
-        try:
-            model_item = queryset.get()
-        except (queryset.model.DoesNotExist, queryset.model.MultipleObjectsReturned):
-            messages.error(request, 'Only one item needed.')
-            return
-        model_dict = model_to_dict(model_item)
-        queryset.model.objects.create(**model_dict)
-        messages.success(request, 'Successfully copied.')
+    # @admin.action(description='Copy %(verbose_name_plural)s')
+    # def copy_item(self, request, queryset):
+    #     try:
+    #         model_item = queryset.get()
+    #     except (queryset.model.DoesNotExist, queryset.model.MultipleObjectsReturned):
+    #         messages.error(request, 'Only one item needed.')
+    #         return
+    #     model_dict = model_to_dict(model_item)
+    #     queryset.model.objects.create(**model_dict)
+    #     messages.success(request, 'Successfully copied.')
 
     # def changelist_view(self, request, extra_context=None):
     #     try:
