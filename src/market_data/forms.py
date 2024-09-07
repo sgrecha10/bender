@@ -4,15 +4,8 @@ import pytz
 from django import forms
 from django.contrib.admin.widgets import AdminSplitDateTime
 
+from market_data.choices import ALLOWED_INTERVAL
 from .models import ExchangeInfo, Interval, Kline
-
-ALLOWED_INTERVAL = [
-    'MINUTE_1',
-    'HOUR_1',
-    'DAY_1',
-    'MONTH_1',
-    'YEAR_1',
-]
 
 
 class DateTimeField(forms.DateTimeField):

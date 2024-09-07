@@ -1,27 +1,22 @@
 from django.contrib import admin
-from .models import AveragePrice, MovingAverage
+from .models import MovingAverage
 from django.contrib import messages
 from django.urls import reverse
 from django.db import IntegrityError
 from django.shortcuts import redirect
+from django.forms.models import model_to_dict
 
 
 class IndicatorBaseAdmin(admin.ModelAdmin):
-    list_display = (
-        'id',
-        'name',
-        'codename',
-        'value',
-        'strategy',
-        'updated',
-        'created',
+    list_filter = (
+        'symbol',
+        'interval',
     )
+    raw_id_fields = ('symbol',)
     readonly_fields = (
         'updated',
         'created',
     )
-    list_editable = ('strategy',)
-    list_filter = ('strategy',)
     actions = (
         'copy_item',
     )
@@ -33,30 +28,32 @@ class IndicatorBaseAdmin(admin.ModelAdmin):
         except (queryset.model.DoesNotExist, queryset.model.MultipleObjectsReturned):
             messages.error(request, 'Only one item needed.')
             return
-
-        queryset.model.objects.create(
-            name=model_item.name,
-            codename=model_item.codename,
-            value=model_item.value,
-            description=model_item.description,
-        )
+        model_dict = model_to_dict(model_item)
+        queryset.model.objects.create(**model_dict)
         messages.success(request, 'Successfully copied.')
 
-    def changelist_view(self, request, extra_context=None):
-        try:
-            return super().changelist_view(request, extra_context)
-        except IntegrityError:
-            self.message_user(request, 'There is a bind: strategy, codename.', messages.ERROR)
-            app_label, model_name = self.model._meta.app_label, self.model._meta.model_name
-            url = reverse(f'admin:{app_label}_{model_name}_changelist')
-            return redirect(url)
-
-
-@admin.register(AveragePrice)
-class AveragePriceAdmin(IndicatorBaseAdmin):
-    pass
+    # def changelist_view(self, request, extra_context=None):
+    #     try:
+    #         return super().changelist_view(request, extra_context)
+    #     except IntegrityError:
+    #         self.message_user(request, 'There is a bind: strategy, codename.', messages.ERROR)
+    #         app_label, model_name = self.model._meta.app_label, self.model._meta.model_name
+    #         url = reverse(f'admin:{app_label}_{model_name}_changelist')
+    #         return redirect(url)
 
 
 @admin.register(MovingAverage)
 class MovingAverageAdmin(IndicatorBaseAdmin):
-    pass
+    list_display = (
+        'id',
+        'name',
+        'description',
+        'type',
+        'kline_count',
+        'factor_alfa',
+        'factor_alfa_auto',
+        'symbol',
+        'interval',
+        'updated',
+        'created',
+    )
