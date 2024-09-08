@@ -60,12 +60,14 @@ class MovingAverage(BaseModel):
         return f'{self.id} - {self.type} - {self.name}'
 
     def get_value(self, kline: Kline) -> Optional[Decimal]:
-        """Возвращает значение рассчитанное на переданную свечу"""
+        """Возвращает значение рассчитанное на переданную свечу (закрытую или в реалтайме)
 
+        1. Проверить, что размер свечи kline (close_time - open_time) не больше, чем self.interval
+        3. Преобразовать kline в свечу interval размера
+        4. Получаем запрос из postgres от kline.open_time свечи длиной kline_count * interval.minutes_count
+        5. Преобразовываем в DataFrame и считаем MA:
+        5.1. SMA.
+            Сумма средних значений (high_price + low_price) / 2  деленное на количество kline_count
+        5.2. EMA.
         """
-        1. Проверить, что размер свечи kline (close_time - open_time) соответствует self.interval
-        2. Или kline будет всегда 1 минутой?
-        3. Тогда, если interval = 1m, то все просто - считаем по переданную свечу включительно.
-        4. А если нет??
-        """
-        pass
+        return Decimal(25.0)

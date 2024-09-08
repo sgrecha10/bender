@@ -22,7 +22,7 @@ class ExchangeInfo(BaseModel):
 
     symbol = models.CharField(
         verbose_name='symbol',
-        max_length=20,
+        max_length=32,
         primary_key=True,
     )
     status = models.CharField(
@@ -236,22 +236,31 @@ class Kline(BaseModel):
         verbose_name='quoteAssetVolume',
         max_digits=20,
         decimal_places=10,
+        blank=True,
+        null=True,
     )
     number_of_trades = models.PositiveIntegerField(
         verbose_name='numberOfTrades',
+        blank=True,
+        null=True,
     )
     taker_buy_base_asset_volume = models.DecimalField(
         verbose_name='takerBuyBaseAssetVolume',
         max_digits=20,
         decimal_places=10,
+        blank=True,
+        null=True,
     )
     taker_buy_quote_asset_volume = models.DecimalField(
         verbose_name='takerBuyQuoteAssetVolume',
         max_digits=20,
         decimal_places=10,
+        blank=True,
+        null=True,
     )
     unused_field_ignore =models.BooleanField(
         verbose_name='unusedFieldIgnore',
+        default=False,
     )
 
     class Meta:
