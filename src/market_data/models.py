@@ -187,7 +187,7 @@ class Interval(models.Model):
 
     class Meta:
         verbose_name = 'Interval'
-        verbose_name_plural = 'Interval'
+        verbose_name_plural = 'Intervals'
 
     def __str__(self):
         return self.codename
@@ -265,5 +265,5 @@ class Kline(BaseModel):
 
     class Meta:
         verbose_name = 'Kline'
-        verbose_name_plural = 'Kline'
+        verbose_name_plural = 'Klines'
         unique_together = ('symbol', 'open_time')

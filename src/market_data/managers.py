@@ -1,6 +1,8 @@
 import pandas as pd
 from django.db import models, connections
 from django.db.models.constants import OnConflict
+import market_data.constants as const
+from django.db.models.functions import Trunc
 
 
 class KlineManager(models.Manager):
@@ -8,6 +10,31 @@ class KlineManager(models.Manager):
 
 
 class KlineQuerySet(models.QuerySet):
+    def add_interval_column(self, interval: str = const.MINUTE_1) -> models.QuerySet:
+        """Добавляет колонку для группировки """
+        if interval == const.HOUR_1:
+            return self.annotate(
+                open_time_hour=Trunc('open_time', 'hour', output_field=models.DateTimeField()),
+            )
+        elif interval == const.DAY_1:
+            return self.annotate(
+                open_time_day=Trunc('open_time', 'day', output_field=models.DateTimeField()),
+            )
+        elif interval == const.WEEK_1:
+            return self.annotate(
+                open_time_week=Trunc('open_time', 'week', output_field=models.DateTimeField()),
+            )
+        elif interval == const.MONTH_1:
+            return self.annotate(
+                open_time_month=Trunc('open_time', 'month', output_field=models.DateTimeField()),
+            )
+        elif interval == const.YEAR_1:
+            return self.annotate(
+                open_time_year=Trunc('open_time', 'year', output_field=models.DateTimeField()),
+            )
+        else:
+            return self
+
     def to_dataframe(self, *args) -> pd.DataFrame:
         """Возвращает DataFrame"""
         queryset = self.values_list(*args)
