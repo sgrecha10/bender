@@ -20,6 +20,26 @@ class IntervalCodename(TextChoices):
     YEAR_1 = '1Y', 'YEAR_1'
 
 
+INTERVAL_DURATION = {
+    IntervalCodename.MINUTE_1.name: 1,
+    IntervalCodename.MINUTE_3.name: 3,
+    IntervalCodename.MINUTE_5.name: 5,
+    IntervalCodename.MINUTE_15.name: 15,
+    IntervalCodename.MINUTE_30.name: 30,
+    IntervalCodename.HOUR_1.name: 60,
+    IntervalCodename.HOUR_2.name: 120,
+    IntervalCodename.HOUR_4.name: 240,
+    IntervalCodename.HOUR_6.name: 360,
+    IntervalCodename.HOUR_8.name: 480,
+    IntervalCodename.HOUR_12.name: 720,
+    IntervalCodename.DAY_1.name: 1440,
+    IntervalCodename.DAY_3.name: 4320,
+    IntervalCodename.WEEK_1.name: 10080,
+    IntervalCodename.MONTH_1.name: 43200,  # 30d
+    IntervalCodename.YEAR_1.name: 525600,
+}
+
+
 """Разрешенные интервалы для конвертации DataFrame"""
 ALLOWED_INTERVAL = [
     'MINUTE_1',
