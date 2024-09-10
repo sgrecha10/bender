@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import pytz
 
 import market_data.constants as const
-from market_data.models import ExchangeInfo, Interval, Kline
+from market_data.models import ExchangeInfo, Kline
 
 
 class TestHelperMixin:
@@ -19,12 +19,12 @@ class TestHelperMixin:
             **kwargs
         )
 
-    def create_interval(self, codename: str = const.MINUTE_1, **kwargs) -> Interval:
-        result, _ = Interval.objects.get_or_create(
-            codename=codename,
-            defaults={**kwargs},
-        )
-        return result
+    # def create_interval(self, codename: str = const.MINUTE_1, **kwargs) -> Interval:
+    #     result, _ = Interval.objects.get_or_create(
+    #         codename=codename,
+    #         defaults={**kwargs},
+    #     )
+    #     return result
 
     def create_klines(self,
                      symbol: ExchangeInfo,
@@ -32,8 +32,12 @@ class TestHelperMixin:
                      open_time: datetime = None,
                      **kwargs) -> list[Kline]:
 
-        now = datetime.now().replace(second=0, microsecond=0, tzinfo=pytz.UTC)
-        open_time = open_time if open_time else now
+        # now = datetime.now().replace(second=0, microsecond=0, tzinfo=pytz.UTC)
+        # open_time = open_time if open_time else now
+
+        open_time = (datetime.now() - timedelta(days=100)).replace(
+            hour=0, minute=0, second=0, microsecond=0, tzinfo=pytz.UTC,
+        )
 
         bulk_data = []
         for i in range(count):
@@ -51,6 +55,6 @@ class TestHelperMixin:
                     **kwargs
                 )
             )
-            open_time -= timedelta(minutes=1)
+            open_time += timedelta(minutes=1)
 
         return Kline.objects.bulk_create(bulk_data)

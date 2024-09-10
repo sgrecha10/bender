@@ -4,8 +4,8 @@ import pytz
 from django import forms
 from django.contrib.admin.widgets import AdminSplitDateTime
 
-from .models import ExchangeInfo, Interval, Kline
-import market_data.constants as const
+from .models import ExchangeInfo, Kline
+from .constants import Interval, AllowedInterval
 
 
 class DateTimeField(forms.DateTimeField):
@@ -27,10 +27,10 @@ class GetKlineForm(forms.Form):
         label='Symbol',
         initial='BTCUSDT',
     )
-    interval = forms.ModelChoiceField(
-        queryset=Interval.objects.all(),
+    interval = forms.ChoiceField(
+        choices=Interval.choices,
         label='Interval',
-        initial='1m',
+        initial=Interval.MINUTE_1,
     )
     start_time = DateTimeField(
         label='Start Time',
@@ -49,20 +49,12 @@ class GetKlineForm(forms.Form):
 
 
 class ChartForm(forms.Form):
-    ALLOWED_INTERVAL = [
-        const.MINUTE_1,
-        const.HOUR_1,
-        const.DAY_1,
-        const.MONTH_1,
-        const.YEAR_1,
-    ]
-
     symbol = forms.ModelChoiceField(
         queryset=ExchangeInfo.objects.all(),
         label='Symbol',
     )
-    interval = forms.ModelChoiceField(
-        queryset=Interval.objects.filter(codename__in=ALLOWED_INTERVAL),
+    interval = forms.ChoiceField(
+        choices=AllowedInterval.choices,
         label='Interval',
     )
     start_time = DateTimeField(

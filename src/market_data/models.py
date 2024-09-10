@@ -171,28 +171,6 @@ class ExchangeInfo(BaseModel):
         return i if is_ok else result, is_ok
 
 
-class Interval(models.Model):
-    codename = models.CharField(
-        verbose_name='codename',
-        max_length=15,
-        primary_key=True,
-    )
-    value = models.CharField(
-        verbose_name='value',
-        max_length=4,
-    )
-    minutes_count = models.PositiveIntegerField(
-        verbose_name='minutes_count',
-    )
-
-    class Meta:
-        verbose_name = 'Interval'
-        verbose_name_plural = 'Intervals'
-
-    def __str__(self):
-        return self.codename
-
-
 class Kline(BaseModel):
     objects = KlineManager.from_queryset(KlineQuerySet)()
 

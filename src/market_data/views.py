@@ -7,7 +7,7 @@ import plotly.offline as plyo
 import numpy as np
 import plotly.io as pio
 
-from market_data.models import Kline, ExchangeInfo, Interval
+from market_data.models import Kline, ExchangeInfo
 from django.db.models import F, Q, ExpressionWrapper
 from django import forms
 
@@ -18,18 +18,11 @@ from plotly.express import scatter
 from django.utils.safestring import mark_safe
 from datetime import datetime, timedelta
 import urllib.parse
+from .constants import Interval
 
 
 class ChartView(View):
     template_name = 'market_data/chart.html'
-
-    INTERVAL_MAP = {
-        '1m': 'open_time',
-        '1h': 'open_time_hours',
-        '1d': 'open_time_days',
-        '1M': 'open_time_months',
-        '1Y': 'open_time_years',
-    }
 
     def get(self, request, *args, **kwargs):
         """Show chart"""
@@ -57,11 +50,7 @@ class ChartView(View):
         default_data = {
             'symbol': ExchangeInfo.objects.get(
                 pk=Kline.objects.values_list('symbol', flat=True).first()),
-            'interval': Interval.objects.get(pk='MONTH_1'),
-            # 'start_time_0': (datetime.now() - timedelta(days=30)).strftime('%d.%m.%Y'),
-            # 'start_time_1': (datetime.now() - timedelta(days=30)).strftime('%H:%M'),
-            # 'end_time_0': datetime.now().strftime('%d.%m.%Y'),
-            # 'end_time_1': datetime.now().strftime('%H:%M'),
+            'interval': Interval.MONTH_1.value,
         }
         return self.request.path + '?' + urllib.parse.urlencode(default_data)
 
@@ -74,36 +63,8 @@ class ChartView(View):
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
         qs = qs.filter(open_time__lte=end_time) if end_time else qs
-
-        df = qs.to_dataframe(
-            'open_time',
-            'open_price',
-            'high_price',
-            'low_price',
-            'close_price',
-            'volume',
-        )
-
-        df['points'] = None
-
-        # df.loc[0, 'points'] = 63990
-        # df.loc[3000, 'points'] = 63000
-
-        df['open_time_hours'] = df['open_time'].dt.strftime("%Y-%m-%d %H")
-        df['open_time_days'] = df['open_time'].dt.strftime("%Y-%m-%d")
-        df['open_time_months'] = df['open_time'].dt.strftime("%Y-%m")
-        df['open_time_years'] = df['open_time'].dt.strftime("%Y")
-
-        group = self.INTERVAL_MAP[interval.value]
-
-        df = df.groupby([group]).agg({
-            'open_price': 'first',
-            'high_price': 'max',
-            'low_price': 'min',
-            'close_price': 'last',
-            'volume': 'sum',
-            'points': 'first',
-        })
+        qs = qs.group_by_interval(interval)
+        df = qs.to_dataframe(index='open_time_group')
 
         candlestick = go.Candlestick(
             x=df.index,
@@ -118,38 +79,15 @@ class ChartView(View):
             x=df.index,
             y=df['volume'],
             name='Volume',
-            # marker={
-            #     "color": "rgba(128,128,128,0.5)",
-            # },
             opacity=0.2,
         )
 
-        points = go.Scatter(
-            x=df.index,
-            y=df['points'],
-            mode='markers',
-            name='Points',
-            marker={
-                "color": "blue",
-            },
-        )
-
-        # fig = make_subplots(specs=[[{"secondary_y": True}]])
-        # fig.add_trace(, secondary_y=True)
-        # fig.add_trace(volume, secondary_y=False)
-        # fig.add_trace(points, secondary_y=True)
-        # fig.layout.yaxis.showgrid = False
-        # # fig.layout.yaxis2.showgrid = False
-        # # fig.layout.yaxis1.autoshift = True
-        # # fig.update_yaxes(autoshift=True)
-
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
         fig.add_trace(candlestick, row=2, col=1)
-        # fig.add_trace(points, row=2, col=1)
         fig.add_trace(volume, row=1, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
-            interval=interval.codename,
+            interval=Interval(interval).name,
             start_time=start_time.strftime("%d %b %Y %H:%M") if start_time else None,
             end_time=end_time.strftime("%d %b %Y %H:%M") if end_time else None,
         )
@@ -160,16 +98,110 @@ class ChartView(View):
             yaxis_title='Volume',
             xaxis1_rangeslider_visible=False,
             xaxis2_rangeslider_visible=True,
-            # legend={'bgcolor': 'red'},
         )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
 
 
-
-
-
-
+    # def _get_chart(self, cleaned_data):
+    #     symbol = cleaned_data['symbol'].symbol
+    #     interval = cleaned_data['interval']
+    #     start_time = cleaned_data.get('start_time')
+    #     end_time = cleaned_data.get('end_time')
+    #
+    #     qs = Kline.objects.filter(symbol_id=symbol)
+    #     qs = qs.filter(open_time__gte=start_time) if start_time else qs
+    #     qs = qs.filter(open_time__lte=end_time) if end_time else qs
+    #
+    #     df = qs.to_dataframe(
+    #         'open_time',
+    #         'open_price',
+    #         'high_price',
+    #         'low_price',
+    #         'close_price',
+    #         'volume',
+    #     )
+    #
+    #     df['points'] = None
+    #
+    #     # df.loc[0, 'points'] = 63990
+    #     # df.loc[3000, 'points'] = 63000
+    #
+    #     df['open_time_hours'] = df['open_time'].dt.strftime("%Y-%m-%d %H")
+    #     df['open_time_days'] = df['open_time'].dt.strftime("%Y-%m-%d")
+    #     df['open_time_months'] = df['open_time'].dt.strftime("%Y-%m")
+    #     df['open_time_years'] = df['open_time'].dt.strftime("%Y")
+    #
+    #     group = self.INTERVAL_MAP[interval.value]
+    #
+    #     df = df.groupby([group]).agg({
+    #         'open_price': 'first',
+    #         'high_price': 'max',
+    #         'low_price': 'min',
+    #         'close_price': 'last',
+    #         'volume': 'sum',
+    #         'points': 'first',
+    #     })
+    #
+    #     candlestick = go.Candlestick(
+    #         x=df.index,
+    #         open=df['open_price'],
+    #         high=df['high_price'],
+    #         low=df['low_price'],
+    #         close=df['close_price'],
+    #         name=symbol,
+    #     )
+    #
+    #     volume = go.Bar(
+    #         x=df.index,
+    #         y=df['volume'],
+    #         name='Volume',
+    #         # marker={
+    #         #     "color": "rgba(128,128,128,0.5)",
+    #         # },
+    #         opacity=0.2,
+    #     )
+    #
+    #     points = go.Scatter(
+    #         x=df.index,
+    #         y=df['points'],
+    #         mode='markers',
+    #         name='Points',
+    #         marker={
+    #             "color": "blue",
+    #         },
+    #     )
+    #
+    #     # fig = make_subplots(specs=[[{"secondary_y": True}]])
+    #     # fig.add_trace(, secondary_y=True)
+    #     # fig.add_trace(volume, secondary_y=False)
+    #     # fig.add_trace(points, secondary_y=True)
+    #     # fig.layout.yaxis.showgrid = False
+    #     # # fig.layout.yaxis2.showgrid = False
+    #     # # fig.layout.yaxis1.autoshift = True
+    #     # # fig.update_yaxes(autoshift=True)
+    #
+    #     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
+    #     fig.add_trace(candlestick, row=2, col=1)
+    #     # fig.add_trace(points, row=2, col=1)
+    #     fig.add_trace(volume, row=1, col=1)
+    #
+    #     title = '{interval} ::: {start_time} ... {end_time}'.format(
+    #         interval=interval.codename,
+    #         start_time=start_time.strftime("%d %b %Y %H:%M") if start_time else None,
+    #         end_time=end_time.strftime("%d %b %Y %H:%M") if end_time else None,
+    #     )
+    #
+    #     fig.update_layout(
+    #         height=800,
+    #         title=title,
+    #         yaxis_title='Volume',
+    #         xaxis1_rangeslider_visible=False,
+    #         xaxis2_rangeslider_visible=True,
+    #         # legend={'bgcolor': 'red'},
+    #     )
+    #
+    #     return pio.to_html(fig, include_plotlyjs=False, full_html=False)
 
     # def get(self, request, *args, **kwargs):
     #     """Plotly without volume"""

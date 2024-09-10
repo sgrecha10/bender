@@ -1,8 +1,10 @@
 import pandas as pd
 from django.db import models, connections
+from django.db.models import F, Max, Window
 from django.db.models.constants import OnConflict
-import market_data.constants as const
-from django.db.models.functions import Trunc
+from django.db.models.functions import Trunc, FirstValue
+
+from .constants import Interval
 
 
 class KlineManager(models.Manager):
@@ -10,38 +12,68 @@ class KlineManager(models.Manager):
 
 
 class KlineQuerySet(models.QuerySet):
-    def add_interval_column(self, interval: str = const.MINUTE_1) -> models.QuerySet:
-        """Добавляет колонку для группировки """
-        if interval == const.HOUR_1:
-            return self.annotate(
-                open_time_hour=Trunc('open_time', 'hour', output_field=models.DateTimeField()),
-            )
-        elif interval == const.DAY_1:
-            return self.annotate(
-                open_time_day=Trunc('open_time', 'day', output_field=models.DateTimeField()),
-            )
-        elif interval == const.WEEK_1:
-            return self.annotate(
-                open_time_week=Trunc('open_time', 'week', output_field=models.DateTimeField()),
-            )
-        elif interval == const.MONTH_1:
-            return self.annotate(
-                open_time_month=Trunc('open_time', 'month', output_field=models.DateTimeField()),
-            )
-        elif interval == const.YEAR_1:
-            return self.annotate(
-                open_time_year=Trunc('open_time', 'year', output_field=models.DateTimeField()),
-            )
+    def group_by_interval(self, interval: str = Interval.MINUTE_1.value) -> models.QuerySet:
+        """Группирует минутные свечи в нужный interval"""
+        interval = str(interval)
+        if interval == Interval.HOUR_1.value:
+            kind = 'hour'
+        elif interval == Interval.DAY_1.value:
+            kind = 'day'
+        elif interval == Interval.WEEK_1.value:
+            kind = 'week'
+        elif interval == Interval.MONTH_1.value:
+            kind = 'month'
+        elif interval == Interval.YEAR_1.value:
+            kind = 'year'
         else:
-            return self
+            kind = 'minute'
 
-    def to_dataframe(self, *args) -> pd.DataFrame:
+        return self.annotate(
+            open_time_group=Trunc(
+                expression='open_time',
+                kind=kind,
+                output_field=models.DateTimeField(),
+            ),
+            open_price_tmp=models.Window(
+                expression=FirstValue('open_price'),
+                partition_by='open_time_group',
+                order_by='open_time',
+            ),
+            high_price_tmp=Window(
+                expression=Max('high_price'),
+                partition_by='open_time_group',
+            ),
+            low_price_tmp=models.Window(
+                expression=models.Min('low_price'),
+                partition_by='open_time_group',
+            ),
+            close_price_tmp=models.Window(
+                expression=FirstValue('close_price'),
+                partition_by='open_time_group',
+                order_by='-open_time',
+            ),
+            volume_tmp=models.Window(
+                expression=models.Sum('volume'),
+                partition_by='open_time_group',
+            ),
+        ).values('open_time_group').annotate(
+            open_price=models.F('open_price_tmp'),
+            high_price=F('high_price_tmp'),
+            low_price=F('low_price_tmp'),
+            close_price=F('close_price_tmp'),
+            volume=models.F('volume_tmp'),
+        ).distinct('open_time_group')
+
+    def to_dataframe(self, index: str = None) -> pd.DataFrame:
         """Возвращает DataFrame"""
-        queryset = self.values_list(*args)
+        annotation_fields = self.query.annotation_select.keys()
+        queryset = self.values_list(*annotation_fields)
         df = pd.DataFrame(
             data=queryset,
-            columns=[*args],
+            columns=[*annotation_fields],
         )
+        if index:
+            df.set_index(index, inplace=True, drop=True)
         return df
 
     def _batched_insert(

@@ -4,7 +4,7 @@ from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
 from market_data.datetime_utils import datetime_to_timestamp
-from market_data.models import ExchangeInfo, Kline, Interval
+from market_data.models import ExchangeInfo, Kline
 from .tasks import task_get_kline
 
 
@@ -96,7 +96,7 @@ class KlineAdmin(admin.ModelAdmin):
 
                 task_get_kline.delay(
                     symbol=cleaned_data['symbol'].symbol,
-                    interval=cleaned_data['interval'].value,
+                    interval=cleaned_data['interval'],
                     start_time=cleaned_data.get('start_time'),
                     end_time=cleaned_data.get('end_time'),
                     limit=cleaned_data.get('limit'),
@@ -120,12 +120,3 @@ class KlineAdmin(admin.ModelAdmin):
     @admin.display(description='close_time_timestamp', ordering='close_time')
     def display_close_time_timestamp(self, obj):
         return datetime_to_timestamp(obj.close_time)
-
-
-@admin.register(Interval)
-class IntervalAdmin(admin.ModelAdmin):
-    list_display = (
-        'codename',
-        'value',
-        'minutes_count',
-    )

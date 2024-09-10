@@ -1,6 +1,6 @@
 from django.db import models
 from core.utils.db_utils import BaseModel
-from market_data.models import ExchangeInfo, Kline, Interval
+from market_data.models import ExchangeInfo, Kline
 # from market_data.choices import IntervalCodename
 
 #

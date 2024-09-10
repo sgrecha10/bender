@@ -4,7 +4,8 @@ from typing import Optional
 from django.db import models
 
 from core.utils.db_utils import BaseModel
-from market_data.models import ExchangeInfo, Interval, Kline
+from market_data.models import ExchangeInfo, Kline
+from market_data.constants import Interval
 
 
 class MovingAverage(BaseModel):
@@ -46,10 +47,9 @@ class MovingAverage(BaseModel):
         on_delete=models.CASCADE,
         verbose_name='Symbol',
     )
-    interval = models.ForeignKey(
-        Interval,
-        on_delete=models.CASCADE,
+    interval = models.CharField(
         verbose_name='Interval',
+        choices=Interval.choices,
     )
 
     class Meta:

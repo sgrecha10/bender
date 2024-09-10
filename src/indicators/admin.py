@@ -14,7 +14,7 @@ class IndicatorBaseAdmin(admin.ModelAdmin):
     )
     raw_id_fields = (
         'symbol',
-        'interval',
+        # 'interval',
     )
     readonly_fields = (
         'updated',

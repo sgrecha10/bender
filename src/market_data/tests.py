@@ -1,7 +1,7 @@
 from django.test import TestCase
 from base.test_helper import TestHelperMixin
-from .models import Kline, Interval
-import market_data.constants as const
+from .models import Kline
+from .constants import Interval
 
 
 class TestManagerKline(TestCase, TestHelperMixin):
@@ -12,10 +12,18 @@ class TestManagerKline(TestCase, TestHelperMixin):
             count=500,
         )
 
-    def test_add_interval_column(self):
+    def test_group_by_interval(self):
+        kline = Kline.objects.order_by('open_time').all()[0]
+        kline.open_price = 18
+        kline.save(update_fields=['open_price'])
+
+        kline = Kline.objects.order_by('open_time').all()[1]
+        kline.high_price = 135
+        kline.save(update_fields=['high_price'])
+
         klines_qs = Kline.objects.filter(
             symbol=self.symbol,
-        ).add_interval_column(
-            interval=const.HOUR_1,
+        ).group_by_interval(
+            interval=Interval.HOUR_1,
         )
         print(klines_qs)
