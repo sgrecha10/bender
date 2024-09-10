@@ -4,8 +4,8 @@ import pytz
 from django import forms
 from django.contrib.admin.widgets import AdminSplitDateTime
 
-from .models import ExchangeInfo, Kline
 from .constants import Interval, AllowedInterval
+from .models import ExchangeInfo, Kline
 
 
 class DateTimeField(forms.DateTimeField):
