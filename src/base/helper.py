@@ -1,9 +1,8 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
 
-import pytz
+from django.utils import timezone
 
-import market_data.constants as const
 from market_data.models import ExchangeInfo, Kline
 
 
@@ -19,32 +18,19 @@ class TestHelperMixin:
             **kwargs
         )
 
-    # def create_interval(self, codename: str = const.MINUTE_1, **kwargs) -> Interval:
-    #     result, _ = Interval.objects.get_or_create(
-    #         codename=codename,
-    #         defaults={**kwargs},
-    #     )
-    #     return result
-
     def create_klines(self,
-                     symbol: ExchangeInfo,
+                     symbol: ExchangeInfo | str,
                      count: int = 1,
-                     open_time: datetime = None,
                      **kwargs) -> list[Kline]:
 
-        # now = datetime.now().replace(second=0, microsecond=0, tzinfo=pytz.UTC)
-        # open_time = open_time if open_time else now
-
-        open_time = (datetime.now() - timedelta(days=100)).replace(
-            hour=0, minute=0, second=0, microsecond=0, tzinfo=pytz.UTC,
-        )
+        open_time = timezone.now().replace(second=0, microsecond=0)  # now
 
         bulk_data = []
         for i in range(count):
-            close_time = open_time + timedelta(minutes=1) - timedelta(seconds=1)
+            close_time = open_time + timedelta(seconds=59)
             bulk_data.append(
                 Kline(
-                    symbol=symbol,
+                    symbol_id=str(symbol),
                     open_time=open_time,
                     open_price=20.0,
                     high_price=40.0,
@@ -55,6 +41,6 @@ class TestHelperMixin:
                     **kwargs
                 )
             )
-            open_time += timedelta(minutes=1)
+            open_time -= timedelta(minutes=1)
 
         return Kline.objects.bulk_create(bulk_data)
