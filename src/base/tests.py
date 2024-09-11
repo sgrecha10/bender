@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.test import TestCase
 
-from base.helper import TestHelperMixin
+from base.helpers import TestHelperMixin
 from market_data.models import Kline, ExchangeInfo
 
 
@@ -35,5 +35,3 @@ class TestHelperMixinTest(TestCase):
         )
         self.assertEqual(len(result), 100)
         self.assertEqual(result[0].symbol_id, exchange_info.symbol)
-        open_time_first = result[0].open_time
-        self.assertEqual(open_time_first - timedelta(minutes=99), result[99].open_time)

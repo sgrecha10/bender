@@ -12,8 +12,11 @@ class KlineManager(models.Manager):
 
 
 class KlineQuerySet(models.QuerySet):
-    def group_by_interval(self, interval: str = Interval.MINUTE_1.value) -> models.QuerySet:
-        """Группирует минутные свечи в нужный interval"""
+    def group_by_interval(self, interval: str = Interval.MINUTE_1) -> models.QuerySet:
+        """Группирует минутные свечи в нужный interval
+
+        В QuerySet нельзя использовать order_by
+        """
         interval = str(interval)
         if interval == Interval.HOUR_1.value:
             kind = 'hour'

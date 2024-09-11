@@ -22,8 +22,21 @@ class TestHelperMixin:
                      symbol: ExchangeInfo | str,
                      count: int = 1,
                      **kwargs) -> list[Kline]:
+        """Заполняет Kline тестовыми свечами.
 
-        open_time = timezone.now().replace(second=0, microsecond=0)  # now
+        Первая свеча имеет open_time - 00:00:00 год назад от текущей даты.
+        open_price = 20.0
+        high_price = 40.0
+        low_price = 10.0
+        close_price = 30.0
+        volume = 1000.0
+        """
+        open_time = timezone.now().replace(
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0
+        ) - timedelta(days=365)
 
         bulk_data = []
         for i in range(count):
@@ -41,6 +54,6 @@ class TestHelperMixin:
                     **kwargs
                 )
             )
-            open_time -= timedelta(minutes=1)
+            open_time += timedelta(minutes=1)
 
         return Kline.objects.bulk_create(bulk_data)

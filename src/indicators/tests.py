@@ -1,8 +1,8 @@
 from django.test import TestCase, SimpleTestCase
 
 from market_data.models import ExchangeInfo, Kline
-from base.helper import TestHelperMixin
-from indicators.models import MovingAverage
+from base.helpers import TestHelperMixin
+# from indicators.models import MovingAverage
 from datetime import datetime, timedelta
 import market_data.constants as const
 

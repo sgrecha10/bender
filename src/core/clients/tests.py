@@ -12,9 +12,9 @@ class RedisClientTest(SimpleTestCase):
         self.group_name = 'bid'
         self.data = [
             [
-			    "25806.89000000",
-			    "8.40658000",
-		    ],
+                "25806.89000000",
+                "8.40658000",
+            ],
             [
                 "23226.00000000",
                 "0.16350000",
@@ -39,7 +39,7 @@ class RedisClientTest(SimpleTestCase):
                 "25756.98000000",
                 "0.04857000",
             ],
-	    ]
+        ]
 
     def _to_float(self, data: list):
         return list(map(lambda x: (float(x[0]), float(x[1])), data))
@@ -62,8 +62,8 @@ class RedisClientTest(SimpleTestCase):
         )
         price_exists_item = [
             '25806.89000000',
-			'5.40658000',
-		]
+            '5.40658000',
+        ]
         self.conn.set_dom(
             group_name=self.group_name,
             data=price_exists_item,
