@@ -1,31 +1,59 @@
-from django.test import TestCase, SimpleTestCase
+from decimal import Decimal
 
-from market_data.models import ExchangeInfo, Kline
+from django.test import TestCase
+from django.utils import timezone
+
 from base.helpers import TestHelperMixin
-# from indicators.models import MovingAverage
-from datetime import datetime, timedelta
-import market_data.constants as const
+from indicators.models import MovingAverage
+from market_data.constants import AllowedInterval
+from market_data.models import Kline
 
 
-# class IndicatorsTestCase(TestCase, TestHelperMixin):
-#     def setUp(self):
-#         self.exchange_info = self.create_exchange_info()
-#         # self.interval_1m = self.create_interval()
-#         # self.interval_1h = self.create_interval(const.HOUR_1)
-#
-#     def test_moving_average_sma(self):
-#         klines_list = self.create_klines(
-#             symbol=self.exchange_info,
-#             count=10,
-#         )
-#
-#         # moving_average = MovingAverage.objects.create(
-#         #     name='some_name',
-#         #     type=MovingAverage.Type.SMA,
-#         #     kline_count=3,
-#         #     symbol=self.exchange_info,
-#         #     interval=self.interval_1m,
-#         # )
-#     #
-#     #     result = moving_average.get_value(kline=kline_older)
-#     #     self.assertEqual(result, 25)
+class MovingAverageTest(TestCase, TestHelperMixin):
+    def setUp(self):
+        self.exchange_info = self.create_exchange_info()
+        self.klines_list = self.create_klines(
+            symbol=self.exchange_info,
+            count=10,
+        )
+        self.moving_average = MovingAverage.objects.create(
+            name='some_name',
+            type=MovingAverage.Type.SMA,
+            kline_count=3,
+            symbol=self.exchange_info,
+            interval=AllowedInterval.MINUTE_1,
+        )
+        qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
+        self.df = qs.to_dataframe(index='open_time_group')
+
+    def test_open_time_wrong(self):
+        open_time = timezone.now()
+        value = self.moving_average.get_value_by_index(
+            df=self.df,
+            open_time=open_time,
+        )
+        self.assertEqual(value, None)
+
+    def test_sma(self):
+        open_time = self.klines_list[-5].open_time
+        value = self.moving_average.get_value_by_index(
+            df=self.df,
+            open_time=open_time,
+        )
+        self.assertEqual(value, 25)
+
+    def test_sma_1(self):
+        self.klines_list[4].high_price = 70.0
+        self.klines_list[4].save(update_fields=['high_price'])
+        self.klines_list[3].low_price = 5.0
+        self.klines_list[3].save(update_fields=['low_price'])
+
+        qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
+        df = qs.to_dataframe(index='open_time_group')
+
+        open_time = self.klines_list[-5].open_time
+        value = self.moving_average.get_value_by_index(
+            df=df,
+            open_time=open_time,
+        )
+        self.assertEqual(value, Decimal('29.16666666666666666666666667'))

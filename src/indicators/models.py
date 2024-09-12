@@ -6,6 +6,8 @@ from django.db import models
 from core.utils.db_utils import BaseModel
 from market_data.constants import AllowedInterval
 from market_data.models import ExchangeInfo, Kline
+from pandas import DataFrame
+from datetime import datetime
 
 
 class MovingAverage(BaseModel):
@@ -59,16 +61,30 @@ class MovingAverage(BaseModel):
     def __str__(self):
         return f'{self.id} - {self.type} - {self.name}'
 
-    def get_value(self, kline: Kline) -> Optional[Decimal]:
-        """Возвращает значение MA рассчитанное на переданную свечу
-        (возможно, будет удобнее передавать open_time - подумать)
+    def get_value_by_index(self,
+                           df: DataFrame,
+                           open_time: datetime) -> Optional[Decimal]:
+        """Возвращает значение MA рассчитанное на переданный open_time включительно
 
-        1. Проверить, что размер свечи kline (close_time - open_time) не больше, чем self.interval
-        3. Преобразовать kline в свечу interval размера
-        4. Получаем данные из postgres от kline.open_time свечи длиной kline_count * interval.minutes_count
-        5. Преобразовываем в DataFrame и считаем MA:
-        5.1. SMA.
+        symbol, interval - не используются
+
+        1. Если open_time не найден в df - return None
+        2. Считаем МА:
+        2.1. SMA.
             Сумма средних значений (high_price + low_price) / 2  деленное на количество kline_count
-        5.2. EMA.
+        2.2. EMA.
         """
-        return Decimal(25.0)
+
+        try:
+            _ = df.loc[open_time]
+        except KeyError:
+            return
+
+        df_prepared = df.loc[:open_time].tail(self.kline_count)
+        average_price_sum = Decimal(0)
+        for idx, row in df_prepared.iterrows():
+            high_price = row['high_price']
+            low_price = row['low_price']
+            average_price_sum += (high_price + low_price) / 2
+
+        return average_price_sum / self.kline_count
