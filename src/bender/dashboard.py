@@ -61,7 +61,7 @@ class CustomIndexDashboard(Dashboard):
         self.children.append(
             modules.AppList(
                 'WEBSOCKET',
-                column=1,
+                column=2,
                 collapsible=True,
                 models=(
                     'streams.models.TaskManagement',
@@ -72,7 +72,7 @@ class CustomIndexDashboard(Dashboard):
         self.children.append(
             modules.LinkList(
                 'HANDLERS',
-                column=1,
+                column=2,
                 children=[
                     {
                         'title': 'Запустить поток',
@@ -96,7 +96,7 @@ class CustomIndexDashboard(Dashboard):
         self.children.append(
             modules.AppList(
                 'Администрирование',
-                column=2,
+                column=3,
                 collapsible=True,
                 models=('django.contrib.*',),
             )
@@ -105,7 +105,7 @@ class CustomIndexDashboard(Dashboard):
         self.children.append(
             modules.LinkList(
                 'Media Management',
-                column=2,
+                column=3,
                 children=[
                     {
                         'title': 'FileBrowser',
