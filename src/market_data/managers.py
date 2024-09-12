@@ -15,7 +15,7 @@ class KlineQuerySet(models.QuerySet):
     def group_by_interval(self, interval: str = Interval.MINUTE_1) -> models.QuerySet:
         """Группирует минутные свечи в нужный interval
 
-        В QuerySet нельзя использовать order_by
+        В QuerySet нельзя использовать order_by (или можно?)
         """
         interval = str(interval)
         if interval == Interval.HOUR_1.value:

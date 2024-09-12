@@ -87,7 +87,7 @@ class ChartView(View):
         fig.add_trace(volume, row=1, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
-            interval=Interval(interval).name,
+            interval=Interval(interval).label,
             start_time=start_time.strftime("%d %b %Y %H:%M") if start_time else None,
             end_time=end_time.strftime("%d %b %Y %H:%M") if end_time else None,
         )
