@@ -69,6 +69,7 @@ class MovingAverage(BaseModel):
         symbol, interval - не используются
 
         1. Если open_time не найден в df - return None
+        2. Если количество свечей для расчета в df меньше self.kline_count - return None
         2. Считаем МА:
         2.1. SMA.
             Сумма средних значений (high_price + low_price) / 2  деленное на количество kline_count
@@ -81,6 +82,10 @@ class MovingAverage(BaseModel):
             return
 
         df_prepared = df.loc[:open_time].tail(self.kline_count)
+
+        if len(df_prepared) < self.kline_count:
+            return
+
         average_price_sum = Decimal(0)
         for idx, row in df_prepared.iterrows():
             high_price = row['high_price']

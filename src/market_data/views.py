@@ -19,6 +19,7 @@ from django.utils.safestring import mark_safe
 from datetime import datetime, timedelta
 import urllib.parse
 from .constants import Interval
+from indicators.models import MovingAverage
 
 
 class ChartView(View):
@@ -82,9 +83,30 @@ class ChartView(View):
             opacity=0.2,
         )
 
+        # DataFrame for SMA
+        sma_df = pd.DataFrame(
+            columns=['sma']
+        )
+        moving_average = MovingAverage.objects.get(id=1)
+        for index, row in df.iterrows():
+            sma_df.loc[index, 'sma'] = moving_average.get_value_by_index(
+                df=df,
+                open_time=index,
+            )
+        sma = go.Scatter(
+            x=sma_df.index,
+            y=sma_df['sma'],
+            # mode='markers',
+            name='SMA',
+            marker={
+                "color": "blue",
+            },
+        )
+
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
         fig.add_trace(candlestick, row=2, col=1)
         fig.add_trace(volume, row=1, col=1)
+        fig.add_trace(sma, row=2, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
@@ -101,6 +123,24 @@ class ChartView(View):
         )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     # def _get_chart(self, cleaned_data):
