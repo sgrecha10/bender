@@ -50,6 +50,7 @@ class MovingAverageAdmin(IndicatorBaseAdmin):
         'id',
         'name',
         'description',
+        'data_source',
         'type',
         'kline_count',
         'factor_alfa',
