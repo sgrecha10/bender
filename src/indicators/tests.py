@@ -30,16 +30,16 @@ class MovingAverageTest(TestCase, TestHelperMixin):
     def test_open_time_wrong(self):
         open_time = timezone.now()
         value = self.moving_average.get_value_by_index(
-            df=self.df,
             index=open_time,
+            df=self.df,
         )
         self.assertEqual(value, None)
 
     def test_sma(self):
         open_time = self.klines_list[-5].open_time
         value = self.moving_average.get_value_by_index(
-            df=self.df,
             index=open_time,
+            df=self.df,
         )
         self.assertEqual(value, 25)
 
@@ -54,8 +54,8 @@ class MovingAverageTest(TestCase, TestHelperMixin):
 
         open_time = self.klines_list[-5].open_time
         value = self.moving_average.get_value_by_index(
-            df=df,
             index=open_time,
+            df=df,
         )
         self.assertEqual(value, Decimal('29.16666666666666666666666667'))
 
@@ -64,7 +64,7 @@ class MovingAverageTest(TestCase, TestHelperMixin):
         self.moving_average.kline_count = 100
         self.moving_average.save(update_fields=['kline_count'])
         value = self.moving_average.get_value_by_index(
-            df=self.df,
             index=open_time,
+            df=self.df,
         )
         self.assertEqual(value, None)

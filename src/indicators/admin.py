@@ -8,13 +8,6 @@ from django.forms.models import model_to_dict
 
 
 class IndicatorBaseAdmin(admin.ModelAdmin):
-    list_filter = (
-        'symbol',
-        'interval',
-    )
-    raw_id_fields = (
-        'symbol',
-    )
     readonly_fields = (
         'updated',
         'created',
@@ -55,8 +48,6 @@ class MovingAverageAdmin(IndicatorBaseAdmin):
         'kline_count',
         'factor_alfa',
         'factor_alfa_auto',
-        'symbol',
-        'interval',
         'updated',
         'created',
     )

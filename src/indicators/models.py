@@ -57,35 +57,21 @@ class MovingAverage(BaseModel):
         help_text='Используется для расчета EMA',
         default=False,
     )
-    symbol = models.ForeignKey(
-        ExchangeInfo,
-        on_delete=models.CASCADE,
-        verbose_name='Symbol',
-        null=True,
-        blank=True,
-    )
-    interval = models.CharField(
-        verbose_name='Interval',
-        choices=AllowedInterval.choices,
-        null=True,
-        blank=True,
-    )
 
     class Meta:
         verbose_name = 'MovingAverage'
         verbose_name_plural = 'MovingAverage'
 
     def __str__(self):
-        return f'{self.id} - {self.type} - {self.name}'
+        return f'{self.id} - {self.get_type_display()} - {self.name}'
 
     def get_value_by_index(self,
-                           df: DataFrame,
-                           index: datetime) -> Optional[Decimal]:
+                           index: datetime,
+                           df: DataFrame = None) -> Optional[Decimal]:
         """Возвращает значение MA рассчитанное на переданный open_time включительно
 
         symbol, interval - не используются
 
-        1. Если в настройках указаны symbol и interval - создавать df основанный на них, если нет то переданный
         1. Если index не найден в df - return None
         2. Если количество свечей для расчета в df меньше self.kline_count - return None
         2. Считаем МА:
@@ -93,11 +79,6 @@ class MovingAverage(BaseModel):
             Сумма средних значений (high_price + low_price) / 2  деленное на количество kline_count
         2.2. EMA.
         """
-
-        if self.symbol and self.interval:
-            # создать df из бд
-            # df = ...
-            pass
 
         try:
             _ = df.loc[index]

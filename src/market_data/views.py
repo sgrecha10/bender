@@ -90,8 +90,8 @@ class ChartView(View):
         moving_average = MovingAverage.objects.get(id=1)
         for index, row in df.iterrows():
             sma_df.loc[index, 'sma'] = moving_average.get_value_by_index(
-                df=df,
                 index=index,
+                df=df,
             )
         sma = go.Scatter(
             x=sma_df.index,
