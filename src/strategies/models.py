@@ -1,59 +1,51 @@
 from django.db import models
 from core.utils.db_utils import BaseModel
 from market_data.models import ExchangeInfo, Kline
-# from market_data.choices import IntervalCodename
+from market_data.constants import Interval, AllowedInterval
 
-#
-# class Strategy(BaseModel):
-#     class Status(models.IntegerChoices):
-#         STOPPED = 0, 'Stopped'
-#         ACTIVE = 1, 'Active'
-#         TESTING = 2, 'Testing'
-#
-#     codename = models.CharField(
-#         verbose_name='Codename',
-#         max_length=100,
-#         unique=True,
-#     )
-#     name = models.CharField(
-#         verbose_name='Name',
-#         max_length=255,
-#     )
-#     symbol = models.ForeignKey(
-#         ExchangeInfo,
-#         on_delete=models.CASCADE,
-#         verbose_name='Symbol',
-#         null=True,
-#         blank=True,
-#     )
-#     interval = models.CharField(
-#         verbose_name='Interval',
-#         choices=IntervalCodename.choices,
-#         max_length=5,
-#         blank=True,
-#     )
-#     status = models.PositiveSmallIntegerField(
-#         verbose_name='Status',
-#         choices=Status.choices,
-#         default=Status.STOPPED,
-#     )
-#     is_active = models.BooleanField(
-#         verbose_name='Active',
-#         default=False,
-#     )
-#
-#     class Meta:
-#         verbose_name = 'Strategy'
-#         verbose_name_plural = 'Strategies'
-#
-#     def __str__(self):
-#         return self.name
-#
-#     def save(self, *args, **kwargs):
-#         self.is_active = False if self.status == Strategy.Status.STOPPED else True
-#         super().save(*args, **kwargs)
-#
-#
+
+class Strategy(BaseModel):
+    name = models.CharField(
+        verbose_name='Name',
+        max_length=255,
+    )
+    description = models.TextField(
+        verbose_name='Description',
+        blank=True, default='',
+    )
+
+    base_symbol = models.ForeignKey(
+        ExchangeInfo,
+        on_delete=models.CASCADE,
+        related_name='strategies_base_symbol',
+        verbose_name='Base symbol',
+        null=True, blank=True,
+    )
+    base_interval = models.CharField(
+        verbose_name='Base interval',
+        choices=AllowedInterval.choices,
+        default=AllowedInterval.MINUTE_1,
+        max_length=10,
+    )
+
+    start_time = models.DateTimeField(
+        verbose_name='Start time',
+        null=True, blank=True,
+    )
+    end_time = models.DateTimeField(
+        verbose_name='End time',
+        null=True, blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Strategy'
+        verbose_name_plural = 'Strategies'
+
+    def __str__(self):
+        return self.name
+
+
+
 # class StrategyResult(BaseModel):
 #     strategy = models.ForeignKey(
 #         Strategy, on_delete=models.CASCADE,

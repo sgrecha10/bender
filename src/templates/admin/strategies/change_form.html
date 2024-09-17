@@ -1,0 +1,10 @@
+{% extends 'admin/change_form.html' %}
+{% load admin_urls %}
+
+{% block after_related_objects %}
+    {{ block.super }}
+    <div class="submit-row">
+            <input type="submit" value="Run ⏩" name="_run-strategy">
+            <a href="{% url 'admin:show_strategy_result' original.pk %}" target="_blank" class="grp-button">Show result 📈</a>
+    </div>
+{% endblock %}

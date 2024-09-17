@@ -1,13 +1,14 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
 from django.db import models
+from pandas import DataFrame
 
 from core.utils.db_utils import BaseModel
 from market_data.constants import AllowedInterval
-from market_data.models import ExchangeInfo, Kline
-from pandas import DataFrame
-from datetime import datetime
+from market_data.models import ExchangeInfo
+from strategies.models import Strategy
 
 
 class MovingAverage(BaseModel):
@@ -57,6 +58,24 @@ class MovingAverage(BaseModel):
         help_text='Используется для расчета EMA',
         default=False,
     )
+    strategy = models.ForeignKey(
+        Strategy,
+        on_delete=models.SET_NULL,
+        verbose_name='Strategy',
+        null=True, blank=True,
+    )
+    symbol = models.ForeignKey(
+        ExchangeInfo,
+        on_delete=models.CASCADE,
+        verbose_name='Symbol',
+        null=True, blank=True,
+    )
+    interval = models.CharField(
+        verbose_name='Interval',
+        choices=AllowedInterval.choices,
+        max_length=10,
+        null=True, blank=True,
+    )
 
     class Meta:
         verbose_name = 'MovingAverage'
@@ -70,7 +89,7 @@ class MovingAverage(BaseModel):
                            df: DataFrame = None) -> Optional[Decimal]:
         """Возвращает значение MA рассчитанное на переданный open_time включительно
 
-        symbol, interval - не используются
+        symbol, interval - если есть, не использовать переданный df
 
         1. Если index не найден в df - return None
         2. Если количество свечей для расчета в df меньше self.kline_count - return None
@@ -79,6 +98,10 @@ class MovingAverage(BaseModel):
             Сумма средних значений (high_price + low_price) / 2  деленное на количество kline_count
         2.2. EMA.
         """
+
+        if self.symbol and self.interval:
+            pass
+            # df = ...
 
         try:
             _ = df.loc[index]

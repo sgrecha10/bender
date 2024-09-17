@@ -48,6 +48,9 @@ class MovingAverageAdmin(IndicatorBaseAdmin):
         'kline_count',
         'factor_alfa',
         'factor_alfa_auto',
+        'strategy',
+        'symbol',
+        'interval',
         'updated',
         'created',
     )
