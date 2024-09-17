@@ -13,14 +13,16 @@ class IndicatorInlineBaseAdmin(admin.TabularInline):
     fields = (
         'id',
         'name',
-        'description',
+        # 'description',
+        'symbol',
+        'interval',
+        'is_use_own_df',
         'data_source',
         'type',
         'kline_count',
         'factor_alfa',
         'factor_alfa_auto',
-        'symbol',
-        'interval',
+
     )
     raw_id_fields = ('symbol',)
 

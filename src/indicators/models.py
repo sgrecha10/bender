@@ -76,6 +76,10 @@ class MovingAverage(BaseModel):
         max_length=10,
         null=True, blank=True,
     )
+    is_use_own_df = models.BooleanField(
+        verbose_name='Use own DF',
+        default=False,
+    )
 
     class Meta:
         verbose_name = 'MovingAverage'
@@ -99,9 +103,12 @@ class MovingAverage(BaseModel):
         2.2. EMA.
         """
 
-        if self.symbol and self.interval:
+        if self.is_use_own_df:
             pass
-            # df = ...
+
+        # if self.symbol and self.interval:
+        #     pass
+        #     df = ...
 
         try:
             _ = df.loc[index]
