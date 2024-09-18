@@ -5,7 +5,7 @@ from django.urls import path
 from indicators.models import MovingAverage
 from .models import Strategy
 from core.utils.admin_utils import redirect_to_change_form
-from django.shortcuts import HttpResponse
+from django.shortcuts import HttpResponse, render
 
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
@@ -34,6 +34,7 @@ class MovingAverageInlineAdmin(IndicatorInlineBaseAdmin):
 @admin.register(Strategy)
 class StrategyAdmin(admin.ModelAdmin):
     change_form_template = 'admin/strategies/change_form.html'
+    chart_template = 'admin/strategies/strategy_chart.html'
     list_display = (
         'id',
         'name',
@@ -74,8 +75,16 @@ class StrategyAdmin(admin.ModelAdmin):
         ]
         return added_urls + urls
 
-    def show_strategy_result(self, *args, **kwargs):
-        return HttpResponse('anna')
+    def show_strategy_result(self, request, *args, **kwargs):
+        from market_data.forms import ChartForm
+        form = ChartForm()
+
+        context = {
+            'opts': self.model._meta,
+            'form': form,
+        }
+        return render(request, self.chart_template, context=context)
+
 
 # @admin.register(StrategyResult)
 # class StrategyResultAdmin(admin.ModelAdmin):

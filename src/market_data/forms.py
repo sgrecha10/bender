@@ -6,6 +6,9 @@ from django.contrib.admin.widgets import AdminSplitDateTime
 
 from .constants import Interval, AllowedInterval
 from .models import ExchangeInfo, Kline
+from django.contrib.admin import widgets
+from indicators.models import MovingAverage
+from django.contrib import admin
 
 
 class DateTimeField(forms.DateTimeField):
@@ -48,10 +51,21 @@ class GetKlineForm(forms.Form):
     )
 
 
+# class Rel:
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.model = ExchangeInfo
+#         self.limit_choices_to = 10
+#
+#     def get_related_field(self):
+#         return ExchangeInfo._meta.get_field('symbol')
+
+
 class ChartForm(forms.Form):
     symbol = forms.ModelChoiceField(
         queryset=ExchangeInfo.objects.all(),
         label='Symbol',
+        # widget=widgets.ForeignKeyRawIdWidget(Rel(), admin.site),
     )
     interval = forms.ChoiceField(
         choices=AllowedInterval.choices,
@@ -65,6 +79,11 @@ class ChartForm(forms.Form):
     end_time = DateTimeField(
         label='End Time',
         widget=AdminSplitDateTime(),
+        required=False,
+    )
+    moving_average = forms.ModelChoiceField(
+        queryset=MovingAverage.objects.all(),
+        label='Moving Average',
         required=False,
     )
 
