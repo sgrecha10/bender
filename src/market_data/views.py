@@ -123,7 +123,7 @@ class ChartView(View):
         )
 
         fig.update_layout(
-            height=800,
+            height=1000,
             title=title,
             yaxis_title='Volume',
             xaxis1_rangeslider_visible=False,

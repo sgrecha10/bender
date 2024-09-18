@@ -10,8 +10,9 @@ from django.shortcuts import HttpResponse, render
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
     extra = 0
+    readonly_fields = ('pk',)
     fields = (
-        'id',
+        'pk',
         'name',
         # 'description',
         'symbol',
@@ -25,6 +26,7 @@ class IndicatorInlineBaseAdmin(admin.TabularInline):
 
     )
     raw_id_fields = ('symbol',)
+    # show_change_link = True
 
 
 class MovingAverageInlineAdmin(IndicatorInlineBaseAdmin):

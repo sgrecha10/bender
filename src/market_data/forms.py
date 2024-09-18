@@ -83,7 +83,7 @@ class ChartForm(forms.Form):
     )
     moving_averages = forms.ModelMultipleChoiceField(
         queryset=MovingAverage.objects.all(),
-        # widget=forms.CheckboxSelectMultiple,
+        widget=forms.CheckboxSelectMultiple,
         label='Moving Averages',
         required=False,
     )
