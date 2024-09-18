@@ -61,7 +61,7 @@ class ChartView(View):
         interval = cleaned_data['interval']
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
-        moving_average = cleaned_data.get('moving_average')
+        moving_averages = cleaned_data.get('moving_averages')
 
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
@@ -89,26 +89,32 @@ class ChartView(View):
         fig.add_trace(candlestick, row=2, col=1)
         fig.add_trace(volume, row=1, col=1)
 
-        # DataFrame for SMA
-        if moving_average:
-            sma_df = pd.DataFrame(
-                columns=['sma']
+        # DataFrame for MA
+        if moving_averages:
+            moving_averages = MovingAverage.objects.filter(
+                pk__in=[item.pk for item in moving_averages]
             )
-            for index, row in df.iterrows():
-                sma_df.loc[index, 'sma'] = moving_average.get_value_by_index(
-                    index=index,
-                    df=df,
+
+            for moving_average in moving_averages:
+                column_name = f'ma_{moving_average.id}'
+                ma_df = pd.DataFrame(
+                    columns=[column_name]
                 )
-            sma = go.Scatter(
-                x=sma_df.index,
-                y=sma_df['sma'],
-                # mode='markers',
-                name='SMA',
-                marker={
-                    "color": "blue",
-                },
-            )
-            fig.add_trace(sma, row=2, col=1)
+                for index, row in df.iterrows():
+                    ma_df.loc[index, column_name] = moving_average.get_value_by_index(
+                        index=index,
+                        df=df,
+                    )
+                ma_df = go.Scatter(
+                    x=ma_df.index,
+                    y=ma_df[column_name],
+                    # mode='markers',
+                    name=moving_average.name,
+                    marker={
+                        "color": list(np.random.choice(range(256), size=3)),
+                    },
+                )
+                fig.add_trace(ma_df, row=2, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,

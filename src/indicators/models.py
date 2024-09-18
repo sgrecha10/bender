@@ -86,7 +86,14 @@ class MovingAverage(BaseModel):
         verbose_name_plural = 'MovingAverage'
 
     def __str__(self):
-        return f'{self.id} - {self.get_type_display()} - {self.name}'
+        return (
+            f'{self.id} '
+            f'- {self.name}'
+            f'- {self.get_type_display()} '
+            f'- {self.kline_count} '
+            f'- {self.get_data_source_display()} '
+            f'- {self.is_use_own_df} '
+        )
 
     def get_value_by_index(self,
                            index: datetime,
