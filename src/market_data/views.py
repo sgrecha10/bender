@@ -38,6 +38,7 @@ class ChartView(View):
             'title': None,
             'chart': None,
             'form': form,
+            'opts': Kline._meta,
         }
 
         if form.is_valid():
@@ -60,6 +61,7 @@ class ChartView(View):
         interval = cleaned_data['interval']
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
+        moving_average = cleaned_data.get('moving_average')
 
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
@@ -83,30 +85,30 @@ class ChartView(View):
             opacity=0.2,
         )
 
-        # DataFrame for SMA
-        sma_df = pd.DataFrame(
-            columns=['sma']
-        )
-        moving_average = MovingAverage.objects.get(id=1)
-        for index, row in df.iterrows():
-            sma_df.loc[index, 'sma'] = moving_average.get_value_by_index(
-                index=index,
-                df=df,
-            )
-        sma = go.Scatter(
-            x=sma_df.index,
-            y=sma_df['sma'],
-            # mode='markers',
-            name='SMA',
-            marker={
-                "color": "blue",
-            },
-        )
-
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
         fig.add_trace(candlestick, row=2, col=1)
         fig.add_trace(volume, row=1, col=1)
-        fig.add_trace(sma, row=2, col=1)
+
+        # DataFrame for SMA
+        if moving_average:
+            sma_df = pd.DataFrame(
+                columns=['sma']
+            )
+            for index, row in df.iterrows():
+                sma_df.loc[index, 'sma'] = moving_average.get_value_by_index(
+                    index=index,
+                    df=df,
+                )
+            sma = go.Scatter(
+                x=sma_df.index,
+                y=sma_df['sma'],
+                # mode='markers',
+                name='SMA',
+                marker={
+                    "color": "blue",
+                },
+            )
+            fig.add_trace(sma, row=2, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
