@@ -113,6 +113,7 @@ class MovingAverage(BaseModel):
         if self_creation_df:
             # Генерируем source_df если self_creation_df = True
             map_minute_count = {
+                Interval.MINUTE_1: 1,
                 Interval.HOUR_1: 60,
                 Interval.DAY_1: 60*24,
                 Interval.WEEK_1: 60*24*7,
