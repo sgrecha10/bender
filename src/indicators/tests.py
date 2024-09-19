@@ -14,32 +14,42 @@ class MovingAverageTest(TestCase, TestHelperMixin):
         self.exchange_info = self.create_exchange_info()
         self.klines_list = self.create_klines(
             symbol=self.exchange_info,
-            count=10,
+            count=100,
         )
         self.moving_average = MovingAverage.objects.create(
-            name='some_name',
+            codename='some_name',
             data_source=MovingAverage.DataSource.HIGH_LOW,
             type=MovingAverage.Type.SMA,
             kline_count=3,
-            # symbol=self.exchange_info,
-            # interval=AllowedInterval.MINUTE_1,
+            symbol=self.exchange_info,
+            interval=AllowedInterval.MINUTE_1,
         )
         qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
         self.df = qs.to_dataframe(index='open_time_group')
+
+    def test_get_source_df(self):
+        df = self.moving_average.get_source_df()
+        self.assertEqual(len(df), 100)
+
+        self.moving_average.interval = AllowedInterval.HOUR_1
+        self.moving_average.save(update_fields=['interval'])
+
+        df = self.moving_average.get_source_df()
+        self.assertEqual(len(df), 2)
 
     def test_open_time_wrong(self):
         open_time = timezone.now()
         value = self.moving_average.get_value_by_index(
             index=open_time,
-            df=self.df,
+            source_df=self.df,
         )
         self.assertEqual(value, None)
 
     def test_sma(self):
-        open_time = self.klines_list[-5].open_time
+        open_time = self.klines_list[5].open_time
         value = self.moving_average.get_value_by_index(
             index=open_time,
-            df=self.df,
+            source_df=self.df,
         )
         self.assertEqual(value, 25)
 
@@ -52,19 +62,21 @@ class MovingAverageTest(TestCase, TestHelperMixin):
         qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
         df = qs.to_dataframe(index='open_time_group')
 
-        open_time = self.klines_list[-5].open_time
+        open_time = self.klines_list[5].open_time
+
         value = self.moving_average.get_value_by_index(
             index=open_time,
-            df=df,
+            source_df=df,
         )
         self.assertEqual(value, Decimal('29.16666666666666666666666667'))
 
     def test_sma_2(self):
-        open_time = self.klines_list[-5].open_time
+        open_time = self.klines_list[5].open_time
         self.moving_average.kline_count = 100
         self.moving_average.save(update_fields=['kline_count'])
         value = self.moving_average.get_value_by_index(
             index=open_time,
-            df=self.df,
+            source_df=self.df,
         )
         self.assertEqual(value, None)
+
