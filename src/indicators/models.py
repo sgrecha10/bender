@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -6,8 +6,8 @@ from django.db import models
 from pandas import DataFrame
 
 from core.utils.db_utils import BaseModel
-from market_data.constants import AllowedInterval
-from market_data.models import ExchangeInfo
+from market_data.constants import AllowedInterval, Interval
+from market_data.models import ExchangeInfo, Kline
 from strategies.models import Strategy
 
 
@@ -24,9 +24,10 @@ class MovingAverage(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
 
-    name = models.CharField(
-        verbose_name='Name',
+    codename = models.CharField(
+        verbose_name='Codename',
         max_length=255,
+        unique=True,
     )
     description = models.TextField(
         verbose_name='Description',
@@ -68,17 +69,11 @@ class MovingAverage(BaseModel):
         ExchangeInfo,
         on_delete=models.CASCADE,
         verbose_name='Symbol',
-        null=True, blank=True,
     )
     interval = models.CharField(
         verbose_name='Interval',
         choices=AllowedInterval.choices,
         max_length=10,
-        null=True, blank=True,
-    )
-    is_use_own_df = models.BooleanField(
-        verbose_name='Use own DF',
-        default=False,
     )
 
     class Meta:
@@ -88,46 +83,74 @@ class MovingAverage(BaseModel):
     def __str__(self):
         return (
             f'{self.id} '
-            f'- {self.name}'
+            f'- {self.codename} '
             f'- {self.get_type_display()} '
             f'- {self.kline_count} '
             f'- {self.get_data_source_display()} '
-            f'- {self.is_use_own_df} '
+            f'- {self.symbol} '
+            f'- {self.get_interval_display()} '
         )
+
+    def get_source_df(self, **kwargs) -> DataFrame:
+        """Возвращает source DataFrame"""
+        qs = Kline.objects.filter(symbol_id=self.symbol, **kwargs)
+        qs = qs.group_by_interval(self.interval)
+        return qs.to_dataframe(index='open_time_group')
 
     def get_value_by_index(self,
                            index: datetime,
-                           df: DataFrame = None) -> Optional[Decimal]:
-        """Возвращает значение MA рассчитанное на переданный open_time включительно
+                           source_df: DataFrame = None,
+                           self_creation_df: bool = False) -> Optional[Decimal]:
+        """Возвращает значение MA рассчитанное на переданный index (open_time) включительно
 
-        symbol, interval - если есть, не использовать переданный df
+        :param index: datetime
+        :param source_df: DataFrame
+        :param self_creation_df: True - не требует source_df
 
-        1. Если index не найден в df - return None
-        2. Если количество свечей для расчета в df меньше self.kline_count - return None
-        2. Считаем МА:
-        2.1. SMA.
-            Сумма средних значений (high_price + low_price) / 2  деленное на количество kline_count
-        2.2. EMA.
+        1. Если index не найден в source_df - return None
+        2. Если количество свечей для расчета в source_df меньше self.kline_count - return None
         """
+        if self_creation_df:
+            # Генерируем source_df если self_creation_df = True
+            map_minute_count = {
+                Interval.HOUR_1: 60,
+                Interval.DAY_1: 60*24,
+                Interval.WEEK_1: 60*24*7,
+                Interval.MONTH_1: 60*24*30,
+                Interval.YEAR_1: 60*24*365,
+            }
+            computed_minutes_count = map_minute_count[self.interval]
+            qs = Kline.objects.filter(
+                symbol=self.symbol,
+                open_time__lte=index + timedelta(minutes=computed_minutes_count),
+                open_time__gte=index - timedelta(minutes=self.kline_count * computed_minutes_count),
+            )
+            qs = qs.group_by_interval(self.interval)
+            source_df = qs.to_dataframe(index='open_time_group')
 
-        if self.is_use_own_df:
-            pass
-
-        # if self.symbol and self.interval:
-        #     pass
-        #     df = ...
+        # Преобразовываем значение index в интервал source_df
+        if self.interval == Interval.HOUR_1:
+            index = index.replace(minute=0)
+        elif self.interval == Interval.DAY_1:
+            index = index.replace(minute=0, hour=0)
+        elif self.interval == Interval.WEEK_1:
+            index = index.replace(minute=0, hour=0)
+        elif self.interval == Interval.MONTH_1:
+            index = index.replace(minute=0, hour=0, day=0)
+        elif self.interval == Interval.YEAR_1:
+            index = index.replace(minute=0, hour=0, day=0, month=0)
 
         try:
-            _ = df.loc[index]
+            _ = source_df.loc[index]
         except KeyError:
             return
 
-        df_prepared = df.loc[:index].tail(self.kline_count)
-        if len(df_prepared) < self.kline_count:
+        prepared_source_df = source_df.loc[:index].tail(self.kline_count)
+        if len(prepared_source_df) < self.kline_count:
             return
 
         if self.type == self.Type.SMA:
-            return self._get_sma_value(df_prepared)
+            return self._get_sma_value(prepared_source_df)
         elif self.type == self.Type.EMA:
             return
 

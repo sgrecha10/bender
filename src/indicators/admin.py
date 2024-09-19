@@ -41,11 +41,10 @@ class IndicatorBaseAdmin(admin.ModelAdmin):
 class MovingAverageAdmin(IndicatorBaseAdmin):
     list_display = (
         'id',
-        'name',
+        'codename',
         'description',
         'symbol',
         'interval',
-        'is_use_own_df',
         'data_source',
         'type',
         'kline_count',
@@ -55,3 +54,5 @@ class MovingAverageAdmin(IndicatorBaseAdmin):
         'updated',
         'created',
     )
+    list_display_links = ('id', 'codename')
+    raw_id_fields = ('symbol',)

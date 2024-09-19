@@ -97,24 +97,27 @@ class ChartView(View):
 
             for moving_average in moving_averages:
                 column_name = f'ma_{moving_average.id}'
-                ma_df = pd.DataFrame(
+                source_df = moving_average.get_source_df()
+
+                moving_average_df = pd.DataFrame(
                     columns=[column_name]
                 )
                 for index, row in df.iterrows():
-                    ma_df.loc[index, column_name] = moving_average.get_value_by_index(
+                    moving_average_df.loc[index, column_name] = moving_average.get_value_by_index(
                         index=index,
-                        df=df,
+                        source_df=source_df,
+                        # self_creation_df=True,
                     )
-                ma_df = go.Scatter(
-                    x=ma_df.index,
-                    y=ma_df[column_name],
+                moving_average_trace = go.Scatter(
+                    x=moving_average_df.index,
+                    y=moving_average_df[column_name],
                     # mode='markers',
-                    name=moving_average.name,
+                    name=moving_average.codename,
                     marker={
                         "color": list(np.random.choice(range(256), size=3)),
                     },
                 )
-                fig.add_trace(ma_df, row=2, col=1)
+                fig.add_trace(moving_average_trace, row=2, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
