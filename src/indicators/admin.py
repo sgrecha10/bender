@@ -56,3 +56,8 @@ class MovingAverageAdmin(IndicatorBaseAdmin):
     )
     list_display_links = ('id', 'codename')
     raw_id_fields = ('symbol',)
+    list_editable = (
+        'interval',
+        'data_source',
+        'kline_count',
+    )

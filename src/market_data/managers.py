@@ -29,7 +29,17 @@ class KlineQuerySet(models.QuerySet):
         elif interval == Interval.YEAR_1.value:
             kind = 'year'
         else:
-            kind = 'minute'
+            # kind = 'minute'
+            return self.annotate(
+                open_time_group=F('open_time'),
+            ).values(
+                'open_time_group',
+                'open_price',
+                'high_price',
+                'low_price',
+                'close_price',
+                'volume',
+            )
 
         return self.annotate(
             open_time_group=Trunc(
@@ -69,7 +79,11 @@ class KlineQuerySet(models.QuerySet):
 
     def to_dataframe(self, index: str = None) -> pd.DataFrame:
         """Возвращает DataFrame"""
-        annotation_fields = self.query.annotation_select.keys()
+        annotation_fields = list(self.query.annotation_select.keys())
+        if len(annotation_fields) == 1:
+            # если случай, когда interval = 1m
+            annotation_fields += list(self.query.values_select)
+
         queryset = self.values_list(*annotation_fields)
         df = pd.DataFrame(
             data=queryset,

@@ -1,3 +1,4 @@
+from collections.abc import Hashable
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
@@ -12,6 +13,15 @@ from strategies.models import Strategy
 
 
 class MovingAverage(BaseModel):
+    MAP_MINUTE_COUNT = {
+        Interval.MINUTE_1: 1,
+        Interval.HOUR_1: 60,
+        Interval.DAY_1: 60 * 24,
+        Interval.WEEK_1: 60 * 24 * 7,
+        Interval.MONTH_1: 60 * 24 * 30,
+        Interval.YEAR_1: 60 * 24 * 365,
+    }
+
     class Type(models.TextChoices):
         SMA = 'sma', 'SMA'
         EMA = 'ema', 'EMA'
@@ -91,14 +101,32 @@ class MovingAverage(BaseModel):
             f'- {self.get_interval_display()} '
         )
 
-    def get_source_df(self, **kwargs) -> DataFrame:
-        """Возвращает source DataFrame"""
-        qs = Kline.objects.filter(symbol_id=self.symbol, **kwargs)
+    def get_source_df(self, base_df: DataFrame = None, **kwargs) -> DataFrame:
+        """Возвращает source DataFrame
+
+        Если передан base_df, то ограничивает выборку из бд по максимальному
+        и минимальному значению с учетом interval,
+        если нет, то выбирает все значения из бд.
+        """
+        if not base_df.empty:
+            min_index = base_df.iloc[0].name
+            max_index = base_df.iloc[-1].name
+
+            computed_minutes_count = self.MAP_MINUTE_COUNT[self.interval]
+            qs = Kline.objects.filter(
+                symbol_id=self.symbol,
+                open_time__lte=max_index + timedelta(minutes=computed_minutes_count),
+                open_time__gte=min_index - timedelta(minutes=self.kline_count * computed_minutes_count),
+                **kwargs
+            )
+        else:
+            qs = Kline.objects.filter(symbol_id=self.symbol, **kwargs)
+
         qs = qs.group_by_interval(self.interval)
         return qs.to_dataframe(index='open_time_group')
 
     def get_value_by_index(self,
-                           index: datetime,
+                           index: datetime | Hashable,
                            source_df: DataFrame = None,
                            self_creation_df: bool = False) -> Optional[Decimal]:
         """Возвращает значение MA рассчитанное на переданный index (open_time) включительно
@@ -112,15 +140,7 @@ class MovingAverage(BaseModel):
         """
         if self_creation_df:
             # Генерируем source_df если self_creation_df = True
-            map_minute_count = {
-                Interval.MINUTE_1: 1,
-                Interval.HOUR_1: 60,
-                Interval.DAY_1: 60*24,
-                Interval.WEEK_1: 60*24*7,
-                Interval.MONTH_1: 60*24*30,
-                Interval.YEAR_1: 60*24*365,
-            }
-            computed_minutes_count = map_minute_count[self.interval]
+            computed_minutes_count = self.MAP_MINUTE_COUNT[self.interval]
             qs = Kline.objects.filter(
                 symbol=self.symbol,
                 open_time__lte=index + timedelta(minutes=computed_minutes_count),
