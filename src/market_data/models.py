@@ -245,3 +245,6 @@ class Kline(BaseModel):
         verbose_name = 'Kline'
         verbose_name_plural = 'Klines'
         unique_together = ('symbol', 'open_time')
+
+    def __str__(self):
+        return str(self.open_time)

@@ -3,7 +3,8 @@ from django.http import HttpResponseRedirect
 from django.urls import path
 
 from indicators.models import MovingAverage
-from .models import Strategy
+from market_data.models import Kline
+from .models import Strategy, StrategyResult
 from core.utils.admin_utils import redirect_to_change_form
 from django.shortcuts import HttpResponse, render
 
@@ -13,11 +14,10 @@ class IndicatorInlineBaseAdmin(admin.TabularInline):
     readonly_fields = ('pk',)
     fields = (
         'pk',
-        'name',
+        'codename',
         # 'description',
         'symbol',
         'interval',
-        'is_use_own_df',
         'data_source',
         'type',
         'kline_count',
@@ -49,6 +49,7 @@ class StrategyAdmin(admin.ModelAdmin):
         'created',
     )
     readonly_fields = (
+        'base_interval',
         'created',
         'updated',
     )
@@ -61,6 +62,21 @@ class StrategyAdmin(admin.ModelAdmin):
     def response_change(self, request, obj):
         if "_run-strategy" in request.POST:
             # здесь главный метод стратегии (выбирать по айди)
+            # пока для примера заполним StrategyResult:
+            StrategyResult.objects.filter(strategy=obj).delete()
+
+            kline_qs = Kline.objects.filter(
+                symbol=obj.base_symbol,
+                open_time__gte=obj.start_time,
+                open_time__lte=obj.end_time,
+            )
+            for kline in kline_qs:
+                StrategyResult.objects.create(
+                    strategy=obj,
+                    kline=kline,
+                    price=kline.high_price + 500,
+                )
+
             message = 'Run'
             return redirect_to_change_form(request, self.model, obj.id, message)
         else:
@@ -88,19 +104,19 @@ class StrategyAdmin(admin.ModelAdmin):
         return render(request, self.chart_template, context=context)
 
 
-# @admin.register(StrategyResult)
-# class StrategyResultAdmin(admin.ModelAdmin):
-#     list_display = (
-#         'id',
-#         'strategy',
-#         'kline',
-#         'price',
-#         'created',
-#         'updated',
-#     )
-#     list_filter = (
-#         'strategy',
-#     )
-#     raw_id_fields = (
-#         'kline',
-#     )
+@admin.register(StrategyResult)
+class StrategyResultAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'strategy',
+        'kline',
+        'price',
+        'created',
+        'updated',
+    )
+    list_filter = (
+        'strategy',
+    )
+    raw_id_fields = (
+        'kline',
+    )

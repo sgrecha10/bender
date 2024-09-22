@@ -45,29 +45,28 @@ class Strategy(BaseModel):
         return self.name
 
 
+class StrategyResult(BaseModel):
+    strategy = models.ForeignKey(
+        Strategy, on_delete=models.CASCADE,
+        verbose_name='Strategy',
+    )
+    kline = models.ForeignKey(
+        Kline, on_delete=models.CASCADE,
+        verbose_name='Kline',
+        blank=True, null=True,
+    )
+    price = models.DecimalField(
+        verbose_name='Price',
+        max_digits=20,
+        decimal_places=10,
+    )
 
-# class StrategyResult(BaseModel):
-#     strategy = models.ForeignKey(
-#         Strategy, on_delete=models.CASCADE,
-#         verbose_name='Strategy',
-#     )
-#     kline = models.ForeignKey(
-#         Kline, on_delete=models.CASCADE,
-#         verbose_name='Kline',
-#         blank=True, null=True,
-#     )
-#     price = models.DecimalField(
-#         verbose_name='Price',
-#         max_digits=20,
-#         decimal_places=10,
-#     )
-#
-#     class Meta:
-#         verbose_name = 'Strategy Result'
-#         verbose_name_plural = 'Strategy Results'
-#         indexes = [
-#             models.Index(fields=['strategy', 'kline']),
-#         ]
-#
-#     def __str__(self):
-#         return self.strategy.name
+    class Meta:
+        verbose_name = 'Strategy Result'
+        verbose_name_plural = 'Strategy Results'
+        indexes = [
+            models.Index(fields=['strategy', 'kline']),
+        ]
+
+    def __str__(self):
+        return self.strategy.name
