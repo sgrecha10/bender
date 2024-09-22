@@ -118,7 +118,6 @@ class ChartView(View):
             moving_average_df.loc[index, column_name] = moving_average.get_value_by_index(
                 index=index,
                 source_df=source_df,
-                # self_creation_df=True,
             )
         return go.Scatter(
             x=moving_average_df.index,

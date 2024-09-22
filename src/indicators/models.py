@@ -108,7 +108,8 @@ class MovingAverage(BaseModel):
         и минимальному значению с учетом interval,
         если нет, то выбирает все значения из бд.
         """
-        if not base_df.empty:
+        if isinstance(base_df, DataFrame) and not base_df.empty:
+            base_df.sort_index(inplace=True)
             min_index = base_df.iloc[0].name
             max_index = base_df.iloc[-1].name
 
@@ -127,19 +128,17 @@ class MovingAverage(BaseModel):
 
     def get_value_by_index(self,
                            index: datetime | Hashable,
-                           source_df: DataFrame = None,
-                           self_creation_df: bool = False) -> Optional[Decimal]:
+                           source_df: DataFrame = None) -> Optional[Decimal]:
         """Возвращает значение MA рассчитанное на переданный index (open_time) включительно
 
         :param index: datetime
         :param source_df: DataFrame
-        :param self_creation_df: True - не требует source_df
 
         1. Если index не найден в source_df - return None
         2. Если количество свечей для расчета в source_df меньше self.kline_count - return None
         """
-        if self_creation_df:
-            # Генерируем source_df если self_creation_df = True
+        if not isinstance(source_df, DataFrame) or source_df.empty:
+            # Генерируем source_df если отсутствует в аргументах
             computed_minutes_count = self.MAP_MINUTE_COUNT[self.interval]
             qs = Kline.objects.filter(
                 symbol=self.symbol,

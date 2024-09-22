@@ -91,6 +91,7 @@ class KlineQuerySet(models.QuerySet):
         )
         if index:
             df.set_index(index, inplace=True, drop=True)
+            df.sort_index(inplace=True)
         return df
 
     def _batched_insert(
