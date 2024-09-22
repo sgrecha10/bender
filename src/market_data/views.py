@@ -60,13 +60,18 @@ class ChartView(View):
         qs = qs.group_by_interval(interval)
         df = qs.to_dataframe(index='open_time_group')
 
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.02)
-        fig.add_trace(self._get_candlestick_trace(df, symbol), row=2, col=1)
-        fig.add_trace(self._get_volume_trace(df), row=1, col=1)
+        fig = make_subplots(
+            rows=2, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.02,
+            row_heights=[0.8, 0.2]
+        )
+        fig.add_trace(self._get_candlestick_trace(df, symbol), row=1, col=1)
+        fig.add_trace(self._get_volume_trace(df), row=2, col=1)
 
         if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
             for ma in moving_average_qs:
-                fig.add_trace(self._get_moving_average_trace(df, ma), row=2, col=1)
+                fig.add_trace(self._get_moving_average_trace(df, ma), row=1, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
@@ -77,9 +82,9 @@ class ChartView(View):
         fig.update_layout(
             height=1000,
             title=title,
-            yaxis_title='Volume',
+            # yaxis_title='Volume',
             xaxis1_rangeslider_visible=False,
-            xaxis2_rangeslider_visible=True,
+            xaxis2_rangeslider_visible=True,  # True
         )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
