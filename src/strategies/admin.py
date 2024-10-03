@@ -1,12 +1,13 @@
 from django.contrib import admin
 from django.http import HttpResponseRedirect
-from django.urls import path
+from django.urls import path, reverse
 
 from indicators.models import MovingAverage
 from market_data.models import Kline
 from .models import Strategy, StrategyResult
 from core.utils.admin_utils import redirect_to_change_form
-from django.shortcuts import HttpResponse, render
+from django.shortcuts import HttpResponse, render, redirect
+from urllib.parse import urlencode
 
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
@@ -36,7 +37,7 @@ class MovingAverageInlineAdmin(IndicatorInlineBaseAdmin):
 @admin.register(Strategy)
 class StrategyAdmin(admin.ModelAdmin):
     change_form_template = 'admin/strategies/change_form.html'
-    chart_template = 'admin/strategies/strategy_chart.html'
+
     list_display = (
         'id',
         'name',
@@ -94,14 +95,18 @@ class StrategyAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def show_strategy_result(self, request, *args, **kwargs):
-        from market_data.forms import ChartForm
-        form = ChartForm()
-
-        context = {
-            'opts': self.model._meta,
-            'form': form,
+        instance = self.model.objects.get(pk=kwargs['id'])
+        data = {
+            'symbol': instance.base_symbol.symbol,
+            'interval': instance.base_interval,
+            'start_time_0': instance.start_time.strftime('%d.%m.%Y'),
+            'start_time_1': instance.start_time.strftime('%H:%M'),
+            'end_time_0': instance.end_time.strftime('%d.%m.%Y'),
+            'end_time_1': instance.end_time.strftime('%H:%M'),
         }
-        return render(request, self.chart_template, context=context)
+
+        url = reverse('chart') + '?' + urlencode(data)
+        return redirect(url)
 
 
 @admin.register(StrategyResult)
@@ -120,3 +125,10 @@ class StrategyResultAdmin(admin.ModelAdmin):
     raw_id_fields = (
         'kline',
     )
+    actions = (
+        'trunkate_strategy_result',
+    )
+
+    @admin.action(description='Очистить всю таблицу')
+    def trunkate_strategy_result(self, request, *args, **kwargs):
+        self.model.objects.all().delete()

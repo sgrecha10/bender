@@ -1,14 +1,27 @@
 {% extends 'admin/change_form.html' %}
-{% load i18n admin_urls static admin_modify %}
+{% load i18n admin_urls static admin_modify grp_tags %}
+
+{% block stylesheets %}
+    {{ block.super }}
+    <style id="plotly.js-style-global"></style>
+    <style id="plotly.js-style-modebar-14ca5b"></style>
+{% endblock %}
+
+{% block javascripts %}
+    {{ block.super }}
+    <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+    <script charset="utf-8" src="https://cdn.plot.ly/plotly-2.34.0.min.js"></script>
+{% endblock %}
 
 {% block content %}
     <div id="content-main">
-        <form method="POST" enctype="multipart/form-data">
+        {{ chart | safe }}
+
+        <form method="GET" enctype="multipart/form-data">
             <div>
                 {% if is_popup %}<input type="hidden" name="{{ is_popup_var }}" value="1">{% endif %}
                 {% if to_field %}<input type="hidden" name="{{ to_field_var }}" value="{{ to_field }}">{% endif %}
                 <fieldset class="module grp-module">
-                    {% csrf_token%}
                     {% for field in form %}
                     <div class="form-row grp-row grp-cells-1">
                         {{ field.errors }}
