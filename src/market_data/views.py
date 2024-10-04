@@ -154,6 +154,7 @@ class ChartView(View):
             mode='markers',
             name=strategy.name,
             marker={
-                'color': list(np.random.choice(range(256), size=3)),
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'orange',
             },
         )
