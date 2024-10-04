@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 from indicators.models import MovingAverage
 from market_data.models import Kline, ExchangeInfo
 from .constants import Interval
+from strategies.models import Strategy, StrategyResult
 
 
 class ChartView(View):
@@ -53,6 +54,7 @@ class ChartView(View):
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
         moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
+        strategy = cleaned_data.get('strategy')
 
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
@@ -72,6 +74,9 @@ class ChartView(View):
         if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
             for ma in moving_average_qs:
                 fig.add_trace(self._get_moving_average_trace(df, ma), row=1, col=1)
+
+        if strategy:
+            fig.add_trace(self._get_strategy_result_trace(df, strategy), row=1, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
@@ -125,6 +130,30 @@ class ChartView(View):
             # mode='markers',
             name=moving_average.codename,
             marker={
-                "color": list(np.random.choice(range(256), size=3)),
+                'color': list(np.random.choice(range(256), size=3)),
+            },
+        )
+
+    def _get_strategy_result_trace(self, df: pd.DataFrame, strategy: Strategy):
+        strategy_result_qs = StrategyResult.objects.filter(
+            strategy=strategy,
+            kline__open_time__gte=df.iloc[0].name,
+            kline__open_time__lte=df.iloc[-1].name,
+        ).values_list('kline__open_time', 'price')
+
+        df = pd.DataFrame(
+            data=strategy_result_qs,
+            columns=['open_time', 'price'],
+        )
+        df.set_index('open_time', inplace=True, drop=True)
+        df.sort_index(inplace=True)
+
+        return go.Scatter(
+            x=df.index,
+            y=df['price'],
+            mode='markers',
+            name=strategy.name,
+            marker={
+                'color': list(np.random.choice(range(256), size=3)),
             },
         )

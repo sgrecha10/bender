@@ -4,6 +4,7 @@ import pytz
 from django import forms
 from django.contrib.admin.widgets import AdminSplitDateTime
 
+from strategies.models import Strategy
 from .constants import Interval, AllowedInterval
 from .models import ExchangeInfo, Kline
 from django.contrib.admin import widgets
@@ -85,6 +86,11 @@ class ChartForm(forms.Form):
         queryset=MovingAverage.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         label='Moving Averages',
+        required=False,
+    )
+    strategy = forms.ModelChoiceField(
+        queryset=Strategy.objects.all(),
+        label='Strategy',
         required=False,
     )
 

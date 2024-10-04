@@ -75,7 +75,7 @@ class StrategyAdmin(admin.ModelAdmin):
                 StrategyResult.objects.create(
                     strategy=obj,
                     kline=kline,
-                    price=kline.high_price + 500,
+                    price=kline.high_price + 100,
                 )
 
             message = 'Run'
@@ -103,6 +103,7 @@ class StrategyAdmin(admin.ModelAdmin):
             'start_time_1': instance.start_time.strftime('%H:%M'),
             'end_time_0': instance.end_time.strftime('%d.%m.%Y'),
             'end_time_1': instance.end_time.strftime('%H:%M'),
+            'strategy': instance.id,
         }
 
         url = reverse('chart') + '?' + urlencode(data)
