@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import MovingAverage
+from .models import MovingAverage, StandardDeviation
 
 
 @admin.register(MovingAverage)
@@ -24,6 +24,29 @@ class MovingAverageAdmin(admin.ModelAdmin):
     raw_id_fields = ('symbol',)
     list_editable = (
         'interval',
+        'data_source',
+        'kline_count',
+    )
+    readonly_fields = (
+        'updated',
+        'created',
+    )
+
+
+@admin.register(StandardDeviation)
+class StandardDeviationAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'codename',
+        'description',
+        'moving_average',
+        'data_source',
+        'kline_count',
+        'updated',
+        'created',
+    )
+    list_display_links = ('codename',)
+    list_editable = (
         'data_source',
         'kline_count',
     )

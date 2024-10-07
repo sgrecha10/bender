@@ -42,6 +42,7 @@ class CustomIndexDashboard(Dashboard):
                 collapsible=True,
                 models=(
                     'indicators.models.MovingAverage',
+                    'indicators.models.StandardDeviation',
                 ),
             )
         )

@@ -87,8 +87,8 @@ class MovingAverage(BaseModel):
     )
 
     class Meta:
-        verbose_name = 'MovingAverage'
-        verbose_name_plural = 'MovingAverage'
+        verbose_name = 'Moving Average'
+        verbose_name_plural = 'Moving Averages'
 
     def __str__(self):
         return (
@@ -193,3 +193,46 @@ class MovingAverage(BaseModel):
                 return
 
         return average_price_sum / self.kline_count
+
+
+class StandardDeviation(BaseModel):
+
+    class DataSource(models.TextChoices):
+        OPEN = 'open', 'Open price'
+        CLOSE = 'close', 'Close price'
+        HIGH = 'high', 'High price'
+        LOW = 'low', 'Low price'
+        HIGH_LOW = 'high_low', 'High-Low average'
+        OPEN_CLOSE = 'open_close', 'Open-Close average'
+
+    codename = models.CharField(
+        verbose_name='Codename',
+        max_length=255,
+        unique=True,
+    )
+    description = models.TextField(
+        verbose_name='Description',
+        blank=True, default='',
+    )
+    moving_average = models.ForeignKey(
+        MovingAverage,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Moving Average',
+    )
+    data_source = models.CharField(
+        verbose_name='Data source',
+        max_length=20,
+        choices=DataSource.choices,
+    )
+    kline_count = models.IntegerField(
+        verbose_name='K-Line Count',
+        help_text='Количество свечей для расчета',
+    )
+
+    class Meta:
+        verbose_name = 'Standard Deviation'
+        verbose_name_plural = 'Standard Deviations'
+
+    def __str__(self):
+        return f'{self.id} - {self.codename}'
