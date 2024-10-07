@@ -236,3 +236,15 @@ class StandardDeviation(BaseModel):
 
     def __str__(self):
         return f'{self.id} - {self.codename}'
+
+    def get_value_by_index(self, index: datetime | Hashable) -> Optional[Decimal]:
+        """Возвращает значение SD рассчитанное на переданный index (open_time) включительно
+
+        :param index: datetime
+
+        1. source_df получаем из MA, если нет MA - return None ИЛИ ВСЕ ТАКИ ПЕРЕДАВАТЬ В АРГУМЕНТЕ НАДО
+        1. Если index не найден в source_df - return None
+        2. Если количество свечей для расчета в source_df меньше self.kline_count - return None
+        """
+        #
+        # source_df = self.moving_average and self.moving_average.get_source_df()
