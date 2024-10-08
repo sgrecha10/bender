@@ -237,14 +237,39 @@ class StandardDeviation(BaseModel):
     def __str__(self):
         return f'{self.id} - {self.codename}'
 
-    def get_value_by_index(self, index: datetime | Hashable) -> Optional[Decimal]:
+    def get_value_by_index(self,
+                           index: datetime | Hashable,
+                           source_df: DataFrame = None) -> Optional[Decimal]:
         """Возвращает значение SD рассчитанное на переданный index (open_time) включительно
 
         :param index: datetime
+        :param source_df: DataFrame
 
-        1. source_df получаем из MA, если нет MA - return None ИЛИ ВСЕ ТАКИ ПЕРЕДАВАТЬ В АРГУМЕНТЕ НАДО
         1. Если index не найден в source_df - return None
         2. Если количество свечей для расчета в source_df меньше self.kline_count - return None
+        3. Получаем значение MA
         """
-        #
-        # source_df = self.moving_average and self.moving_average.get_source_df()
+        average_price = self.moving_average.get_value_by_index(index, source_df)
+
+        prepared_source_df = source_df.loc[:index].tail(self.kline_count)
+        if len(prepared_source_df) < self.kline_count:
+            return
+
+        deviation = Decimal(0)
+        for idx, row in prepared_source_df.iterrows():
+            if self.data_source == self.DataSource.OPEN:
+                deviation += (row['open_price'] - average_price) ** 2
+            elif self.data_source == self.DataSource.CLOSE:
+                deviation += (row['close_price'] - average_price) ** 2
+            elif self.data_source == self.DataSource.HIGH:
+                deviation += (row['high_price'] - average_price) ** 2
+            elif self.data_source == self.DataSource.LOW:
+                deviation += (row['low_price'] - average_price) ** 2
+            elif self.data_source == self.DataSource.HIGH_LOW:
+                deviation += (((row['high_price'] + row['low_price']) / 2) - average_price) ** 2
+            elif self.data_source == self.DataSource.OPEN_CLOSE:
+                deviation += (((row['open_price'] + row['close_price']) / 2) - average_price) ** 2
+            else:
+                return
+
+        return (deviation / self.kline_count) ** Decimal(0.5)

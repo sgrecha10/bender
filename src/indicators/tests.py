@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from base.helpers import TestHelperMixin
-from indicators.models import MovingAverage
+from indicators.models import MovingAverage, StandardDeviation
 from market_data.constants import AllowedInterval
 from market_data.models import Kline
 
@@ -231,3 +231,55 @@ class MovingAverageNewTest(TestCase, TestHelperMixin):
         self.assertEqual(get_value_by_index_result_1_1, get_value_by_index_result_3_1)
         self.assertEqual(get_value_by_index_result_1_2, get_value_by_index_result_3_2)
         self.assertEqual(get_value_by_index_result_1_3, get_value_by_index_result_3_3)
+
+
+class StandardDeviationTest(TestCase, TestHelperMixin):
+    def setUp(self):
+        self.exchange_info = self.create_exchange_info()
+        self.klines_list = self.create_klines(
+            symbol=self.exchange_info,
+            count=100,
+        )
+        self.moving_average = MovingAverage.objects.create(
+            codename='some_name',
+            data_source=MovingAverage.DataSource.CLOSE,
+            type=MovingAverage.Type.SMA,
+            kline_count=3,
+            symbol=self.exchange_info,
+            interval=AllowedInterval.MINUTE_1,
+        )
+        self.standard_deviation = StandardDeviation.objects.create(
+            codename='standard_deviation_name',
+            moving_average=self.moving_average,
+            data_source=StandardDeviation.DataSource.CLOSE,
+            kline_count=3,
+        )
+        qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
+        self.df = qs.to_dataframe(index='open_time_group')
+
+    def test_get_value_by_index_zero(self):
+        index = self.df.iloc[10].name
+        result = self.standard_deviation.get_value_by_index(
+            index=index,
+            source_df=self.df,
+        )
+        self.assertEqual(result, 0)
+
+    def test_get_value_by_index_not_zero(self):
+        open_price = 5
+        for i, kline in enumerate(self.klines_list):
+            kline.open_price = open_price
+            kline.high_price = open_price * i + 10
+            kline.low_price = open_price * i - 10
+            kline.close_price = open_price + 10
+            kline.save()
+            open_price = kline.close_price
+        qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
+        source_df = qs.to_dataframe(index='open_time_group')
+
+        index = self.df.iloc[10].name
+        result = self.standard_deviation.get_value_by_index(
+            index=index,
+            source_df=source_df,
+        )
+        self.assertEqual(result, Decimal('8.164965809277260327324280249'))
