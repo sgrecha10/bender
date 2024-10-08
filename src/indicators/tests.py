@@ -266,14 +266,13 @@ class StandardDeviationTest(TestCase, TestHelperMixin):
         self.assertEqual(result, 0)
 
     def test_get_value_by_index_not_zero(self):
-        open_price = 5
-        for i, kline in enumerate(self.klines_list):
-            kline.open_price = open_price
-            kline.high_price = open_price * i + 10
-            kline.low_price = open_price * i - 10
-            kline.close_price = open_price + 10
-            kline.save()
-            open_price = kline.close_price
+        self.klines_list[10].close_price = 10
+        self.klines_list[9].close_price = 5
+        self.klines_list[8].close_price = 10
+        self.klines_list[10].save(update_fields=['close_price'])
+        self.klines_list[9].save(update_fields=['close_price'])
+        self.klines_list[8].save(update_fields=['close_price'])
+
         qs = Kline.objects.all().group_by_interval(interval=AllowedInterval.MINUTE_1)
         source_df = qs.to_dataframe(index='open_time_group')
 
@@ -282,4 +281,4 @@ class StandardDeviationTest(TestCase, TestHelperMixin):
             index=index,
             source_df=source_df,
         )
-        self.assertEqual(result, Decimal('8.164965809277260327324280249'))
+        self.assertEqual(result, Decimal('2.357022603955158414669481207'))
