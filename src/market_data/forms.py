@@ -82,6 +82,10 @@ class ChartForm(forms.Form):
         widget=AdminSplitDateTime(),
         required=False,
     )
+    volume = forms.BooleanField(
+        label='Volume',
+        required=False,
+    )
     moving_averages = forms.ModelMultipleChoiceField(
         queryset=MovingAverage.objects.all(),
         widget=forms.CheckboxSelectMultiple,

@@ -53,6 +53,7 @@ class ChartView(View):
         interval = cleaned_data['interval']
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
+        volume = cleaned_data.get('volume')
         moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
         strategy = cleaned_data.get('strategy')
 
@@ -62,14 +63,22 @@ class ChartView(View):
         qs = qs.group_by_interval(interval)
         df = qs.to_dataframe(index='open_time_group')
 
+        rows = 1
+        row_heights = [1]
+        if volume:
+            rows += 1
+            row_heights = [0.8, 0.2]
+
+
         fig = make_subplots(
-            rows=2, cols=1,
+            rows=rows, cols=1,
             shared_xaxes=True,
-            vertical_spacing=0.02,
-            row_heights=[0.8, 0.2]
+            vertical_spacing=0.2,
+            row_heights=row_heights,
         )
         fig.add_trace(self._get_candlestick_trace(df, symbol), row=1, col=1)
-        fig.add_trace(self._get_volume_trace(df), row=2, col=1)
+        if volume:
+            fig.add_trace(self._get_volume_trace(df), row=2, col=1)
 
         if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
             for ma in moving_average_qs:
@@ -88,8 +97,8 @@ class ChartView(View):
             height=1000,
             title=title,
             # yaxis_title='Volume',
-            xaxis1_rangeslider_visible=False,
-            xaxis2_rangeslider_visible=True,  # True
+            # xaxis1_rangeslider_visible=True,
+            # xaxis2_rangeslider_visible=True,  # True
         )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
