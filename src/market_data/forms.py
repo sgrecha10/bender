@@ -8,7 +8,7 @@ from strategies.models import Strategy
 from .constants import Interval, AllowedInterval
 from .models import ExchangeInfo, Kline
 from django.contrib.admin import widgets
-from indicators.models import MovingAverage
+from indicators.models import MovingAverage, StandardDeviation
 from django.contrib import admin
 
 
@@ -95,6 +95,11 @@ class ChartForm(forms.Form):
     strategy = forms.ModelChoiceField(
         queryset=Strategy.objects.all(),
         label='Strategy',
+        required=False,
+    )
+    standard_deviation = forms.ModelChoiceField(
+        queryset=StandardDeviation.objects.all(),
+        label='Standard Deviation',
         required=False,
     )
 

@@ -8,7 +8,7 @@ from django.shortcuts import render, redirect
 from django.views import View
 from plotly.subplots import make_subplots
 
-from indicators.models import MovingAverage
+from indicators.models import MovingAverage, StandardDeviation
 from market_data.models import Kline, ExchangeInfo
 from .constants import Interval
 from strategies.models import Strategy, StrategyResult
@@ -56,6 +56,7 @@ class ChartView(View):
         volume = cleaned_data.get('volume')
         moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
         strategy = cleaned_data.get('strategy')
+        standard_deviation = cleaned_data.get('standard_deviation')
 
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
@@ -67,8 +68,14 @@ class ChartView(View):
         row_heights = [1]
         if volume:
             rows += 1
-            row_heights = [0.8, 0.2]
 
+        if standard_deviation:
+            rows += 1
+
+        if rows == 2:
+            row_heights = [0.8, 0.2]
+        elif rows == 3:
+            row_heights = [0.6, 0.2, 0.2]
 
         fig = make_subplots(
             rows=rows, cols=1,
@@ -77,8 +84,18 @@ class ChartView(View):
             row_heights=row_heights,
         )
         fig.add_trace(self._get_candlestick_trace(df, symbol), row=1, col=1)
+
         if volume:
             fig.add_trace(self._get_volume_trace(df), row=2, col=1)
+        if standard_deviation:
+            row = 2
+            if rows == 3:
+                row = 3
+            fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=row, col=1)
+
+        # полосы боллинджера по быстрому
+        fig.add_trace(self._get_bollindger_trace_1(df, standard_deviation), row=1, col=1)
+        fig.add_trace(self._get_bollindger_trace_2(df, standard_deviation), row=1, col=1)
 
         if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
             for ma in moving_average_qs:
@@ -165,5 +182,80 @@ class ChartView(View):
             marker={
                 # 'color': list(np.random.choice(range(256), size=3)),
                 'color': 'orange',
+            },
+        )
+
+    def _get_standard_deviation_trace(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
+        column_name = f'sd_{standard_deviation.id}'
+        source_df = standard_deviation.moving_average.get_source_df(base_df=df)
+
+        standard_deviation_df = pd.DataFrame(
+            columns=[column_name]
+        )
+        for index, row in df.iterrows():
+            standard_deviation_df.loc[index, column_name] = standard_deviation.get_value_by_index(
+                index=index,
+                source_df=source_df,
+            )
+        return go.Scatter(
+            x=standard_deviation_df.index,
+            y=standard_deviation_df[column_name],
+            mode='markers',
+            name=standard_deviation.codename,
+            marker={
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'orange',
+            },
+        )
+
+    def _get_bollindger_trace_1(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
+        source_df = standard_deviation.moving_average.get_source_df(base_df=df)
+
+        bollindger_df = pd.DataFrame(
+            columns=['b_1', 'b_2']
+        )
+        for index, row in df.iterrows():
+            bollindger_df.loc[index, 'b_1'] = standard_deviation.moving_average.get_value_by_index(
+                index=index,
+                source_df=source_df,
+            ) + standard_deviation.get_value_by_index(
+                index=index,
+                source_df=source_df,
+            ) * 2
+
+        return go.Scatter(
+            x=bollindger_df.index,
+            y=bollindger_df['b_1'],
+            # mode='markers',
+            name='b_1',
+            marker={
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'green',
+            },
+        )
+
+    def _get_bollindger_trace_2(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
+        source_df = standard_deviation.moving_average.get_source_df(base_df=df)
+
+        bollindger_df = pd.DataFrame(
+            columns=['b_1', 'b_2']
+        )
+        for index, row in df.iterrows():
+            bollindger_df.loc[index, 'b_2'] = standard_deviation.moving_average.get_value_by_index(
+                index=index,
+                source_df=source_df,
+            ) - standard_deviation.get_value_by_index(
+                index=index,
+                source_df=source_df,
+            ) * 2
+
+        return go.Scatter(
+            x=bollindger_df.index,
+            y=bollindger_df['b_2'],
+            # mode='markers',
+            name='b_2',
+            marker={
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'green',
             },
         )
