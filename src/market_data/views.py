@@ -64,38 +64,34 @@ class ChartView(View):
         qs = qs.group_by_interval(interval)
         df = qs.to_dataframe(index='open_time_group')
 
-        rows = 1
-        row_heights = [1]
-        if volume:
-            rows += 1
-
-        if standard_deviation:
-            rows += 1
-
-        if rows == 2:
-            row_heights = [0.8, 0.2]
-        elif rows == 3:
-            row_heights = [0.6, 0.2, 0.2]
+        row_count = 4  # количество rows графика, первый ряд - свечи, второй ряд слайдер, всегда.
 
         fig = make_subplots(
-            rows=rows, cols=1,
+            rows=row_count, cols=1,
             shared_xaxes=True,
-            vertical_spacing=0.2,
-            row_heights=row_heights,
+            vertical_spacing=0.02,
+            row_titles=[
+                'Заголовок 1', '',
+                'Заголовок 2',
+            ],
+            row_heights=self._get_subplots_row_heights(rows=row_count),
         )
         fig.add_trace(self._get_candlestick_trace(df, symbol), row=1, col=1)
 
-        if volume:
-            fig.add_trace(self._get_volume_trace(df), row=2, col=1)
-        if standard_deviation:
-            row = 2
-            if rows == 3:
-                row = 3
-            fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=row, col=1)
+        # if volume:
+        fig.add_trace(self._get_volume_trace(df), row=3, col=1)
+        # if standard_deviation:
+        #     row = 2
+        #     if rows == 3:
+        #         row = 3
+        fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=4, col=1)
+        # fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=5, col=1)
+        # fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=6, col=1)
+        # fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=7, col=1)
 
         # полосы боллинджера по быстрому
-        fig.add_trace(self._get_bollindger_trace_1(df, standard_deviation), row=1, col=1)
-        fig.add_trace(self._get_bollindger_trace_2(df, standard_deviation), row=1, col=1)
+        # fig.add_trace(self._get_bollindger_trace_1(df, standard_deviation), row=1, col=1)
+        # fig.add_trace(self._get_bollindger_trace_2(df, standard_deviation), row=1, col=1)
 
         if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
             for ma in moving_average_qs:
@@ -111,12 +107,25 @@ class ChartView(View):
         )
 
         fig.update_layout(
+            # autosize=False,
+            # margin=dict(l=50, r=50, t=50, b=100),
+            # xaxis=dict(
+            #     rangeslider=dict(visible=True),
+            #     domain=[1, 0]
+            # ),
             height=1000,
             title=title,
             # yaxis_title='Volume',
-            # xaxis1_rangeslider_visible=True,
-            # xaxis2_rangeslider_visible=True,  # True
+            xaxis_rangeslider_thickness=0.1,
+            # xaxis_rangeslider_borderwidth=1,
+            # xaxis_rangeslider_visible=False,
+            # xaxis2_rangeslider_visible=True,
+            # xaxis3_rangeslider_visible=True,
+            # xaxis4_rangeslider_visible=True,
         )
+        # fig.update_xaxes(
+        #     rangeslider_yaxis=dict(range=[1, 0])  # Указываем диапазон по оси Y, можно изменить по необходимости
+        # )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
 
@@ -259,3 +268,20 @@ class ChartView(View):
                 'color': 'green',
             },
         )
+
+    def _get_subplots_row_heights(self, rows: int = 2, slider_thickness: float = 0.1) -> list:
+        first_item_map = [0.9, 0.8, 0.7, 0.6]
+        prepared_rows = rows - 2
+
+        try:
+            first_item_thickness = first_item_map[prepared_rows]
+        except IndexError:
+            first_item_thickness = 0.5
+
+        row_heights = [first_item_thickness, slider_thickness]
+
+        if not prepared_rows:
+            return row_heights
+
+        extra_item_thickness = round((1 - first_item_thickness - slider_thickness) / prepared_rows, 3)
+        return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
