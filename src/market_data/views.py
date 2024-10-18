@@ -17,6 +17,13 @@ from strategies.models import Strategy, StrategyResult
 class ChartView(View):
     template_name = 'market_data/chart.html'
 
+    SEPARATE_ROW_INDICATORS = (
+        'volume',
+        'standard_deviation',
+        # 'MovingAverage',
+        # 'StandardDeviation',
+    )
+
     def get(self, request, *args, **kwargs):
         """Show chart"""
         from .forms import ChartForm
@@ -64,41 +71,53 @@ class ChartView(View):
         qs = qs.group_by_interval(interval)
         df = qs.to_dataframe(index='open_time_group')
 
-        row_count = 4  # количество rows графика, первый ряд - свечи, второй ряд слайдер, всегда.
+        """
+        1. Определяем количество необходимых строк. 1 - всегда инструмент, 2 - всегда пустая (для слайдера)
+        """
+        row_count = 2  # инструмент + слайдер
+        row_titles = [symbol, '']  # название
+
+        if volume and 'volume' in self.SEPARATE_ROW_INDICATORS:
+            row_count += 1
+            volume_row_number = row_count
+            row_titles.append('Volume')
+        else:
+            volume_row_number = 1
+
+        if standard_deviation and 'standard_deviation' in self.SEPARATE_ROW_INDICATORS:
+            row_count += 1
+            standard_deviation_row_number = row_count
+            row_titles.append(standard_deviation.codename)
+        else:
+            standard_deviation_row_number = 1
 
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.02,
-            row_titles=[
-                'Заголовок 1', '',
-                'Заголовок 2',
-            ],
+            row_titles=row_titles,
             row_heights=self._get_subplots_row_heights(rows=row_count),
         )
         fig.add_trace(self._get_candlestick_trace(df, symbol), row=1, col=1)
 
-        # if volume:
-        fig.add_trace(self._get_volume_trace(df), row=3, col=1)
-        # if standard_deviation:
-        #     row = 2
-        #     if rows == 3:
-        #         row = 3
-        fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=4, col=1)
-        # fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=5, col=1)
-        # fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=6, col=1)
-        # fig.add_trace(self._get_standard_deviation_trace(df, standard_deviation), row=7, col=1)
+        if volume:
+            fig.add_trace(self._get_volume_trace(df), row=volume_row_number, col=1)
+
+        if standard_deviation:
+            fig.add_trace(
+                self._get_standard_deviation_trace(df, standard_deviation),
+                row=standard_deviation_row_number, col=1)
 
         # полосы боллинджера по быстрому
         # fig.add_trace(self._get_bollindger_trace_1(df, standard_deviation), row=1, col=1)
         # fig.add_trace(self._get_bollindger_trace_2(df, standard_deviation), row=1, col=1)
 
-        if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
-            for ma in moving_average_qs:
-                fig.add_trace(self._get_moving_average_trace(df, ma), row=1, col=1)
-
-        if strategy:
-            fig.add_trace(self._get_strategy_result_trace(df, strategy), row=1, col=1)
+        # if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
+        #     for ma in moving_average_qs:
+        #         fig.add_trace(self._get_moving_average_trace(df, ma), row=5, col=1)
+        #
+        # if strategy:
+        #     fig.add_trace(self._get_strategy_result_trace(df, strategy), row=1, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
