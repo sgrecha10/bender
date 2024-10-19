@@ -1,4 +1,5 @@
 import urllib.parse
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -8,10 +9,14 @@ from django.shortcuts import render, redirect
 from django.views import View
 from plotly.subplots import make_subplots
 
-from indicators.models import MovingAverage, StandardDeviation
+from indicators.models import (
+    MovingAverage,
+    StandardDeviation,
+    BollingerBands,
+)
 from market_data.models import Kline, ExchangeInfo
-from .constants import Interval
 from strategies.models import Strategy, StrategyResult
+from .constants import Interval
 
 
 class ChartView(View):
@@ -20,8 +25,7 @@ class ChartView(View):
     SEPARATE_ROW_INDICATORS = (
         'volume',
         'standard_deviation',
-        # 'MovingAverage',
-        # 'StandardDeviation',
+        # 'moving_averages',
     )
 
     def get(self, request, *args, **kwargs):
@@ -55,6 +59,23 @@ class ChartView(View):
         }
         return self.request.path + '?' + urllib.parse.urlencode(default_data)
 
+    def _get_subplots_row_heights(self, rows: int = 2, slider_thickness: float = 0.1) -> list:
+        first_item_map = [0.9, 0.8, 0.7, 0.6]
+        prepared_rows = rows - 2
+
+        try:
+            first_item_thickness = first_item_map[prepared_rows]
+        except IndexError:
+            first_item_thickness = 0.5
+
+        row_heights = [first_item_thickness, slider_thickness]
+
+        if not prepared_rows:
+            return row_heights
+
+        extra_item_thickness = round((1 - first_item_thickness - slider_thickness) / prepared_rows, 3)
+        return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
+
     def _get_chart(self, cleaned_data):
         symbol = cleaned_data['symbol'].symbol
         interval = cleaned_data['interval']
@@ -64,6 +85,7 @@ class ChartView(View):
         moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
         strategy = cleaned_data.get('strategy')
         standard_deviation = cleaned_data.get('standard_deviation')
+        bollinger_bands = cleaned_data.get('bollinger_bands')
 
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
@@ -91,6 +113,34 @@ class ChartView(View):
         else:
             standard_deviation_row_number = 1
 
+        if moving_averages and 'moving_averages' in self.SEPARATE_ROW_INDICATORS:
+            moving_averages_count = len(moving_averages)
+            moving_averages_row_number = []
+            for i in range(moving_averages_count):
+                row_count += 1
+                moving_averages_row_number.append(row_count)
+                moving_average_codename = MovingAverage.objects.get(pk=moving_averages[i]).codename
+                row_titles.append(moving_average_codename)
+        else:
+            moving_averages_count = len(moving_averages)
+            moving_averages_row_number = []
+            for i in range(moving_averages_count):
+                moving_averages_row_number.append(1)
+
+        if bollinger_bands and 'bollinger_bands' in self.SEPARATE_ROW_INDICATORS:
+            row_count += 1
+            bollinger_bands_row_number = row_count
+            row_titles.append(bollinger_bands.codename)
+        else:
+            bollinger_bands_row_number = 1
+
+        if strategy and 'strategy' in self.SEPARATE_ROW_INDICATORS:
+            row_count += 1
+            strategy_row_number = row_count
+            row_titles.append(strategy.codename)
+        else:
+            strategy_row_number = 1
+
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
@@ -108,16 +158,18 @@ class ChartView(View):
                 self._get_standard_deviation_trace(df, standard_deviation),
                 row=standard_deviation_row_number, col=1)
 
-        # полосы боллинджера по быстрому
-        # fig.add_trace(self._get_bollindger_trace_1(df, standard_deviation), row=1, col=1)
-        # fig.add_trace(self._get_bollindger_trace_2(df, standard_deviation), row=1, col=1)
+        if bollinger_bands:
+            bollinger_trace_tuple = self._get_bollinger_bands_trace(df, bollinger_bands)
+            fig.add_trace(bollinger_trace_tuple[0], row=bollinger_bands_row_number, col=1)
+            fig.add_trace(bollinger_trace_tuple[1], row=bollinger_bands_row_number, col=1)
+            fig.add_trace(bollinger_trace_tuple[2], row=bollinger_bands_row_number, col=1)
 
-        # if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
-        #     for ma in moving_average_qs:
-        #         fig.add_trace(self._get_moving_average_trace(df, ma), row=5, col=1)
-        #
-        # if strategy:
-        #     fig.add_trace(self._get_strategy_result_trace(df, strategy), row=1, col=1)
+        if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
+            for i, ma in enumerate(moving_average_qs):
+                fig.add_trace(self._get_moving_average_trace(df, ma), row=moving_averages_row_number[i], col=1)
+
+        if strategy:
+            fig.add_trace(self._get_strategy_result_trace(df, strategy), row=strategy_row_number, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
@@ -236,71 +288,38 @@ class ChartView(View):
             },
         )
 
-    def _get_bollindger_trace_1(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
-        source_df = standard_deviation.moving_average.get_source_df(base_df=df)
+    def _get_bollinger_bands_trace(self, df: pd.DataFrame, bollinger_bands: BollingerBands) -> Optional[tuple]:
+        source_df = bollinger_bands.moving_average.get_source_df(base_df=df)
 
-        bollindger_df = pd.DataFrame(
-            columns=['b_1', 'b_2']
+        bollinger_df = pd.DataFrame(
+            columns=['b_0', 'b_1', 'b_2']
         )
         for index, row in df.iterrows():
-            bollindger_df.loc[index, 'b_1'] = standard_deviation.moving_average.get_value_by_index(
+            result = bollinger_bands.get_values_by_index(
                 index=index,
                 source_df=source_df,
-            ) + standard_deviation.get_value_by_index(
-                index=index,
-                source_df=source_df,
-            ) * 2
+            )
 
-        return go.Scatter(
-            x=bollindger_df.index,
-            y=bollindger_df['b_1'],
+            bollinger_df.loc[index, 'b_0'] = result[0]
+            bollinger_df.loc[index, 'b_1'] = result[1]
+            bollinger_df.loc[index, 'b_2'] = result[2]
+
+        b_0 = go.Scatter(
+            x=bollinger_df.index,
+            y=bollinger_df['b_0'],
+            # mode='markers',
+            name='b_0',
+        )
+        b_1 = go.Scatter(
+            x=bollinger_df.index,
+            y=bollinger_df['b_1'],
             # mode='markers',
             name='b_1',
-            marker={
-                # 'color': list(np.random.choice(range(256), size=3)),
-                'color': 'green',
-            },
         )
-
-    def _get_bollindger_trace_2(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
-        source_df = standard_deviation.moving_average.get_source_df(base_df=df)
-
-        bollindger_df = pd.DataFrame(
-            columns=['b_1', 'b_2']
-        )
-        for index, row in df.iterrows():
-            bollindger_df.loc[index, 'b_2'] = standard_deviation.moving_average.get_value_by_index(
-                index=index,
-                source_df=source_df,
-            ) - standard_deviation.get_value_by_index(
-                index=index,
-                source_df=source_df,
-            ) * 2
-
-        return go.Scatter(
-            x=bollindger_df.index,
-            y=bollindger_df['b_2'],
+        b_2 = go.Scatter(
+            x=bollinger_df.index,
+            y=bollinger_df['b_2'],
             # mode='markers',
             name='b_2',
-            marker={
-                # 'color': list(np.random.choice(range(256), size=3)),
-                'color': 'green',
-            },
         )
-
-    def _get_subplots_row_heights(self, rows: int = 2, slider_thickness: float = 0.1) -> list:
-        first_item_map = [0.9, 0.8, 0.7, 0.6]
-        prepared_rows = rows - 2
-
-        try:
-            first_item_thickness = first_item_map[prepared_rows]
-        except IndexError:
-            first_item_thickness = 0.5
-
-        row_heights = [first_item_thickness, slider_thickness]
-
-        if not prepared_rows:
-            return row_heights
-
-        extra_item_thickness = round((1 - first_item_thickness - slider_thickness) / prepared_rows, 3)
-        return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
+        return b_0, b_1, b_2

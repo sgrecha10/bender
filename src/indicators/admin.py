@@ -1,6 +1,10 @@
 from django.contrib import admin
 
-from .models import MovingAverage, StandardDeviation
+from .models import (
+    MovingAverage,
+    StandardDeviation,
+    BollingerBands,
+)
 
 
 @admin.register(MovingAverage)
@@ -49,6 +53,24 @@ class StandardDeviationAdmin(admin.ModelAdmin):
     list_editable = (
         'data_source',
         'kline_count',
+    )
+    readonly_fields = (
+        'updated',
+        'created',
+    )
+
+
+@admin.register(BollingerBands)
+class BollingerBandsAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'codename',
+        'description',
+        'moving_average',
+        'standard_deviation',
+        'sigma_factor',
+        'updated',
+        'created',
     )
     readonly_fields = (
         'updated',

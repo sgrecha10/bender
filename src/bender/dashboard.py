@@ -43,6 +43,7 @@ class CustomIndexDashboard(Dashboard):
                 models=(
                     'indicators.models.MovingAverage',
                     'indicators.models.StandardDeviation',
+                    'indicators.models.BollingerBands',
                 ),
             )
         )

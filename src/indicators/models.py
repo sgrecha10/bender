@@ -273,3 +273,62 @@ class StandardDeviation(BaseModel):
                 return
 
         return (deviation / self.kline_count) ** Decimal(0.5)
+
+
+class BollingerBands(BaseModel):
+    codename = models.CharField(
+        verbose_name='Codename',
+        max_length=255,
+        unique=True,
+    )
+    description = models.TextField(
+        verbose_name='Description',
+        blank=True, default='',
+    )
+    moving_average = models.ForeignKey(
+        MovingAverage,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Moving Average',
+    )
+    standard_deviation = models.ForeignKey(
+        StandardDeviation,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Standard Deviation',
+    )
+    sigma_factor = models.DecimalField(
+        verbose_name='Sigma Factor',
+        max_digits=5,
+        decimal_places=4,
+        default=2,
+    )
+
+    class Meta:
+        verbose_name = 'Bollinger Bands'
+        verbose_name_plural = 'Bollinger Bands'
+
+    def __str__(self):
+        return f'{self.id} - {self.codename}'
+
+    def get_values_by_index(self,
+                           index: datetime | Hashable,
+                           source_df: DataFrame = None) -> Optional[tuple]:
+        """
+        Возвращает кортеж из трех значений.
+        """
+
+        average_price = self.moving_average.get_value_by_index(
+            index=index,
+            source_df=source_df,
+        )
+        standard_deviation = self.standard_deviation.get_value_by_index(
+            index=index,
+            source_df=source_df,
+        )
+
+        return (
+            average_price - standard_deviation * self.sigma_factor,
+            average_price,
+            average_price + standard_deviation * self.sigma_factor,
+        )

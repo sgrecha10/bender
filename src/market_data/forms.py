@@ -8,7 +8,11 @@ from strategies.models import Strategy
 from .constants import Interval, AllowedInterval
 from .models import ExchangeInfo, Kline
 from django.contrib.admin import widgets
-from indicators.models import MovingAverage, StandardDeviation
+from indicators.models import (
+    MovingAverage,
+    StandardDeviation,
+    BollingerBands,
+)
 from django.contrib import admin
 
 
@@ -100,6 +104,11 @@ class ChartForm(forms.Form):
     standard_deviation = forms.ModelChoiceField(
         queryset=StandardDeviation.objects.all(),
         label='Standard Deviation',
+        required=False,
+    )
+    bollinger_bands = forms.ModelChoiceField(
+        queryset=BollingerBands.objects.all(),
+        label='Bollinger Bands',
         required=False,
     )
 
