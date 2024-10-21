@@ -59,21 +59,21 @@ class ChartView(View):
         }
         return self.request.path + '?' + urllib.parse.urlencode(default_data)
 
-    def _get_subplots_row_heights(self, rows: int = 2, slider_thickness: float = 0.1) -> list:
+    def _get_subplots_row_heights(self, rows: int = 3, slider_thickness: float = 0.1) -> list:
         first_item_map = [0.9, 0.8, 0.7, 0.6]
-        prepared_rows = rows - 2
+        prepared_rows = rows - 3
 
         try:
             first_item_thickness = first_item_map[prepared_rows]
         except IndexError:
             first_item_thickness = 0.5
 
-        row_heights = [first_item_thickness, slider_thickness]
+        row_heights = [first_item_thickness, 0.001, slider_thickness]
 
         if not prepared_rows:
             return row_heights
 
-        extra_item_thickness = round((1 - first_item_thickness - slider_thickness) / prepared_rows, 3)
+        extra_item_thickness = round((1 - first_item_thickness - slider_thickness - 0.001) / prepared_rows, 3)
         return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
 
     def _get_chart(self, cleaned_data):
@@ -96,8 +96,8 @@ class ChartView(View):
         """
         1. Определяем количество необходимых строк. 1 - всегда инструмент, 2 - всегда пустая (для слайдера)
         """
-        row_count = 2  # инструмент + слайдер
-        row_titles = [symbol, '']  # название
+        row_count = 3  # инструмент + невидимый инструмент для слайдера + слайдер
+        row_titles = [symbol, '', '']  # название
 
         if volume and 'volume' in self.SEPARATE_ROW_INDICATORS:
             row_count += 1
@@ -148,7 +148,9 @@ class ChartView(View):
             row_titles=row_titles,
             row_heights=self._get_subplots_row_heights(rows=row_count),
         )
-        fig.add_trace(self._get_candlestick_trace(df, symbol), row=1, col=1)
+        candlestick_trace = self._get_candlestick_trace(df, symbol)
+        fig.add_trace(candlestick_trace, row=1, col=1)
+        fig.add_trace(candlestick_trace, row=2, col=1)
 
         if volume:
             fig.add_trace(self._get_volume_trace(df), row=volume_row_number, col=1)
@@ -187,12 +189,12 @@ class ChartView(View):
             height=1000,
             title=title,
             # yaxis_title='Volume',
-            xaxis_rangeslider_thickness=0.1,
+            xaxis2_rangeslider_thickness=0.1,
             # xaxis_rangeslider_borderwidth=1,
-            # xaxis_rangeslider_visible=False,
-            # xaxis2_rangeslider_visible=True,
-            # xaxis3_rangeslider_visible=True,
-            # xaxis4_rangeslider_visible=True,
+            xaxis_rangeslider_visible=False,
+            xaxis2_rangeslider_visible=True,
+            yaxis2_visible=False,
+            # xaxis2_visible=False,
         )
         # fig.update_xaxes(
         #     rangeslider_yaxis=dict(range=[1, 0])  # Указываем диапазон по оси Y, можно изменить по необходимости
@@ -262,6 +264,8 @@ class ChartView(View):
             marker={
                 # 'color': list(np.random.choice(range(256), size=3)),
                 'color': 'orange',
+                'symbol': 'triangle-down',  # triangle-down, triangle-up
+                'size': 12,
             },
         )
 
