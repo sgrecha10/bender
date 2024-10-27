@@ -243,31 +243,32 @@ class ChartView(View):
         )
 
     def _get_strategy_result_trace(self, df: pd.DataFrame, strategy: Strategy):
-        strategy_result_qs = StrategyResult.objects.filter(
-            strategy=strategy,
-            kline__open_time__gte=df.iloc[0].name,
-            kline__open_time__lte=df.iloc[-1].name,
-        ).values_list('kline__open_time', 'price')
-
-        df = pd.DataFrame(
-            data=strategy_result_qs,
-            columns=['open_time', 'price'],
-        )
-        df.set_index('open_time', inplace=True, drop=True)
-        df.sort_index(inplace=True)
-
-        return go.Scatter(
-            x=df.index,
-            y=df['price'],
-            mode='markers',
-            name=strategy.name,
-            marker={
-                # 'color': list(np.random.choice(range(256), size=3)),
-                'color': 'orange',
-                'symbol': 'triangle-down',  # triangle-down, triangle-up
-                'size': 12,
-            },
-        )
+        pass
+        # strategy_result_qs = StrategyResult.objects.filter(
+        #     strategy=strategy,
+        #     kline__open_time__gte=df.iloc[0].name,
+        #     kline__open_time__lte=df.iloc[-1].name,
+        # ).values_list('kline__open_time', 'price')
+        #
+        # df = pd.DataFrame(
+        #     data=strategy_result_qs,
+        #     columns=['open_time', 'price'],
+        # )
+        # df.set_index('open_time', inplace=True, drop=True)
+        # df.sort_index(inplace=True)
+        #
+        # return go.Scatter(
+        #     x=df.index,
+        #     y=df['price'],
+        #     mode='markers',
+        #     name=strategy.name,
+        #     marker={
+        #         # 'color': list(np.random.choice(range(256), size=3)),
+        #         'color': 'orange',
+        #         'symbol': 'triangle-down',  # triangle-down, triangle-up
+        #         'size': 12,
+        #     },
+        # )
 
     def _get_standard_deviation_trace(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
         column_name = f'sd_{standard_deviation.id}'

@@ -44,6 +44,25 @@ class Strategy(BaseModel):
     def __str__(self):
         return self.name
 
+    def run(self):
+        """
+        Запуск стратегии, заполнение StrategyResult
+        """
+        pass
+        # StrategyResult.objects.filter(strategy_id=self.id).delete()
+        #
+        # kline_qs = Kline.objects.filter(
+        #     symbol=self.base_symbol,
+        #     open_time__gte=self.start_time,
+        #     open_time__lte=self.end_time,
+        # )
+        # for kline in kline_qs:
+        #     StrategyResult.objects.create(
+        #         strategy_id=self.id,
+        #         kline=kline,
+        #         price=kline.high_price + 5,
+        #     )
+
 
 class StrategyResult(BaseModel):
     strategy = models.ForeignKey(
@@ -55,10 +74,17 @@ class StrategyResult(BaseModel):
         verbose_name='Kline',
         blank=True, null=True,
     )
-    price = models.DecimalField(
-        verbose_name='Price',
+    buy = models.DecimalField(
+        verbose_name='Buy',
         max_digits=20,
         decimal_places=10,
+        null=True, blank=True,
+    )
+    sell = models.DecimalField(
+        verbose_name='Sell',
+        max_digits=20,
+        decimal_places=10,
+        null=True, blank=True,
     )
 
     class Meta:

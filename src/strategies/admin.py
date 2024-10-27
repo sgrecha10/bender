@@ -63,20 +63,9 @@ class StrategyAdmin(admin.ModelAdmin):
     def response_change(self, request, obj):
         if "_run-strategy" in request.POST:
             # здесь главный метод стратегии (выбирать по айди)
-            # пока для примера заполним StrategyResult:
-            StrategyResult.objects.filter(strategy=obj).delete()
+            # пока, для простоты, по айди не выбираем
 
-            kline_qs = Kline.objects.filter(
-                symbol=obj.base_symbol,
-                open_time__gte=obj.start_time,
-                open_time__lte=obj.end_time,
-            )
-            for kline in kline_qs:
-                StrategyResult.objects.create(
-                    strategy=obj,
-                    kline=kline,
-                    price=kline.high_price + 100,
-                )
+            obj.run()
 
             message = 'Run'
             return redirect_to_change_form(request, self.model, obj.id, message)
@@ -116,7 +105,7 @@ class StrategyResultAdmin(admin.ModelAdmin):
         'id',
         'strategy',
         'kline',
-        'price',
+        # 'price',
         'created',
         'updated',
     )
