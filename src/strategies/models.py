@@ -48,20 +48,31 @@ class Strategy(BaseModel):
         """
         Запуск стратегии, заполнение StrategyResult
         """
-        pass
-        # StrategyResult.objects.filter(strategy_id=self.id).delete()
-        #
-        # kline_qs = Kline.objects.filter(
-        #     symbol=self.base_symbol,
-        #     open_time__gte=self.start_time,
-        #     open_time__lte=self.end_time,
-        # )
-        # for kline in kline_qs:
-        #     StrategyResult.objects.create(
-        #         strategy_id=self.id,
-        #         kline=kline,
-        #         price=kline.high_price + 5,
-        #     )
+        from indicators.models import MovingAverage
+
+        StrategyResult.objects.filter(strategy_id=self.id).delete()
+
+        kline_qs = Kline.objects.filter(
+            symbol=self.base_symbol,
+            open_time__gte=self.start_time,
+            open_time__lte=self.end_time,
+        )
+        kline_df = kline_qs.group_by_interval().to_dataframe(index='open_time_group')
+
+        moving_average = MovingAverage.objects.get(codename='MA_1')
+        source_df = moving_average.get_source_df(kline_df)
+
+        for idx, kline_item in kline_df.iterrows():
+            sell = moving_average.get_value_by_index(
+                index=idx,
+                source_df=source_df,
+            )
+
+            StrategyResult.objects.create(
+                strategy_id=self.id,
+                kline=kline_qs.get(open_time=idx),
+                sell=sell,
+            )
 
 
 class StrategyResult(BaseModel):

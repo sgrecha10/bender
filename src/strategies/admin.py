@@ -105,7 +105,8 @@ class StrategyResultAdmin(admin.ModelAdmin):
         'id',
         'strategy',
         'kline',
-        # 'price',
+        'buy',
+        'sell',
         'created',
         'updated',
     )

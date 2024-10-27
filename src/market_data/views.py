@@ -171,7 +171,9 @@ class ChartView(View):
                 fig.add_trace(self._get_moving_average_trace(df, ma), row=moving_averages_row_number[i], col=1)
 
         if strategy:
-            fig.add_trace(self._get_strategy_result_trace(df, strategy), row=strategy_row_number, col=1)
+            strategy_result_tuple = self._get_strategy_result_trace(df, strategy)
+            fig.add_trace(strategy_result_tuple[0], row=strategy_row_number, col=1)
+            fig.add_trace(strategy_result_tuple[1], row=strategy_row_number, col=1)
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
@@ -242,33 +244,44 @@ class ChartView(View):
             },
         )
 
-    def _get_strategy_result_trace(self, df: pd.DataFrame, strategy: Strategy):
-        pass
-        # strategy_result_qs = StrategyResult.objects.filter(
-        #     strategy=strategy,
-        #     kline__open_time__gte=df.iloc[0].name,
-        #     kline__open_time__lte=df.iloc[-1].name,
-        # ).values_list('kline__open_time', 'price')
-        #
-        # df = pd.DataFrame(
-        #     data=strategy_result_qs,
-        #     columns=['open_time', 'price'],
-        # )
-        # df.set_index('open_time', inplace=True, drop=True)
-        # df.sort_index(inplace=True)
-        #
-        # return go.Scatter(
-        #     x=df.index,
-        #     y=df['price'],
-        #     mode='markers',
-        #     name=strategy.name,
-        #     marker={
-        #         # 'color': list(np.random.choice(range(256), size=3)),
-        #         'color': 'orange',
-        #         'symbol': 'triangle-down',  # triangle-down, triangle-up
-        #         'size': 12,
-        #     },
-        # )
+    def _get_strategy_result_trace(self, df: pd.DataFrame, strategy: Strategy) -> tuple:
+        strategy_result_qs = StrategyResult.objects.filter(
+            strategy=strategy,
+            kline__open_time__gte=df.iloc[0].name,
+            kline__open_time__lte=df.iloc[-1].name,
+        ).values_list('kline__open_time', 'buy', 'sell')
+
+        df = pd.DataFrame(
+            data=strategy_result_qs,
+            columns=['open_time', 'buy', 'sell'],
+        )
+        df.set_index('open_time', inplace=True, drop=True)
+        df.sort_index(inplace=True)
+
+        buy_trace = go.Scatter(
+            x=df.index,
+            y=df['buy'],
+            mode='markers',
+            # name=strategy.name,
+            marker={
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'orange',
+                'symbol': 'triangle-up',  # triangle-down, triangle-up
+                'size': 12,
+            },
+        )
+        sell_trace = go.Scatter(
+            x=df.index,
+            y=df['sell'],
+            mode='markers',
+            # name=strategy.name,
+            marker={
+                'color': 'orange',
+                'symbol': 'triangle-down',  # triangle-down, triangle-up
+                'size': 12,
+            },
+        )
+        return buy_trace, sell_trace
 
     def _get_standard_deviation_trace(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
         column_name = f'sd_{standard_deviation.id}'
