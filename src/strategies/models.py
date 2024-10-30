@@ -2,6 +2,7 @@ from django.db import models
 from core.utils.db_utils import BaseModel
 from market_data.models import ExchangeInfo, Kline
 from market_data.constants import Interval, AllowedInterval
+import pandas as pd
 
 
 class Strategy(BaseModel):
@@ -36,6 +37,24 @@ class Strategy(BaseModel):
         verbose_name='End time',
         null=True, blank=True,
     )
+    stop_loss_factor = models.DecimalField(
+        verbose_name='Stop loss factor',
+        max_digits=5,
+        decimal_places=4,
+        default=1,
+    )
+    take_profit_factor = models.DecimalField(
+        verbose_name='Take profit factor',
+        max_digits=5,
+        decimal_places=4,
+        default=2,
+    )
+    fixed_bet_amount = models.DecimalField(
+        verbose_name='Fixed bet amount',
+        max_digits=20,
+        decimal_places=10,
+        default=0.00001,
+    )
 
     class Meta:
         verbose_name = 'Strategy'
@@ -48,8 +67,6 @@ class Strategy(BaseModel):
         """
         Запуск стратегии, заполнение StrategyResult
         """
-        from indicators.models import MovingAverage
-
         StrategyResult.objects.filter(strategy_id=self.id).delete()
 
         kline_qs = Kline.objects.filter(
@@ -59,20 +76,41 @@ class Strategy(BaseModel):
         )
         kline_df = kline_qs.group_by_interval().to_dataframe(index='open_time_group')
 
-        moving_average = MovingAverage.objects.get(codename='MA_1')
+        moving_average = self.movingaverage_set.get(codename='MA_1')
         source_df = moving_average.get_source_df(kline_df)
 
         for idx, kline_item in kline_df.iterrows():
-            sell = moving_average.get_value_by_index(
-                index=idx,
+
+            # находим позицию индекса текущей свечи, если 0 то пропускаем итерацию
+            if not (index_position := kline_df.index.get_loc(idx)):
+                continue
+
+            previous_index = kline_df.index[index_position - 1]
+
+            previous_ma_value = moving_average.get_value_by_index(
+                index=previous_index,
                 source_df=source_df,
             )
 
-            StrategyResult.objects.create(
-                strategy_id=self.id,
-                kline=kline_qs.get(open_time=idx),
-                sell=sell,
-            )
+            # проверяем, что цена пересекла значение MA за предыдущую свечу
+            if kline_item['high_price'] > previous_ma_value > kline_item['low_price']:
+
+                # Проверяем, пересечение снизу или сверху, открываем позицию sell or buy
+                previous_close_price = kline_df.loc[previous_index, 'close_price']
+                if previous_close_price < previous_ma_value:
+                    # идем вверх, покупаем
+                    StrategyResult.objects.create(
+                        strategy_id=self.id,
+                        kline=kline_qs.get(open_time=idx),
+                        buy=previous_ma_value,
+                    )
+                else:
+                    # идем вниз, продаем
+                    StrategyResult.objects.create(
+                        strategy_id=self.id,
+                        kline=kline_qs.get(open_time=idx),
+                        sell=previous_ma_value,
+                    )
 
 
 class StrategyResult(BaseModel):

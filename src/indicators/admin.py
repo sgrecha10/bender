@@ -46,6 +46,7 @@ class StandardDeviationAdmin(admin.ModelAdmin):
         'moving_average',
         'data_source',
         'kline_count',
+        'strategy',
         'updated',
         'created',
     )

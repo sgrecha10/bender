@@ -229,6 +229,12 @@ class StandardDeviation(BaseModel):
         verbose_name='K-Line Count',
         help_text='Количество свечей для расчета',
     )
+    strategy = models.ForeignKey(
+        Strategy,
+        on_delete=models.SET_NULL,
+        verbose_name='Strategy',
+        null=True, blank=True,
+    )
 
     class Meta:
         verbose_name = 'Standard Deviation'

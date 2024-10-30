@@ -94,7 +94,7 @@ class ChartView(View):
         df = qs.to_dataframe(index='open_time_group')
 
         """
-        1. Определяем количество необходимых строк. 1 - всегда инструмент, 2 - всегда пустая (для слайдера)
+        1. Определяем количество необходимых строк. 1 - всегда инструмент, 2, 3 - всегда пустые (для слайдера)
         """
         row_count = 3  # инструмент + невидимый инструмент для слайдера + слайдер
         row_titles = [symbol, '', '']  # название
@@ -265,9 +265,9 @@ class ChartView(View):
             # name=strategy.name,
             marker={
                 # 'color': list(np.random.choice(range(256), size=3)),
-                'color': 'orange',
+                'color': 'green',
                 'symbol': 'triangle-up',  # triangle-down, triangle-up
-                'size': 12,
+                'size': 13,
             },
         )
         sell_trace = go.Scatter(
@@ -276,9 +276,9 @@ class ChartView(View):
             mode='markers',
             # name=strategy.name,
             marker={
-                'color': 'orange',
+                'color': 'red',
                 'symbol': 'triangle-down',  # triangle-down, triangle-up
-                'size': 12,
+                'size': 13,
             },
         )
         return buy_trace, sell_trace
