@@ -24,7 +24,7 @@ class ChartView(View):
 
     SEPARATE_ROW_INDICATORS = (
         'volume',
-        'standard_deviation',
+        'standard_deviations',
         # 'moving_averages',
     )
 
@@ -82,10 +82,11 @@ class ChartView(View):
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
         volume = cleaned_data.get('volume')
-        moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
         strategy = cleaned_data.get('strategy')
-        standard_deviation = cleaned_data.get('standard_deviation')
         bollinger_bands = cleaned_data.get('bollinger_bands')
+
+        moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
+        standard_deviations = [item.pk for item in cleaned_data.get('standard_deviations', [])]
 
         qs = Kline.objects.filter(symbol_id=symbol)
         qs = qs.filter(open_time__gte=start_time) if start_time else qs
@@ -106,12 +107,19 @@ class ChartView(View):
         else:
             volume_row_number = 1
 
-        if standard_deviation and 'standard_deviation' in self.SEPARATE_ROW_INDICATORS:
-            row_count += 1
-            standard_deviation_row_number = row_count
-            row_titles.append(standard_deviation.codename)
+        if standard_deviations and 'standard_deviations' in self.SEPARATE_ROW_INDICATORS:
+            standard_deviations_count = len(standard_deviations)
+            standard_deviation_row_number = []
+            for i in range(standard_deviations_count):
+                row_count += 1
+                standard_deviation_row_number.append(row_count)
+                standard_deviation_codename = StandardDeviation.objects.get(pk=standard_deviations[i]).codename
+                row_titles.append(standard_deviation_codename)
         else:
-            standard_deviation_row_number = 1
+            standard_deviations_count = len(standard_deviations)
+            standard_deviation_row_number = []
+            for i in range(standard_deviations_count):
+                standard_deviation_row_number.append(1)
 
         if moving_averages and 'moving_averages' in self.SEPARATE_ROW_INDICATORS:
             moving_averages_count = len(moving_averages)
@@ -155,10 +163,9 @@ class ChartView(View):
         if volume:
             fig.add_trace(self._get_volume_trace(df), row=volume_row_number, col=1)
 
-        if standard_deviation:
-            fig.add_trace(
-                self._get_standard_deviation_trace(df, standard_deviation),
-                row=standard_deviation_row_number, col=1)
+        if standard_deviation_qs := StandardDeviation.objects.filter(pk__in=standard_deviations):
+            for i, sd in enumerate(standard_deviation_qs):
+                fig.add_trace(self._get_standard_deviation_trace(df, sd), row=standard_deviation_row_number[i], col=1)
 
         if bollinger_bands:
             bollinger_trace_tuple = self._get_bollinger_bands_trace(df, bollinger_bands)

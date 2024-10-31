@@ -241,7 +241,13 @@ class StandardDeviation(BaseModel):
         verbose_name_plural = 'Standard Deviations'
 
     def __str__(self):
-        return f'{self.id} - {self.codename}'
+        return (
+            f'{self.id} - '
+            f'{self.codename} - '
+            f'{self.moving_average.codename} - '
+            f'{self.get_data_source_display()} - '
+            f'{self.kline_count}'
+        )
 
     def get_value_by_index(self,
                            index: datetime | Hashable,

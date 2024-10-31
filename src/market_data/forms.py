@@ -90,20 +90,21 @@ class ChartForm(forms.Form):
         label='Volume',
         required=False,
     )
+    strategy = forms.ModelChoiceField(
+        queryset=Strategy.objects.all(),
+        label='Strategy',
+        required=False,
+    )
     moving_averages = forms.ModelMultipleChoiceField(
         queryset=MovingAverage.objects.all(),
         widget=forms.CheckboxSelectMultiple,
         label='Moving Averages',
         required=False,
     )
-    strategy = forms.ModelChoiceField(
-        queryset=Strategy.objects.all(),
-        label='Strategy',
-        required=False,
-    )
-    standard_deviation = forms.ModelChoiceField(
+    standard_deviations = forms.ModelMultipleChoiceField(
         queryset=StandardDeviation.objects.all(),
-        label='Standard Deviation',
+        widget=forms.CheckboxSelectMultiple,
+        label='Standard Deviations',
         required=False,
     )
     bollinger_bands = forms.ModelChoiceField(

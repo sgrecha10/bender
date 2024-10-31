@@ -135,6 +135,7 @@ class StrategyAdmin(admin.ModelAdmin):
             'end_time_0': instance.end_time.strftime('%d.%m.%Y'),
             'end_time_1': instance.end_time.strftime('%H:%M'),
             'strategy': instance.id,
+            'volume': True,
         }
 
         url = reverse('chart') + '?' + urlencode(data)
