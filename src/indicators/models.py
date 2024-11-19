@@ -261,7 +261,8 @@ class StandardDeviation(BaseModel):
         2. Если количество свечей для расчета в source_df меньше self.kline_count - return None
         3. Получаем значение MA
         """
-        average_price = self.moving_average.get_value_by_index(index, source_df)
+        if not (average_price := self.moving_average.get_value_by_index(index, source_df)):
+            return
 
         prepared_source_df = source_df.loc[:index].tail(self.kline_count)
         if len(prepared_source_df) < self.kline_count:

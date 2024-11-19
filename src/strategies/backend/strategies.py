@@ -27,6 +27,7 @@ class StrategyFirstBackend:
         self.strategy_codename = Strategy.Codename.STRATEGY_1
         self.strategy = Strategy.objects.get(codename=self.strategy_codename)
         self.moving_average = self.strategy.movingaverage_set.first()
+        self.standard_deviation = self.strategy.standarddeviation_set.first()
 
         self.kline_qs = Kline.objects.filter(
             symbol=self.strategy.base_symbol,
@@ -53,25 +54,29 @@ class StrategyFirstBackend:
         """
         return price, True
 
-    def get_stop_loss(self, buy: Decimal = None, sell: Decimal = None) -> Optional[Decimal]:
-        """ Возвращает цену стоп лосса
-        :param buy: - цена входа в длинную сделку
-        :param sell: - цена входа в короткую сделку,
-        """
-        if buy:
-            return buy - 10
-        if sell:
-            return sell + 10
+    def get_stop_loss(self, sd: Decimal, buy: Decimal = None, sell: Decimal = None):
+        """ Устанавливает цену стоп лосса
 
-    def get_take_profit(self, buy: Decimal = None, sell: Decimal = None) -> Optional[Decimal]:
-        """ Возвращает цену тейк профита
+        :param sd: standard_deviation_value для расчета
         :param buy: - цена входа в длинную сделку
         :param sell: - цена входа в короткую сделку,
         """
         if buy:
-            return buy + 10
+            self.stop_loss = buy - sd * self.strategy.stop_loss_factor
         if sell:
-            return sell - 10
+            self.stop_loss = sell + sd * self.strategy.stop_loss_factor
+
+    def get_take_profit(self, sd: Decimal, buy: Decimal = None, sell: Decimal = None):
+        """ Устанавливает цену тейк профита
+
+        :param sd:
+        :param buy: - цена входа в длинную сделку
+        :param sell: - цена входа в короткую сделку,
+        """
+        if buy:
+            self.take_profit = buy + sd * self.strategy.take_profit_factor
+        if sell:
+            self.take_profit = sell - sd * self.strategy.take_profit_factor
 
     def check_price(self, idx: datetime, price: Decimal):
         """ Получает цену и timestamp, открывает/закрывает позицию """
@@ -86,16 +91,66 @@ class StrategyFirstBackend:
             index=previous_index,
             source_df=self.source_df,
         )
-        if not previous_ma_value:
+        previous_sd_value = self.standard_deviation.get_value_by_index(
+            index=previous_index,
+            source_df=self.source_df,
+        )
+        if not (previous_ma_value and previous_sd_value):
             return False
 
         # получаем предыдущее значение цены
         previous_close_price = self.kline_df.loc[previous_index, 'close_price']
 
-        # проверяем, открыта ли уже позиция
-        if self.has_long_position or self.has_short_position:
-            # позиция открыта. проверяем, что цена дошла до стоп лосса или тейк профита
-            pass
+        # открыта позиция в лонг
+        if self.has_long_position:
+            if price >= self.take_profit:
+                real_price, is_ok = self.make_sell(quantity=Decimal(0), price=price)
+                if is_ok:
+                    self.has_long_position = False
+                    self.stop_loss = None
+                    self.take_profit = None
+                    StrategyResult.objects.create(
+                        strategy_id=self.strategy.id,
+                        kline=self.kline_qs.get(open_time=idx),
+                        sell=real_price,
+                    )
+
+            elif price <= self.stop_loss:
+                real_price, is_ok = self.make_sell(quantity=Decimal(0), price=price)
+                if is_ok:
+                    self.has_long_position = False
+                    self.stop_loss = None
+                    self.take_profit = None
+                    StrategyResult.objects.create(
+                        strategy_id=self.strategy.id,
+                        kline=self.kline_qs.get(open_time=idx),
+                        sell=real_price,
+                    )
+
+        elif self.has_short_position:
+            if price <= self.take_profit:
+                real_price, is_ok = self.make_buy(quantity=Decimal(0), price=price)
+                if is_ok:
+                    self.has_short_position = False
+                    self.stop_loss = None
+                    self.take_profit = None
+                    StrategyResult.objects.create(
+                        strategy_id=self.strategy.id,
+                        kline=self.kline_qs.get(open_time=idx),
+                        buy=real_price,
+                    )
+
+            elif price >= self.stop_loss:
+                real_price, is_ok = self.make_buy(quantity=Decimal(0), price=price)
+                if is_ok:
+                    self.has_short_position = False
+                    self.stop_loss = None
+                    self.take_profit = None
+                    StrategyResult.objects.create(
+                        strategy_id=self.strategy.id,
+                        kline=self.kline_qs.get(open_time=idx),
+                        buy=real_price,
+                    )
 
         else:
             # позиции нет. проверяем, что цена пересекла значение МА за предыдущую свечу
@@ -103,9 +158,9 @@ class StrategyFirstBackend:
                 # цена пересекла снизу вверх
                 real_price, is_ok = self.make_buy(quantity=Decimal(1.0), price=previous_ma_value)
                 if is_ok:
-                    # self.has_long_position = True
-                    self.stop_loss = self.get_stop_loss(buy=real_price)
-                    self.take_profit = self.get_take_profit(buy=real_price)
+                    self.has_long_position = True
+                    self.get_stop_loss(sd=previous_sd_value, buy=real_price)
+                    self.get_take_profit(sd=previous_sd_value, buy=real_price)
                     StrategyResult.objects.create(
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
@@ -116,9 +171,9 @@ class StrategyFirstBackend:
                 # цена пересекла сверху вниз
                 real_price, is_ok = self.make_sell(quantity=Decimal(1.0), price=previous_ma_value)
                 if is_ok:
-                    # self.has_short_position = True
-                    self.stop_loss = self.get_stop_loss(sell=real_price)
-                    self.take_profit = self.get_take_profit(sell=real_price)
+                    self.has_short_position = True
+                    self.get_stop_loss(sd=previous_sd_value, sell=real_price)
+                    self.get_take_profit(sd=previous_sd_value, sell=real_price)
                     StrategyResult.objects.create(
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
