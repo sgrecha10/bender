@@ -8,6 +8,7 @@ from .models import Strategy, StrategyResult
 from core.utils.admin_utils import redirect_to_change_form
 from django.shortcuts import HttpResponse, render, redirect
 from urllib.parse import urlencode
+from .constants import CODENAME_MAP
 
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
@@ -50,7 +51,7 @@ class StrategyAdmin(admin.ModelAdmin):
 
     list_display = (
         'id',
-        'name',
+        'codename',
         'description',
         'base_symbol',
         'base_interval',
@@ -70,12 +71,12 @@ class StrategyAdmin(admin.ModelAdmin):
         StandardDeviationInlineAdmin,
     )
     raw_id_fields = ('base_symbol',)
-    list_display_links = ('id', 'name')
+    list_display_links = ('codename',)
 
     fieldsets = (
         ('Основное', {
             'fields': (
-                'name',
+                'codename',
                 'description',
                 'base_symbol',
                 'base_interval',
@@ -98,18 +99,39 @@ class StrategyAdmin(admin.ModelAdmin):
                 'created',
                 'updated',
             ),
-            'classes': ('grp-collapse grp-closed',),
+            # 'classes': ('grp-collapse grp-open',),
         }),
     )
 
     def response_change(self, request, obj):
-        if "_run-strategy" in request.POST:
-            # здесь главный метод стратегии (выбирать по айди)
-            # пока, для простоты, по айди не выбираем
+        if '_run-strategy' in request.POST:
+            """ Запускаем тестирование стратегии 
+            
+            Для запуска стратегии в рабочий режим надо будет еще подумать.
+            """
 
-            obj.run()
+            StrategyResult.objects.filter(strategy_id=obj.id).delete()
 
-            message = 'Run'
+            # получаем бекенд стратегии
+            backend = CODENAME_MAP[obj.codename]()
+
+            # получаем df для тестирования
+            kline_qs = Kline.objects.filter(
+                symbol=obj.base_symbol,
+                open_time__gte=obj.start_time,
+                open_time__lte=obj.end_time,
+            )
+            kline_df = kline_qs.group_by_interval().to_dataframe(index='open_time_group')
+
+            # обходим полученный df начиная с самой старой свечи
+            for idx, kline_item in kline_df.iterrows():
+                backend.check_kandle(
+                    idx=idx,
+                    high_price=kline_item['high_price'],
+                    low_price=kline_item['low_price'],
+                )
+
+            message = 'Finished'
             return redirect_to_change_form(request, self.model, obj.id, message)
         else:
             return super().response_change(request, obj)

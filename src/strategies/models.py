@@ -6,9 +6,14 @@ import pandas as pd
 
 
 class Strategy(BaseModel):
-    name = models.CharField(
-        verbose_name='Name',
+    class Codename(models.TextChoices):
+        STRATEGY_1 = 'strategy_1', 'Strategy_1'
+
+    codename = models.CharField(
+        verbose_name='Codename',
         max_length=255,
+        choices=Codename.choices,
+        unique=True,
     )
     description = models.TextField(
         verbose_name='Description',
@@ -61,56 +66,7 @@ class Strategy(BaseModel):
         verbose_name_plural = 'Strategies'
 
     def __str__(self):
-        return self.name
-
-    def run(self):
-        """
-        Запуск стратегии, заполнение StrategyResult
-        """
-        StrategyResult.objects.filter(strategy_id=self.id).delete()
-
-        kline_qs = Kline.objects.filter(
-            symbol=self.base_symbol,
-            open_time__gte=self.start_time,
-            open_time__lte=self.end_time,
-        )
-        kline_df = kline_qs.group_by_interval().to_dataframe(index='open_time_group')
-
-        moving_average = self.movingaverage_set.get(codename='MA_1')
-        source_df = moving_average.get_source_df(kline_df)
-
-        for idx, kline_item in kline_df.iterrows():
-
-            # находим позицию индекса текущей свечи, если 0 то пропускаем итерацию
-            if not (index_position := kline_df.index.get_loc(idx)):
-                continue
-
-            previous_index = kline_df.index[index_position - 1]
-
-            previous_ma_value = moving_average.get_value_by_index(
-                index=previous_index,
-                source_df=source_df,
-            )
-
-            # проверяем, что цена пересекла значение MA за предыдущую свечу
-            if kline_item['high_price'] > previous_ma_value > kline_item['low_price']:
-
-                # Проверяем, пересечение снизу или сверху, открываем позицию sell or buy
-                previous_close_price = kline_df.loc[previous_index, 'close_price']
-                if previous_close_price < previous_ma_value:
-                    # идем вверх, покупаем
-                    StrategyResult.objects.create(
-                        strategy_id=self.id,
-                        kline=kline_qs.get(open_time=idx),
-                        buy=previous_ma_value,
-                    )
-                else:
-                    # идем вниз, продаем
-                    StrategyResult.objects.create(
-                        strategy_id=self.id,
-                        kline=kline_qs.get(open_time=idx),
-                        sell=previous_ma_value,
-                    )
+        return self.codename
 
 
 class StrategyResult(BaseModel):
