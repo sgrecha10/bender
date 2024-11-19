@@ -125,10 +125,14 @@ class StrategyAdmin(admin.ModelAdmin):
 
             # обходим полученный df начиная с самой старой свечи
             for idx, kline_item in kline_df.iterrows():
-                backend.check_kandle(
+                # потому что тестирование
+                backend.check_price(
                     idx=idx,
-                    high_price=kline_item['high_price'],
-                    low_price=kline_item['low_price'],
+                    price=kline_item['high_price'],
+                )
+                backend.check_price(
+                    idx=idx,
+                    price=kline_item['low_price'],
                 )
 
             message = 'Finished'

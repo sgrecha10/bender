@@ -7,9 +7,11 @@ from market_data.models import Kline
 class StrategyFirstBackend:
     """ Алгоритм
 
+    Тестирование:
     1. Получаем цену или свечу (для тестирования)
     2. Свечу надо привести к цене. Получится две цены - мин и макс. Для покупок проверяем мин, для продаж - макс.
-    3. Находим точки открытия позиции: пересечение ценой МА. Если снизу вверх - то сигнал на покупку, сверху вниз - на продажу.
+    3. Находим точки открытия позиции:
+    Пересечение ценой значения МА за предыдущую свечку. Если снизу вверх - то сигнал на покупку, сверху вниз - на продажу.
     4. Объем инструмента для входа в сделку - фиксированный, из настроек стратегии. Открываем "по рынку".
     5. Записываем в StrategyResult цены, по которым реально куплен/продан инструмент.
     6. От цены открытия сделки рассчитываем StopLoss, TakeProfit.
@@ -36,8 +38,20 @@ class StrategyFirstBackend:
         self.is_long_position = False
         self.is_short_position = False
 
-    def check_kandle(self, idx: datetime, high_price: Decimal, low_price: Decimal):
-        """ Получает свечку, вызывается при тестировании стратегии """
+    def buy(self, quantity: Decimal, price: Decimal = None) -> tuple[Decimal, bool]:
+        """ Покупаем инструмент
+        Если price отсутствует, покупаем по рынку (не реализовано)
+        Возвращаем реальную цену покупки и флаг успеха.
+        """
+        return price, True
+
+    def sell(self, quantity: Decimal, price: Decimal = None) -> tuple[Decimal, bool]:
+        """ Продаем инструмент
+        """
+        return price, True
+
+    def check_price(self, idx: datetime, price: Decimal):
+        """ Получает цену и timestamp, открывает/закрывает позицию """
 
         # находим позицию индекса текущей свечи, если 0 то пропускаем итерацию
         if not (index_position := self.kline_df.index.get_loc(idx)):
@@ -49,30 +63,53 @@ class StrategyFirstBackend:
             index=previous_index,
             source_df=self.source_df,
         )
-
         if not previous_ma_value:
             return False
 
-        # проверяем, что цена пересекла значение MA за предыдущую свечу
-        if high_price > previous_ma_value > low_price:
+        # проверяем, что цена пересекла значение МА за предыдущую свечу
+        previous_close_price = self.kline_df.loc[previous_index, 'close_price']
 
-            # Проверяем, пересечение снизу или сверху, открываем позицию sell or buy
-            previous_close_price = self.kline_df.loc[previous_index, 'close_price']
-            if previous_close_price < previous_ma_value:
-                # идем вверх, покупаем
+        if price > previous_ma_value > previous_close_price:
+            # цена пересекла снизу вверх
+            real_price, is_ok = self.buy(quantity=Decimal(1.0), price=previous_ma_value)
+            if is_ok:
                 StrategyResult.objects.create(
                     strategy_id=self.strategy.id,
                     kline=self.kline_qs.get(open_time=idx),
-                    buy=previous_ma_value,
+                    buy=real_price,
                 )
-            else:
-                # идем вниз, продаем
+
+        if price < previous_ma_value < previous_close_price:
+            # цена пересекла сверху вниз
+            real_price, is_ok = self.buy(quantity=Decimal(1.0), price=previous_ma_value)
+            if is_ok:
                 StrategyResult.objects.create(
                     strategy_id=self.strategy.id,
                     kline=self.kline_qs.get(open_time=idx),
-                    sell=previous_ma_value,
+                    sell=real_price,
                 )
 
-    def check_price(self):
-        """ Получает цену, для рабочего режима """
-        pass
+
+        # # проверяем, что цена пересекла значение MA за предыдущую свечу
+        # if high_price > previous_ma_value > low_price:
+        #
+        #     # Проверяем, пересечение снизу или сверху, открываем позицию sell or buy
+        #
+        #     if previous_close_price < previous_ma_value:
+        #         # идем вверх, покупаем
+        #         real_price, is_ok = self.buy(quantity=Decimal(1.0), price=previous_ma_value)
+        #         if is_ok:
+        #             StrategyResult.objects.create(
+        #                 strategy_id=self.strategy.id,
+        #                 kline=self.kline_qs.get(open_time=idx),
+        #                 buy=real_price,
+        #             )
+        #     else:
+        #         # идем вниз, продаем
+        #         real_price, is_ok = self.buy(quantity=Decimal(1.0), price=previous_ma_value)
+        #         if is_ok:
+        #             StrategyResult.objects.create(
+        #                 strategy_id=self.strategy.id,
+        #                 kline=self.kline_qs.get(open_time=idx),
+        #                 sell=real_price,
+        #             )
