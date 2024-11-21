@@ -126,6 +126,7 @@ class StrategyFirstBackend:
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
                         sell=real_price,
+                        state=StrategyResult.State.PROFIT,
                     )
 
             elif price <= self.stop_loss:
@@ -138,6 +139,7 @@ class StrategyFirstBackend:
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
                         sell=real_price,
+                        state=StrategyResult.State.LOSS,
                     )
 
         elif self.has_short_position:
@@ -151,6 +153,7 @@ class StrategyFirstBackend:
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
                         buy=real_price,
+                        state=StrategyResult.State.PROFIT,
                     )
 
             elif price >= self.stop_loss:
@@ -163,6 +166,7 @@ class StrategyFirstBackend:
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
                         buy=real_price,
+                        state=StrategyResult.State.LOSS,
                     )
 
         else:
@@ -178,6 +182,7 @@ class StrategyFirstBackend:
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
                         buy=real_price,
+                        state=StrategyResult.State.OPEN,
                     )
 
             if price <= previous_ma_value < previous_close_price:
@@ -191,6 +196,7 @@ class StrategyFirstBackend:
                         strategy_id=self.strategy.id,
                         kline=self.kline_qs.get(open_time=idx),
                         sell=real_price,
+                        state=StrategyResult.State.OPEN,
                     )
 
     def close_all_position(self, idx: datetime, price: Decimal = None):
@@ -204,6 +210,7 @@ class StrategyFirstBackend:
                 strategy_id=self.strategy.id,
                 kline=self.kline_qs.get(open_time=idx),
                 sell=price,
+                state=StrategyResult.State.UNKNOWN,
             )
 
         elif self.has_short_position:
@@ -213,4 +220,5 @@ class StrategyFirstBackend:
                 strategy_id=self.strategy.id,
                 kline=self.kline_qs.get(open_time=idx),
                 buy=price,
+                state=StrategyResult.State.UNKNOWN,
             )

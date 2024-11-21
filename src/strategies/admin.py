@@ -186,6 +186,7 @@ class StrategyResultAdmin(admin.ModelAdmin):
         'kline',
         'buy',
         'sell',
+        'state',
         'created',
         'updated',
     )

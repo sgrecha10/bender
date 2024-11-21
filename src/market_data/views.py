@@ -223,6 +223,9 @@ class ChartView(View):
             strategy_result_tuple = self._get_strategy_result_trace(df, strategy)
             fig.add_trace(strategy_result_tuple[0], row=strategy_row_number, col=1)
             fig.add_trace(strategy_result_tuple[1], row=strategy_row_number, col=1)
+            # fig.add_annotation(
+            #
+            # )
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,
@@ -322,14 +325,26 @@ class ChartView(View):
         sell_trace = go.Scatter(
             x=df.index,
             y=df['sell'],
-            mode='markers',
+            mode='markers+text',
+            # mode='markers',
             # name=strategy.name,
             marker={
                 'color': 'red',
                 'symbol': 'triangle-down',  # triangle-down, triangle-up
                 'size': 13,
             },
+            text=['text_2'] * len(df.index),
+            textposition='top center',
+            textfont=dict(
+                family='Arial',
+                size=14,
+                color='blue',
+            ),
         )
+        annotation_list = [
+
+        ]
+
         return buy_trace, sell_trace
 
     def _get_standard_deviation_trace(self, df: pd.DataFrame, standard_deviation: StandardDeviation):

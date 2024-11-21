@@ -70,6 +70,12 @@ class Strategy(BaseModel):
 
 
 class StrategyResult(BaseModel):
+    class State(models.TextChoices):
+        OPEN = 'open', 'Open'
+        PROFIT = 'profit', 'Profit'
+        LOSS = 'loss', 'Loss'
+        UNKNOWN = 'unknown', 'Unknown'
+
     strategy = models.ForeignKey(
         Strategy, on_delete=models.CASCADE,
         verbose_name='Strategy',
@@ -91,6 +97,10 @@ class StrategyResult(BaseModel):
         decimal_places=10,
         null=True, blank=True,
     )
+    state = models.CharField(
+        verbose_name='State',
+        choices=State.choices,
+    )
 
     class Meta:
         verbose_name = 'Strategy Result'
@@ -100,4 +110,4 @@ class StrategyResult(BaseModel):
         ]
 
     def __str__(self):
-        return self.strategy.name
+        return self.strategy.codename
