@@ -124,6 +124,8 @@ class StrategyAdmin(admin.ModelAdmin):
             kline_df = kline_qs.group_by_interval().to_dataframe(index='open_time_group')
 
             # обходим полученный df начиная с самой старой свечи
+            last_kline = None
+            last_idx = None
             for idx, kline_item in kline_df.iterrows():
                 # потому что тестирование
                 backend.check_price(
@@ -134,6 +136,10 @@ class StrategyAdmin(admin.ModelAdmin):
                     idx=idx,
                     price=kline_item['low_price'],
                 )
+                last_kline = kline_item
+                last_idx = idx
+
+            backend.close_all_position(idx=last_idx, price=last_kline['close_price'])
 
             message = 'Finished'
             return redirect_to_change_form(request, self.model, obj.id, message)

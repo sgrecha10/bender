@@ -51,7 +51,20 @@ class StrategyFirstBackend:
 
     def make_sell(self, quantity: Decimal, price: Decimal = None) -> tuple[Decimal, bool]:
         """ Продаем инструмент
+
+        Что бы сделать нормально, надо записывать в StrategyResult текущее время.
+        Но при построении чарта нужно будет приводить это время к соответствующей свече.
+        Потом сделаю.
         """
+
+        # result = True
+        # if result:
+        #     StrategyResult.objects.create(
+        #         strategy_id=self.strategy.id,
+        #         kline=self.kline_qs.get(open_time=idx),
+        #         sell=price,
+        #     )
+
         return price, True
 
     def get_stop_loss(self, sd: Decimal, buy: Decimal = None, sell: Decimal = None):
@@ -179,3 +192,25 @@ class StrategyFirstBackend:
                         kline=self.kline_qs.get(open_time=idx),
                         sell=real_price,
                     )
+
+    def close_all_position(self, idx: datetime, price: Decimal = None):
+        """ Закрывает все позиции
+        :param price: если отсутствует, то закрывает по рыночной стоимости
+        """
+        if self.has_long_position:
+            self.make_sell(quantity=Decimal(0), price=price)
+            self.has_long_position = False
+            StrategyResult.objects.create(
+                strategy_id=self.strategy.id,
+                kline=self.kline_qs.get(open_time=idx),
+                sell=price,
+            )
+
+        elif self.has_short_position:
+            self.make_buy(quantity=Decimal(0), price=price)
+            self.has_short_position = False
+            StrategyResult.objects.create(
+                strategy_id=self.strategy.id,
+                kline=self.kline_qs.get(open_time=idx),
+                buy=price,
+            )
