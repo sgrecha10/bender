@@ -57,6 +57,8 @@ class ChartView(View):
             strategy_efficiency = ((strategy_result_points / price_change_points) - 1) * 100
 
             total_deals = strategy_result_qs.count() / 2
+            successful_deals = strategy_result_qs.filter(state=StrategyResult.State.PROFIT).count()
+            winrate = (successful_deals / total_deals) * 100
 
             return {
                 'strategy_result_percent': strategy_result_percent,
@@ -65,8 +67,8 @@ class ChartView(View):
                 'price_change_percent': price_change_percent,
                 'price_change_points': price_change_points,
                 'total_deals': total_deals,
-                'successful_deals': '',
-                'winrate': '',
+                'successful_deals': successful_deals,
+                'winrate': winrate,
             }
 
     def get(self, request, *args, **kwargs):
@@ -301,11 +303,11 @@ class ChartView(View):
             strategy=strategy,
             kline__open_time__gte=df.iloc[0].name,
             kline__open_time__lte=df.iloc[-1].name,
-        ).values_list('kline__open_time', 'buy', 'sell')
+        ).values_list('kline__open_time', 'buy', 'sell', 'state')
 
         df = pd.DataFrame(
             data=strategy_result_qs,
-            columns=['open_time', 'buy', 'sell'],
+            columns=['open_time', 'buy', 'sell', 'state'],
         )
         df.set_index('open_time', inplace=True, drop=True)
         df.sort_index(inplace=True)
@@ -313,7 +315,7 @@ class ChartView(View):
         buy_trace = go.Scatter(
             x=df.index,
             y=df['buy'],
-            mode='markers',
+            mode='markers+text',
             # name=strategy.name,
             marker={
                 # 'color': list(np.random.choice(range(256), size=3)),
@@ -321,6 +323,8 @@ class ChartView(View):
                 'symbol': 'triangle-up',  # triangle-down, triangle-up
                 'size': 13,
             },
+            text=df['state'],
+            textposition='top center',
         )
         sell_trace = go.Scatter(
             x=df.index,
@@ -333,7 +337,7 @@ class ChartView(View):
                 'symbol': 'triangle-down',  # triangle-down, triangle-up
                 'size': 13,
             },
-            text=['text_2'] * len(df.index),
+            text=df['state'],
             textposition='top center',
             textfont=dict(
                 family='Arial',
@@ -341,10 +345,6 @@ class ChartView(View):
                 color='blue',
             ),
         )
-        annotation_list = [
-
-        ]
-
         return buy_trace, sell_trace
 
     def _get_standard_deviation_trace(self, df: pd.DataFrame, standard_deviation: StandardDeviation):
