@@ -28,49 +28,6 @@ class ChartView(View):
         # 'moving_averages',
     )
 
-    def _get_strategy_result(self, data: dict) -> Optional[dict]:
-        """ Результат стратегии в чарт """
-
-        if data.get('strategy'):
-            strategy_result_qs = StrategyResult.objects.filter(strategy_id=data['strategy'])
-
-            # is_deal = False
-            # last_price = None
-            # successful_deals = 0
-            strategy_result_points = 0
-            for item in strategy_result_qs:
-                buy = item.buy
-                sell = item.sell
-                if buy:
-                    strategy_result_points -= buy
-                elif sell:
-                    strategy_result_points += sell
-
-            first_item = strategy_result_qs.first()
-            last_item = strategy_result_qs.last()
-            first_deal_price = first_item.buy or first_item.sell
-            strategy_result_percent = (((first_deal_price + strategy_result_points) / first_deal_price) - 1) * 100
-
-            price_change_points = last_item.kline.close_price - first_item.kline.open_price
-            price_change_percent = ((last_item.kline.close_price / first_item.kline.open_price) - 1) * 100
-
-            strategy_efficiency = ((strategy_result_points / price_change_points) - 1) * 100
-
-            total_deals = strategy_result_qs.count() / 2
-            successful_deals = strategy_result_qs.filter(state=StrategyResult.State.PROFIT).count()
-            winrate = (successful_deals / total_deals) * 100
-
-            return {
-                'strategy_result_percent': strategy_result_percent,
-                'strategy_result_points': strategy_result_points,
-                'strategy_efficiency': strategy_efficiency,
-                'price_change_percent': price_change_percent,
-                'price_change_points': price_change_points,
-                'total_deals': total_deals,
-                'successful_deals': successful_deals,
-                'winrate': winrate,
-            }
-
     def get(self, request, *args, **kwargs):
         """Show chart"""
         from .forms import ChartForm
@@ -94,6 +51,48 @@ class ChartView(View):
             context['chart'] = self._get_chart(cleaned_data)
 
         return render(request, self.template_name, context=context)
+
+    def _get_strategy_result(self, data: dict) -> Optional[dict]:
+        """ Результат стратегии в чарт """
+
+        if data.get('strategy'):
+            strategy_result_qs = StrategyResult.objects.filter(strategy_id=data['strategy'])
+
+            strategy_result_points = 0
+            for item in strategy_result_qs:
+                buy = item.buy
+                sell = item.sell
+                if buy:
+                    strategy_result_points -= buy
+                elif sell:
+                    strategy_result_points += sell
+
+            first_item = strategy_result_qs.first()
+            last_item = strategy_result_qs.last()
+            first_deal_price = first_item.buy or first_item.sell
+            strategy_result_percent = (((first_deal_price + strategy_result_points) / first_deal_price) - 1) * 100
+
+            price_change_points = last_item.kline.close_price - first_item.kline.open_price
+            price_change_percent = ((last_item.kline.close_price / first_item.kline.open_price) - 1) * 100
+
+            strategy_efficiency = ((strategy_result_points / price_change_points) - 1) * 100
+
+            total_deals = strategy_result_qs.filter(state=StrategyResult.State.OPEN).count()
+            successful_deals = strategy_result_qs.filter(state=StrategyResult.State.PROFIT).count()
+            winrate = (successful_deals / total_deals) * 100
+
+            return {
+                'strategy_codename': first_item.strategy.get_codename_display(),
+                'strategy_range': f'{first_item.strategy.start_time} <br> {first_item.strategy.end_time}',
+                'strategy_result_percent': strategy_result_percent,
+                'strategy_result_points': strategy_result_points,
+                'strategy_efficiency': strategy_efficiency,
+                'price_change_percent': price_change_percent,
+                'price_change_points': price_change_points,
+                'total_deals': total_deals,
+                'successful_deals': successful_deals,
+                'winrate': winrate,
+            }
 
     def _get_default_data_url(self):
         default_data = {
@@ -225,9 +224,6 @@ class ChartView(View):
             strategy_result_tuple = self._get_strategy_result_trace(df, strategy)
             fig.add_trace(strategy_result_tuple[0], row=strategy_row_number, col=1)
             fig.add_trace(strategy_result_tuple[1], row=strategy_row_number, col=1)
-            # fig.add_annotation(
-            #
-            # )
 
         title = '{interval} ::: {start_time} ... {end_time}'.format(
             interval=Interval(interval).label,

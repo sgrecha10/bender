@@ -66,7 +66,7 @@ class Strategy(BaseModel):
         verbose_name_plural = 'Strategies'
 
     def __str__(self):
-        return self.codename
+        return self.get_codename_display()
 
 
 class StrategyResult(BaseModel):

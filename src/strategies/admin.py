@@ -9,6 +9,7 @@ from core.utils.admin_utils import redirect_to_change_form
 from django.shortcuts import HttpResponse, render, redirect
 from urllib.parse import urlencode
 from .constants import CODENAME_MAP
+from market_data.constants import Interval
 
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
@@ -161,7 +162,8 @@ class StrategyAdmin(admin.ModelAdmin):
         instance = self.model.objects.get(pk=kwargs['id'])
         data = {
             'symbol': instance.base_symbol.symbol,
-            'interval': instance.base_interval,
+            # 'interval': instance.base_interval,
+            'interval': Interval.MONTH_1,
             'start_time_0': instance.start_time.strftime('%d.%m.%Y'),
             'start_time_1': instance.start_time.strftime('%H:%M'),
             'end_time_0': instance.end_time.strftime('%d.%m.%Y'),

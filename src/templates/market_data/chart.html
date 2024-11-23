@@ -53,6 +53,18 @@
             <div class="sr-wrapper">
                 <div>
                     <div>
+                        <dit class="sr-title">Наименование:</dit>
+                        <dit class="sr-value">{{ strategy.strategy_codename }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Период применения:</dit>
+                        <dit class="sr-value">{{ strategy.strategy_range|safe }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
                         <dit class="sr-title">Результат стратегии, %</dit>
                         <dit class="sr-value">{{ strategy.strategy_result_percent|floatformat:2 }}</dit>
                     </div>
