@@ -42,30 +42,47 @@ class StrategyFirstBackend:
         self.stop_loss = None
         self.take_profit = None
 
-    def make_buy(self, quantity: Decimal, price: Decimal = None) -> tuple[Decimal, bool]:
+    def make_buy(self,
+                 state: str,
+                 quantity: Decimal = None,
+                 price: Decimal = None,
+                 deal_time: datetime = None) -> tuple[Decimal, bool]:
         """ Покупаем инструмент
-        Если price отсутствует, покупаем по рынку (не реализовано)
+        1. Если price отсутствует, покупаем по рынку (не реализовано)
         Возвращаем реальную цену покупки и флаг успеха.
+        2. Если quantity отсутствует, значит тестовая сделка.
+        3. Если deal_time отсутствует, значит реальная сделка.
         """
-        return price, True
+        is_ok = True  # результат реальной сделки
+        if is_ok:
+            StrategyResult.objects.create(
+                strategy_id=self.strategy.id,
+                deal_time=deal_time,
+                buy=price,
+                state=state,
+            )
+            return price, True
 
-    def make_sell(self, quantity: Decimal, price: Decimal = None) -> tuple[Decimal, bool]:
+    def make_sell(self,
+                  state: str,
+                  quantity: Decimal = None,
+                  price: Decimal = None,
+                  deal_time: datetime = None) -> tuple[Decimal, bool]:
         """ Продаем инструмент
 
         Что бы сделать нормально, надо записывать в StrategyResult текущее время.
         Но при построении чарта нужно будет приводить это время к соответствующей свече.
         Потом сделаю.
         """
-
-        # result = True
-        # if result:
-        #     StrategyResult.objects.create(
-        #         strategy_id=self.strategy.id,
-        #         kline=self.kline_qs.get(open_time=idx),
-        #         sell=price,
-        #     )
-
-        return price, True
+        is_ok = True  # результат реальной сделки
+        if is_ok:
+            StrategyResult.objects.create(
+                strategy_id=self.strategy.id,
+                deal_time=deal_time,
+                sell=price,
+                state=state,
+            )
+            return price, True
 
     def get_stop_loss(self, sd: Decimal, buy: Decimal = None, sell: Decimal = None):
         """ Устанавливает цену стоп лосса
@@ -117,108 +134,85 @@ class StrategyFirstBackend:
         # открыта позиция в лонг
         if self.has_long_position:
             if price >= self.take_profit:
-                real_price, is_ok = self.make_sell(quantity=Decimal(0), price=price)
+                real_price, is_ok = self.make_sell(
+                    state=StrategyResult.State.PROFIT,
+                    price=price,
+                    deal_time=idx,
+                )
                 if is_ok:
                     self.has_long_position = False
                     self.stop_loss = None
                     self.take_profit = None
-                    StrategyResult.objects.create(
-                        strategy_id=self.strategy.id,
-                        kline=self.kline_qs.get(open_time=idx),
-                        sell=real_price,
-                        state=StrategyResult.State.PROFIT,
-                    )
 
             elif price <= self.stop_loss:
-                real_price, is_ok = self.make_sell(quantity=Decimal(0), price=price)
+                real_price, is_ok = self.make_sell(
+                    state=StrategyResult.State.LOSS,
+                    price=price,
+                    deal_time=idx,
+                )
                 if is_ok:
                     self.has_long_position = False
                     self.stop_loss = None
                     self.take_profit = None
-                    StrategyResult.objects.create(
-                        strategy_id=self.strategy.id,
-                        kline=self.kline_qs.get(open_time=idx),
-                        sell=real_price,
-                        state=StrategyResult.State.LOSS,
-                    )
 
         elif self.has_short_position:
             if price <= self.take_profit:
-                real_price, is_ok = self.make_buy(quantity=Decimal(0), price=price)
+                real_price, is_ok = self.make_buy(
+                    state=StrategyResult.State.PROFIT,
+                    price=price,
+                    deal_time=idx,
+                )
                 if is_ok:
                     self.has_short_position = False
                     self.stop_loss = None
                     self.take_profit = None
-                    StrategyResult.objects.create(
-                        strategy_id=self.strategy.id,
-                        kline=self.kline_qs.get(open_time=idx),
-                        buy=real_price,
-                        state=StrategyResult.State.PROFIT,
-                    )
 
             elif price >= self.stop_loss:
-                real_price, is_ok = self.make_buy(quantity=Decimal(0), price=price)
+                real_price, is_ok = self.make_buy(
+                    state=StrategyResult.State.LOSS,
+                    price=price,
+                    deal_time=idx,
+                )
                 if is_ok:
                     self.has_short_position = False
                     self.stop_loss = None
                     self.take_profit = None
-                    StrategyResult.objects.create(
-                        strategy_id=self.strategy.id,
-                        kline=self.kline_qs.get(open_time=idx),
-                        buy=real_price,
-                        state=StrategyResult.State.LOSS,
-                    )
 
         else:
             # позиции нет. проверяем, что цена пересекла значение МА за предыдущую свечу
             if price >= previous_ma_value > previous_close_price:
                 # цена пересекла снизу вверх
-                real_price, is_ok = self.make_buy(quantity=Decimal(1.0), price=previous_ma_value)
+                real_price, is_ok = self.make_buy(
+                    state=StrategyResult.State.OPEN,
+                    price=previous_ma_value,
+                    deal_time=idx,
+                )
                 if is_ok:
                     self.has_long_position = True
                     self.get_stop_loss(sd=previous_sd_value, buy=real_price)
                     self.get_take_profit(sd=previous_sd_value, buy=real_price)
-                    StrategyResult.objects.create(
-                        strategy_id=self.strategy.id,
-                        kline=self.kline_qs.get(open_time=idx),
-                        buy=real_price,
-                        state=StrategyResult.State.OPEN,
-                    )
 
             if price <= previous_ma_value < previous_close_price:
                 # цена пересекла сверху вниз
-                real_price, is_ok = self.make_sell(quantity=Decimal(1.0), price=previous_ma_value)
+                real_price, is_ok = self.make_sell(
+                    state=StrategyResult.State.OPEN,
+                    price=previous_ma_value,
+                    deal_time=idx,
+                )
                 if is_ok:
                     self.has_short_position = True
                     self.get_stop_loss(sd=previous_sd_value, sell=real_price)
                     self.get_take_profit(sd=previous_sd_value, sell=real_price)
-                    StrategyResult.objects.create(
-                        strategy_id=self.strategy.id,
-                        kline=self.kline_qs.get(open_time=idx),
-                        sell=real_price,
-                        state=StrategyResult.State.OPEN,
-                    )
 
     def close_all_position(self, idx: datetime, price: Decimal = None):
         """ Закрывает все позиции
+        :param idx:
         :param price: если отсутствует, то закрывает по рыночной стоимости
         """
         if self.has_long_position:
-            self.make_sell(quantity=Decimal(0), price=price)
+            self.make_sell(state=StrategyResult.State.UNKNOWN, price=price, deal_time=idx)
             self.has_long_position = False
-            StrategyResult.objects.create(
-                strategy_id=self.strategy.id,
-                kline=self.kline_qs.get(open_time=idx),
-                sell=price,
-                state=StrategyResult.State.UNKNOWN,
-            )
 
         elif self.has_short_position:
-            self.make_buy(quantity=Decimal(0), price=price)
+            self.make_buy(state=StrategyResult.State.UNKNOWN, price=price, deal_time=idx)
             self.has_short_position = False
-            StrategyResult.objects.create(
-                strategy_id=self.strategy.id,
-                kline=self.kline_qs.get(open_time=idx),
-                buy=price,
-                state=StrategyResult.State.UNKNOWN,
-            )

@@ -72,10 +72,12 @@ class ChartView(View):
             first_deal_price = first_item.buy or first_item.sell
             strategy_result_percent = (((first_deal_price + strategy_result_points) / first_deal_price) - 1) * 100
 
-            price_change_points = last_item.kline.close_price - first_item.kline.open_price
-            price_change_percent = ((last_item.kline.close_price / first_item.kline.open_price) - 1) * 100
+            first_change_open_price = Kline.objects.get(open_time=first_item.deal_time).open_price
+            last_change_close_prioce = Kline.objects.get(open_time=last_item.deal_time).close_price
+            price_change_points = last_change_close_prioce - first_change_open_price
+            price_change_percent = ((last_change_close_prioce / first_change_open_price) - 1) * 100
 
-            strategy_efficiency = ((strategy_result_points / price_change_points) - 1) * 100
+            # strategy_efficiency = ((strategy_result_points / price_change_points) - 1) * 100
 
             total_deals = strategy_result_qs.filter(state=StrategyResult.State.OPEN).count()
             successful_deals = strategy_result_qs.filter(state=StrategyResult.State.PROFIT).count()
@@ -86,7 +88,7 @@ class ChartView(View):
                 'strategy_range': f'{first_item.strategy.start_time} <br> {first_item.strategy.end_time}',
                 'strategy_result_percent': strategy_result_percent,
                 'strategy_result_points': strategy_result_points,
-                'strategy_efficiency': strategy_efficiency,
+                # 'strategy_efficiency': strategy_efficiency,
                 'price_change_percent': price_change_percent,
                 'price_change_points': price_change_points,
                 'total_deals': total_deals,
@@ -297,9 +299,9 @@ class ChartView(View):
     def _get_strategy_result_trace(self, df: pd.DataFrame, strategy: Strategy) -> tuple:
         strategy_result_qs = StrategyResult.objects.filter(
             strategy=strategy,
-            kline__open_time__gte=df.iloc[0].name,
-            kline__open_time__lte=df.iloc[-1].name,
-        ).values_list('kline__open_time', 'buy', 'sell', 'state')
+            deal_time__gte=df.iloc[0].name,
+            deal_time__lte=df.iloc[-1].name,
+        ).values_list('deal_time', 'buy', 'sell', 'state')
 
         df = pd.DataFrame(
             data=strategy_result_qs,

@@ -162,7 +162,6 @@ class StrategyAdmin(admin.ModelAdmin):
         instance = self.model.objects.get(pk=kwargs['id'])
         data = {
             'symbol': instance.base_symbol.symbol,
-            # 'interval': instance.base_interval,
             'interval': Interval.MONTH_1,
             'start_time_0': instance.start_time.strftime('%d.%m.%Y'),
             'start_time_1': instance.start_time.strftime('%H:%M'),
@@ -185,7 +184,7 @@ class StrategyResultAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'strategy',
-        'kline',
+        'deal_time',
         'buy',
         'sell',
         'state',
@@ -194,9 +193,6 @@ class StrategyResultAdmin(admin.ModelAdmin):
     )
     list_filter = (
         'strategy',
-    )
-    raw_id_fields = (
-        'kline',
     )
     actions = (
         'trunkate_strategy_result',

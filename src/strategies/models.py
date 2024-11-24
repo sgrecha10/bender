@@ -80,10 +80,8 @@ class StrategyResult(BaseModel):
         Strategy, on_delete=models.CASCADE,
         verbose_name='Strategy',
     )
-    kline = models.ForeignKey(
-        Kline, on_delete=models.CASCADE,
-        verbose_name='Kline',
-        blank=True, null=True,
+    deal_time = models.DateTimeField(
+        verbose_name='Deal time',
     )
     buy = models.DecimalField(
         verbose_name='Buy',
@@ -106,7 +104,7 @@ class StrategyResult(BaseModel):
         verbose_name = 'Strategy Result'
         verbose_name_plural = 'Strategy Results'
         indexes = [
-            models.Index(fields=['strategy', 'kline']),
+            models.Index(fields=['strategy', 'deal_time']),
         ]
 
     def __str__(self):
