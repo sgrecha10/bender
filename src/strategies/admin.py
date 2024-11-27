@@ -130,11 +130,11 @@ class StrategyAdmin(admin.ModelAdmin):
             for idx, kline_item in kline_df.iterrows():
                 # потому что тестирование
                 backend.check_price(
-                    idx=idx,
+                    deal_time=idx,
                     price=kline_item['high_price'],
                 )
                 backend.check_price(
-                    idx=idx,
+                    deal_time=idx,
                     price=kline_item['low_price'],
                 )
                 last_kline = kline_item

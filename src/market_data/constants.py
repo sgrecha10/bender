@@ -20,16 +20,34 @@ class Interval(TextChoices):
     YEAR_1 = '1Y'
 
 
-"""AllowedInterval"""
-items_dict = {
-    item.name: item.value for item in Interval
-    if item in [
-        Interval.MINUTE_1,
-        Interval.HOUR_1,
-        Interval.DAY_1,
-        Interval.WEEK_1,
-        Interval.MONTH_1,
-        Interval.YEAR_1,
-    ]
+class AllowedInterval(TextChoices):
+    MINUTE_1 = '1m'
+    HOUR_1 = '1h'
+    DAY_1 = '1d'
+    WEEK_1 = '1w'
+    MONTH_1 = '1M'
+    YEAR_1 = '1Y'
+
+# """AllowedInterval"""
+# items_dict = {
+#     item.name: item.value for item in Interval
+#     if item in [
+#         Interval.MINUTE_1,
+#         Interval.HOUR_1,
+#         Interval.DAY_1,
+#         Interval.WEEK_1,
+#         Interval.MONTH_1,
+#         Interval.YEAR_1,
+#     ]
+# }
+# AllowedInterval = TextChoices('AllowedInterval', items_dict)
+
+
+MAP_MINUTE_COUNT = {
+    Interval.MINUTE_1: 1,
+    Interval.HOUR_1: 60,
+    Interval.DAY_1: 60 * 24,
+    Interval.WEEK_1: 60 * 24 * 7,
+    Interval.MONTH_1: 60 * 24 * 30,
+    Interval.YEAR_1: 60 * 24 * 365,
 }
-AllowedInterval = TextChoices('AllowedInterval', items_dict)

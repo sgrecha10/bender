@@ -1,8 +1,9 @@
-from strategies.models import Strategy, StrategyResult
-from decimal import Decimal
 from datetime import datetime
-from market_data.models import Kline
+from decimal import Decimal
 from typing import Optional
+
+from market_data.models import Kline
+from strategies.models import Strategy, StrategyResult
 
 
 class StrategyFirstBackend:
@@ -22,9 +23,9 @@ class StrategyFirstBackend:
 
     StopLoss, TakeProfit - коэфициент к среднеквадратическому отклонению.
     """
+    strategy_codename = Strategy.Codename.STRATEGY_1
 
     def __init__(self):
-        self.strategy_codename = Strategy.Codename.STRATEGY_1
         self.strategy = Strategy.objects.get(codename=self.strategy_codename)
         self.moving_average = self.strategy.movingaverage_set.first()
         self.standard_deviation = self.strategy.standarddeviation_set.first()
@@ -37,10 +38,36 @@ class StrategyFirstBackend:
         self.kline_df = self.kline_qs.group_by_interval().to_dataframe(index='open_time_group')
         self.source_df = self.moving_average.get_source_df(self.kline_df)
 
+        # лучше выбрать для каждого инструмента свой source_df, а потом сложить их!
+        # тогда каждый метод создания source_df будет хранится в индикаторе и ему не надо
+        # передавать лишних значений, кроме kline_df
+
+
+        # # interval and kline_count выбрать наибольший требуемых среди всех индикаторов
+        # # надоело. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # self.moving_average.interval
+        # self.moving_average.kline_count
+        #
+        # computed_minutes_count = MAP_MINUTE_COUNT[self.moving_average.interval] * self.moving_average.kline_count
+        #
+        #
+        # self.source_df = get_source_df(
+        #     base_df=self.kline_df,
+        #     symbol=self.strategy.base_symbol_id,
+        #     interval=interval,
+        #     kline_count=kline_count,
+        # )
+
         self.has_long_position = False
         self.has_short_position = False
         self.stop_loss = None
         self.take_profit = None
+
+    def _check_init_params(self) -> Optional[str]:
+        """ Проверяем, что все необходимые данные инициализированы
+        :return  если not None, то чего то не хватает
+        """
+        return
 
     def make_buy(self,
                  state: str,
@@ -108,10 +135,18 @@ class StrategyFirstBackend:
         if sell:
             self.take_profit = sell - sd * self.strategy.take_profit_factor
 
-    def check_price(self, idx: datetime, price: Decimal):
+    def check_price(self, deal_time: datetime, price: Decimal):
         """ Получает цену и timestamp, открывает/закрывает позицию """
 
-        # находим позицию индекса текущей свечи, если 0 то пропускаем итерацию
+        # проверяем, что все инициализировано
+        if error_msg := self._check_init_params():
+            return error_msg
+
+        # приводим deal_time к размеру текущего интервала kline_df
+        idx = deal_time
+
+        # находим позицию индекса текущей свечи, если 0 то пропускаем итерацию.
+        # потому что надо получить МА на предыдущую свечу
         if not (index_position := self.kline_df.index.get_loc(idx)):
             return
 
@@ -125,6 +160,8 @@ class StrategyFirstBackend:
             index=previous_index,
             source_df=self.source_df,
         )
+
+        # это не надо проверять тут, это надо проверять в self._check_init_params
         if not (previous_ma_value and previous_sd_value):
             return False
 
@@ -134,10 +171,10 @@ class StrategyFirstBackend:
         # открыта позиция в лонг
         if self.has_long_position:
             if price >= self.take_profit:
-                real_price, is_ok = self.make_sell(
+                _, is_ok = self.make_sell(
                     state=StrategyResult.State.PROFIT,
                     price=price,
-                    deal_time=idx,
+                    deal_time=deal_time,
                 )
                 if is_ok:
                     self.has_long_position = False
@@ -145,10 +182,10 @@ class StrategyFirstBackend:
                     self.take_profit = None
 
             elif price <= self.stop_loss:
-                real_price, is_ok = self.make_sell(
+                _, is_ok = self.make_sell(
                     state=StrategyResult.State.LOSS,
                     price=price,
-                    deal_time=idx,
+                    deal_time=deal_time,
                 )
                 if is_ok:
                     self.has_long_position = False
@@ -157,10 +194,10 @@ class StrategyFirstBackend:
 
         elif self.has_short_position:
             if price <= self.take_profit:
-                real_price, is_ok = self.make_buy(
+                _, is_ok = self.make_buy(
                     state=StrategyResult.State.PROFIT,
                     price=price,
-                    deal_time=idx,
+                    deal_time=deal_time,
                 )
                 if is_ok:
                     self.has_short_position = False
@@ -168,10 +205,10 @@ class StrategyFirstBackend:
                     self.take_profit = None
 
             elif price >= self.stop_loss:
-                real_price, is_ok = self.make_buy(
+                _, is_ok = self.make_buy(
                     state=StrategyResult.State.LOSS,
                     price=price,
-                    deal_time=idx,
+                    deal_time=deal_time,
                 )
                 if is_ok:
                     self.has_short_position = False
@@ -185,7 +222,7 @@ class StrategyFirstBackend:
                 real_price, is_ok = self.make_buy(
                     state=StrategyResult.State.OPEN,
                     price=previous_ma_value,
-                    deal_time=idx,
+                    deal_time=deal_time,
                 )
                 if is_ok:
                     self.has_long_position = True
@@ -197,7 +234,7 @@ class StrategyFirstBackend:
                 real_price, is_ok = self.make_sell(
                     state=StrategyResult.State.OPEN,
                     price=previous_ma_value,
-                    deal_time=idx,
+                    deal_time=deal_time,
                 )
                 if is_ok:
                     self.has_short_position = True

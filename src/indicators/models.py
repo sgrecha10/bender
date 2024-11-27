@@ -8,6 +8,7 @@ from pandas import DataFrame
 
 from core.utils.db_utils import BaseModel
 from market_data.constants import AllowedInterval, Interval
+from market_data.constants import MAP_MINUTE_COUNT
 from market_data.models import ExchangeInfo, Kline
 from strategies.models import Strategy
 
@@ -113,7 +114,7 @@ class MovingAverage(BaseModel):
             min_index = base_df.iloc[0].name
             max_index = base_df.iloc[-1].name
 
-            computed_minutes_count = self.MAP_MINUTE_COUNT[self.interval]
+            computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
             qs = Kline.objects.filter(
                 symbol_id=self.symbol,
                 open_time__lte=max_index + timedelta(minutes=computed_minutes_count),
@@ -139,7 +140,7 @@ class MovingAverage(BaseModel):
         """
         if not isinstance(source_df, DataFrame) or source_df.empty:
             # Генерируем source_df если отсутствует в аргументах
-            computed_minutes_count = self.MAP_MINUTE_COUNT[self.interval]
+            computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
             qs = Kline.objects.filter(
                 symbol=self.symbol,
                 open_time__lte=index + timedelta(minutes=computed_minutes_count),

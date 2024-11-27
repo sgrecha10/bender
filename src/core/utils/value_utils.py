@@ -1,7 +1,7 @@
 import json
 
 
-def clean_none_value(d) -> dict:
+def clean_none_value(d: dict) -> dict:
     out = {}
     for k in d.keys():
         if d[k] is not None:
