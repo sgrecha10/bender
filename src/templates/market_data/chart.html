@@ -71,8 +71,14 @@
                 </div>
                 <div>
                     <div>
-                        <dit class="sr-title">Результат стратегии, pt.</dit>
-                        <dit class="sr-value">{{ strategy.strategy_result_points|floatformat:8 }}</dit>
+                        <dit class="sr-title">Изменение цены, %</dit>
+                        <dit class="sr-value">{{ strategy.price_change_percent|floatformat:2 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Win Rate, %</dit>
+                        <dit class="sr-value">{{ strategy.winrate|floatformat:1 }}</dit>
                     </div>
                 </div>
 {#                <div>#}
@@ -85,8 +91,8 @@
             <div class="sr-wrapper">
                 <div>
                     <div>
-                        <dit class="sr-title">Изменение цены, %</dit>
-                        <dit class="sr-value">{{ strategy.price_change_percent|floatformat:2 }}</dit>
+                        <dit class="sr-title">Результат стратегии, pt.</dit>
+                        <dit class="sr-value">{{ strategy.strategy_result_points|floatformat:8 }}</dit>
                     </div>
                 </div>
                 <div>
@@ -105,12 +111,6 @@
                     <div>
                         <dit class="sr-title">Сделок, успешных</dit>
                         <dit class="sr-value">{{ strategy.successful_deals|floatformat }}</dit>
-                    </div>
-                </div>
-                <div>
-                    <div>
-                        <dit class="sr-title">Win Rate, %</dit>
-                        <dit class="sr-value">{{ strategy.winrate|floatformat:1 }}</dit>
                     </div>
                 </div>
             </div>

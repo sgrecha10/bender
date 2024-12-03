@@ -10,6 +10,7 @@ from django.shortcuts import HttpResponse, render, redirect
 from urllib.parse import urlencode
 from .constants import CODENAME_MAP
 from market_data.constants import Interval
+from strategies.tasks import run_strategy_test_mode
 
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
@@ -111,38 +112,9 @@ class StrategyAdmin(admin.ModelAdmin):
             Для запуска стратегии в рабочий режим надо будет еще подумать.
             """
 
-            StrategyResult.objects.filter(strategy_id=obj.id).delete()
+            run_strategy_test_mode.delay(strategy_id=obj.id)
+            message = 'Run strategy test mode started..'
 
-            # получаем бекенд стратегии
-            backend = CODENAME_MAP[obj.codename]()
-
-            # получаем df для тестирования
-            kline_qs = Kline.objects.filter(
-                symbol=obj.base_symbol,
-                open_time__gte=obj.start_time,
-                open_time__lte=obj.end_time,
-            )
-            kline_df = kline_qs.group_by_interval().to_dataframe(index='open_time_group')
-
-            # обходим полученный df начиная с самой старой свечи
-            last_kline = None
-            last_idx = None
-            for idx, kline_item in kline_df.iterrows():
-                # потому что тестирование
-                backend.run_step(
-                    deal_time=idx,
-                    price=kline_item['high_price'],
-                )
-                backend.run_step(
-                    deal_time=idx,
-                    price=kline_item['low_price'],
-                )
-                last_kline = kline_item
-                last_idx = idx
-
-            backend.close_all_position(idx=last_idx, price=last_kline['close_price'])
-
-            message = 'Finished'
             return redirect_to_change_form(request, self.model, obj.id, message)
         else:
             return super().response_change(request, obj)
