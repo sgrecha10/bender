@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .forms import StandardDeviationForm
 from .models import (
     MovingAverage,
     StandardDeviation,
@@ -39,6 +40,7 @@ class MovingAverageAdmin(admin.ModelAdmin):
 
 @admin.register(StandardDeviation)
 class StandardDeviationAdmin(admin.ModelAdmin):
+    form = StandardDeviationForm
     list_display = (
         'id',
         'codename',
@@ -59,6 +61,11 @@ class StandardDeviationAdmin(admin.ModelAdmin):
         'updated',
         'created',
     )
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.request = request
+        return form
 
 
 @admin.register(BollingerBands)

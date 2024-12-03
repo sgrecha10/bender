@@ -250,6 +250,31 @@ class StandardDeviation(BaseModel):
             f'{self.kline_count}'
         )
 
+    def get_source_df(self, base_df: DataFrame = None, **kwargs) -> DataFrame:
+        """Возвращает source DataFrame
+
+        Алгоритм как у moving_average, за исключением того, что kline_count выбирается большее между опорным MA
+        и собственной настройкой у SD
+        """
+        if isinstance(base_df, DataFrame) and not base_df.empty:
+            base_df.sort_index(inplace=True)
+            min_index = base_df.iloc[0].name
+            max_index = base_df.iloc[-1].name
+
+            computed_minutes_count = MAP_MINUTE_COUNT[self.moving_average.interval]
+            kline_count = max(self.kline_count, self.moving_average.kline_count)
+            qs = Kline.objects.filter(
+                symbol_id=self.moving_average.symbol,
+                open_time__lte=max_index + timedelta(minutes=computed_minutes_count),
+                open_time__gte=min_index - timedelta(minutes=kline_count * computed_minutes_count),
+                **kwargs
+            )
+        else:
+            qs = Kline.objects.filter(symbol_id=self.moving_average.symbol, **kwargs)
+
+        qs = qs.group_by_interval(self.moving_average.interval)
+        return qs.to_dataframe(index='open_time_group')
+
     def get_value_by_index(self,
                            index: datetime | Hashable,
                            source_df: DataFrame = None) -> Optional[Decimal]:

@@ -36,27 +36,10 @@ class StrategyFirstBackend:
             open_time__lte=self.strategy.end_time,
         )
         self.kline_df = self.kline_qs.group_by_interval().to_dataframe(index='open_time_group')
-        self.source_df = self.moving_average.get_source_df(self.kline_df)
 
-        # лучше выбрать для каждого инструмента свой source_df, а потом сложить их!
-        # тогда каждый метод создания source_df будет хранится в индикаторе и ему не надо
-        # передавать лишних значений, кроме kline_df
-
-
-        # # interval and kline_count выбрать наибольший требуемых среди всех индикаторов
-        # # надоело. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # self.moving_average.interval
-        # self.moving_average.kline_count
-        #
-        # computed_minutes_count = MAP_MINUTE_COUNT[self.moving_average.interval] * self.moving_average.kline_count
-        #
-        #
-        # self.source_df = get_source_df(
-        #     base_df=self.kline_df,
-        #     symbol=self.strategy.base_symbol_id,
-        #     interval=interval,
-        #     kline_count=kline_count,
-        # )
+        moving_average_source_df = self.moving_average.get_source_df(self.kline_df)
+        standard_deviation_source_df = self.standard_deviation.get_source_df(self.kline_df)
+        self.source_df = moving_average_source_df.combine_first(standard_deviation_source_df)
 
         self.has_long_position = False
         self.has_short_position = False
@@ -135,7 +118,7 @@ class StrategyFirstBackend:
         if sell:
             self.take_profit = sell - sd * self.strategy.take_profit_factor
 
-    def check_price(self, deal_time: datetime, price: Decimal):
+    def run_step(self, deal_time: datetime, price: Decimal):
         """ Получает цену и timestamp, открывает/закрывает позицию """
 
         # проверяем, что все инициализировано
