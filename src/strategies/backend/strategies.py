@@ -2,6 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
+from PIL.ImageCms import Direction
+
 from market_data.models import Kline
 from strategies.models import Strategy, StrategyResult
 
@@ -202,6 +204,10 @@ class StrategyFirstBackend:
             # позиции нет. проверяем, что цена пересекла значение МА за предыдущую свечу
             if price >= previous_ma_value > previous_close_price:
                 # цена пересекла снизу вверх
+
+                if self.strategy.direction_deals == Strategy.Direction.ONLY_SELL:
+                    return
+
                 real_price, is_ok = self.make_buy(
                     state=StrategyResult.State.OPEN,
                     price=previous_ma_value,
@@ -214,6 +220,10 @@ class StrategyFirstBackend:
 
             if price <= previous_ma_value < previous_close_price:
                 # цена пересекла сверху вниз
+
+                if self.strategy.direction_deals == Strategy.Direction.ONLY_BUY:
+                    return
+
                 real_price, is_ok = self.make_sell(
                     state=StrategyResult.State.OPEN,
                     price=previous_ma_value,

@@ -1,3 +1,4 @@
+from PIL.ImageCms import Direction
 from django.db import models
 from core.utils.db_utils import BaseModel
 from market_data.models import ExchangeInfo, Kline
@@ -8,6 +9,16 @@ import pandas as pd
 class Strategy(BaseModel):
     class Codename(models.TextChoices):
         STRATEGY_1 = 'strategy_1', 'Strategy_1'
+
+    class Direction(models.TextChoices):
+        DEFAULT = 'default', 'Default'
+        ONLY_SELL = 'only_sell', 'Only sell'
+        ONLY_BUY = 'only_buy', 'Only buy'
+
+    class EntryPriceOrder(models.TextChoices):
+        MAXMIN = 'MAXMIN', 'MaxMin'
+        MINMAX = 'MINMAX', 'MinMax'
+        RANDOM = 'RANDOM', 'Random'
 
     codename = models.CharField(
         verbose_name='Codename',
@@ -59,6 +70,19 @@ class Strategy(BaseModel):
         max_digits=20,
         decimal_places=10,
         default=0.00001,
+    )
+    direction_deals = models.CharField(
+        verbose_name='Direction deals',
+        max_length=50,
+        choices=Direction.choices,
+        default=Direction.DEFAULT,
+    )
+    entry_price_order = models.CharField(
+        verbose_name='Entry price order',
+        help_text='В каком порядке подавать цены свечи при тестировании стратегии.',
+        max_length=50,
+        choices=EntryPriceOrder.choices,
+        default=EntryPriceOrder.MAXMIN,
     )
 
     class Meta:
