@@ -85,6 +85,18 @@ class Strategy(BaseModel):
         choices=EntryPriceOrder.choices,
         default=EntryPriceOrder.MAXMIN,
     )
+    maker_commission = models.DecimalField(
+        verbose_name='Maker commission',
+        max_digits=4,
+        decimal_places=3,
+        default=0,
+    )
+    taker_commission = models.DecimalField(
+        verbose_name='Taker commission',
+        max_digits=4,
+        decimal_places=3,
+        default=0,
+    )
 
     class Meta:
         verbose_name = 'Strategy'

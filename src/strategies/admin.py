@@ -102,6 +102,8 @@ class StrategyAdmin(admin.ModelAdmin):
             'fields': (
                 'direction_deals',
                 'entry_price_order',
+                'maker_commission',
+                'taker_commission',
             ),
             'classes': ('grp-collapse', 'grp-open'),
         }),
