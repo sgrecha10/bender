@@ -26,27 +26,36 @@ class StrategyFirstBackend:
     StopLoss, TakeProfit - коэфициент к среднеквадратическому отклонению.
     """
     strategy_codename = Strategy.Codename.STRATEGY_1
+    moving_average_codename_1 = 'MA_1'  # поиск точки входа
+    moving_average_codename_2 = 'MA_2'  # определение тренда
+    standard_deviation_codename = 'SD_2'
 
     def __init__(self):
         self.strategy = Strategy.objects.get(codename=self.strategy_codename)
-        self.moving_average = self.strategy.movingaverage_set.first()
-        self.standard_deviation = self.strategy.standarddeviation_set.first()
+        self.moving_average_1 = self.strategy.movingaverage_set.get(codename=self.moving_average_codename_1)
+        self.moving_average_2 = self.strategy.movingaverage_set.get(codename=self.moving_average_codename_2)
+        self.standard_deviation = self.strategy.standarddeviation_set.get(codename=self.standard_deviation_codename)
 
-        self.kline_qs = Kline.objects.filter(
+        self.kline_df = Kline.objects.filter(
             symbol=self.strategy.base_symbol,
             open_time__gte=self.strategy.start_time,
             open_time__lte=self.strategy.end_time,
-        )
-        self.kline_df = self.kline_qs.group_by_interval().to_dataframe(index='open_time_group')
+        ).group_by_interval().to_dataframe(index='open_time_group')
 
-        moving_average_source_df = self.moving_average.get_source_df(self.kline_df)
+        moving_average_source_df_1 = self.moving_average_1.get_source_df(self.kline_df)
+        moving_average_source_df_2 = self.moving_average_2.get_source_df(self.kline_df)
         standard_deviation_source_df = self.standard_deviation.get_source_df(self.kline_df)
+        moving_average_source_df = moving_average_source_df_1.combine_first(moving_average_source_df_2)
         self.source_df = moving_average_source_df.combine_first(standard_deviation_source_df)
 
         self.has_long_position = False
         self.has_short_position = False
+
         self.stop_loss = None
         self.take_profit = None
+
+        self.trend_up = False
+        self.trend_down = False
 
     def _check_init_params(self) -> Optional[str]:
         """ Проверяем, что все необходимые данные инициализированы
@@ -137,13 +146,19 @@ class StrategyFirstBackend:
 
         previous_index = self.kline_df.index[index_position - 1]
 
-        previous_ma_value = self.moving_average.get_value_by_index(
+        previous_ma_value = self.moving_average_1.get_value_by_index(
             index=previous_index,
             source_df=self.source_df,
         )
         previous_sd_value = self.standard_deviation.get_value_by_index(
             index=previous_index,
             source_df=self.source_df,
+        )
+
+        # узнаем текущий тренд
+        trend = self.get_trend(
+            idx=previous_index,
+            price=price,
         )
 
         # это не надо проверять тут, это надо проверять в self._check_init_params
@@ -201,11 +216,14 @@ class StrategyFirstBackend:
                     self.take_profit = None
 
         else:
-            # позиции нет. проверяем, что цена пересекла значение МА за предыдущую свечу
+            # Позиции нет. Проверяем, что цена пересекла значение МА за предыдущую свечу
             if price >= previous_ma_value > previous_close_price:
                 # цена пересекла снизу вверх
 
                 if self.strategy.direction_deals == Strategy.Direction.ONLY_SELL:
+                    return
+
+                if self.strategy.direction_deals == Strategy.Direction.DEFAULT and trend == 'DOWN':
                     return
 
                 real_price, is_ok = self.make_buy(
@@ -222,6 +240,9 @@ class StrategyFirstBackend:
                 # цена пересекла сверху вниз
 
                 if self.strategy.direction_deals == Strategy.Direction.ONLY_BUY:
+                    return
+
+                if self.strategy.direction_deals == Strategy.Direction.DEFAULT and trend == 'UP':
                     return
 
                 real_price, is_ok = self.make_sell(
@@ -246,3 +267,17 @@ class StrategyFirstBackend:
         elif self.has_short_position:
             self.make_buy(state=StrategyResult.State.UNKNOWN, price=price, deal_time=idx)
             self.has_short_position = False
+
+    def get_trend(self, idx: datetime, price: Decimal) -> str:
+        """ Возвращает направление тренда
+        Сравнивает текущую цену с предыдущим значением MA, если выше - растем, если ниже - падаем
+
+        :param idx: предыдущий индекс, на который вычисляем МА
+        :param price: текущая цена для сравнения
+        """
+
+        previous_ma_value = self.moving_average_2.get_value_by_index(
+            index=idx,
+            source_df=self.source_df,
+        )
+        return 'UP' if price >= previous_ma_value else 'DOWN'

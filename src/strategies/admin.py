@@ -33,6 +33,7 @@ class MovingAverageInlineAdmin(IndicatorInlineBaseAdmin):
         'factor_alfa_auto',
     )
     raw_id_fields = ('symbol',)
+    show_change_link = True
 
 
 class StandardDeviationInlineAdmin(IndicatorInlineBaseAdmin):
@@ -45,6 +46,7 @@ class StandardDeviationInlineAdmin(IndicatorInlineBaseAdmin):
         'data_source',
         'kline_count',
     )
+    show_change_link = True
 
 
 @admin.register(Strategy)
@@ -119,8 +121,8 @@ class StrategyAdmin(admin.ModelAdmin):
             Для запуска стратегии в рабочий режим надо будет еще подумать.
             """
 
-            # run_strategy_test_mode.delay(strategy_id=obj.id)
-            run_strategy_test_mode(strategy_id=obj.id)
+            run_strategy_test_mode.delay(strategy_id=obj.id)
+            # run_strategy_test_mode(strategy_id=obj.id)
             message = 'Run strategy test mode started..'
 
             return redirect_to_change_form(request, self.model, obj.id, message)

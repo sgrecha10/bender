@@ -73,13 +73,14 @@ class Strategy(BaseModel):
     )
     direction_deals = models.CharField(
         verbose_name='Direction deals',
+        help_text='Если default то тренд определяется самой стратегией',
         max_length=50,
         choices=Direction.choices,
         default=Direction.DEFAULT,
     )
     entry_price_order = models.CharField(
         verbose_name='Entry price order',
-        help_text='В каком порядке подавать цены свечи при тестировании стратегии.',
+        help_text='В каком порядке подавать цены свечи при тестировании стратегии',
         max_length=50,
         choices=EntryPriceOrder.choices,
         default=EntryPriceOrder.MAXMIN,
