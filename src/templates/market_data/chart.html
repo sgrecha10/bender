@@ -71,6 +71,12 @@
                 </div>
                 <div>
                     <div>
+                        <dit class="sr-title">Результат стратегии c комиссией, %</dit>
+                        <dit class="sr-value">{{ strategy.strategy_result_with_commission_percent|floatformat:2 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
                         <dit class="sr-title">Изменение цены, %</dit>
                         <dit class="sr-value">{{ strategy.price_change_percent|floatformat:2 }}</dit>
                     </div>
@@ -93,6 +99,18 @@
                     <div>
                         <dit class="sr-title">Результат стратегии, pt.</dit>
                         <dit class="sr-value">{{ strategy.strategy_result_points|floatformat:8 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Комиссия общая, pt.</dit>
+                        <dit class="sr-value">{{ strategy.commission_sum|floatformat:8 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Результат стратегии с комиссией, pt.</dit>
+                        <dit class="sr-value">{{ strategy.strategy_result_with_commission_points|floatformat:8 }}</dit>
                     </div>
                 </div>
                 <div>
