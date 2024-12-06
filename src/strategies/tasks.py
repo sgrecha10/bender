@@ -25,26 +25,27 @@ def run_strategy_test_mode(self, strategy_id: int):
     last_kline = None
     last_idx = None
     for idx, kline_item in kline_df.iterrows():
-        price_data = [kline_item['high_price'], kline_item['low_price']]
+        price_data = [
+            kline_item['high_price'],
+            kline_item['low_price'],
+            kline_item['open_price'],
+            kline_item['close_price'],
+        ]
 
-        if strategy.entry_price_order == Strategy.EntryPriceOrder.MAXMIN:
-            order_price_data = 0, 1
+        entry_price_order_map = {
+            Strategy.EntryPriceOrder.MAXMIN: (0, 1),
+            Strategy.EntryPriceOrder.MINMAX: (1, 0),
+            Strategy.EntryPriceOrder.OPEN: (2,),
+            Strategy.EntryPriceOrder.CLOSE: (3,),
+            Strategy.EntryPriceOrder.HIGH: (0,),
+            Strategy.EntryPriceOrder.LOW: (1,),
+        }
 
-        elif strategy.entry_price_order == Strategy.EntryPriceOrder.MINMAX:
-            order_price_data = 1, 0
-
-        else:
-            random_number = random.choice([0, 1])
-            order_price_data = 0, 1 if random_number == 1 else 1, 0
-
-        backend.run_step(
-            deal_time=idx,
-            price=price_data[order_price_data[0]],
-        )
-        backend.run_step(
-            deal_time=idx,
-            price=price_data[order_price_data[1]],
-        )
+        for item in entry_price_order_map.get(strategy.entry_price_order, []):
+            backend.run_step(
+                deal_time=idx,
+                price=price_data[item],
+            )
 
         last_kline = kline_item
         last_idx = idx

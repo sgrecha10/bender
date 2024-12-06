@@ -9,6 +9,7 @@ import pandas as pd
 class Strategy(BaseModel):
     class Codename(models.TextChoices):
         STRATEGY_1 = 'strategy_1', 'Strategy_1'
+        STRATEGY_ANNA = 'strategy_anna', 'Anna'
 
     class Direction(models.TextChoices):
         DEFAULT = 'default', 'Default'
@@ -16,9 +17,12 @@ class Strategy(BaseModel):
         ONLY_BUY = 'only_buy', 'Only buy'
 
     class EntryPriceOrder(models.TextChoices):
+        OPEN = 'OPEN', 'Open price'
+        CLOSE = 'CLOSE', 'Close price'
+        HIGH = 'HIGH', 'High price'
+        LOW = 'LOW', 'Low price'
         MAXMIN = 'MAXMIN', 'MaxMin'
         MINMAX = 'MINMAX', 'MinMax'
-        RANDOM = 'RANDOM', 'Random'
 
     codename = models.CharField(
         verbose_name='Codename',

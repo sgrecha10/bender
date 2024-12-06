@@ -24,6 +24,7 @@ class MovingAverageInlineAdmin(IndicatorInlineBaseAdmin):
     fields = (
         'pk',
         'codename',
+        'description',
         'symbol',
         'interval',
         'data_source',
@@ -34,6 +35,11 @@ class MovingAverageInlineAdmin(IndicatorInlineBaseAdmin):
     )
     raw_id_fields = ('symbol',)
     show_change_link = True
+    readonly_fields = (
+        'pk',
+        'codename',
+        'description',
+    )
 
 
 class StandardDeviationInlineAdmin(IndicatorInlineBaseAdmin):
@@ -42,11 +48,17 @@ class StandardDeviationInlineAdmin(IndicatorInlineBaseAdmin):
     fields = (
         'pk',
         'codename',
+        'description',
         'moving_average',
         'data_source',
         'kline_count',
     )
     show_change_link = True
+    readonly_fields = (
+        'pk',
+        'codename',
+        'description',
+    )
 
 
 @admin.register(Strategy)
