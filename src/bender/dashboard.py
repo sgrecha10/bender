@@ -59,7 +59,17 @@ class CustomIndexDashboard(Dashboard):
                 ),
             )
         )
-        
+        self.children.append(
+            modules.AppList(
+                'ARBITRATIONS',
+                column=1,
+                collapsible=True,
+                models=(
+                    'arbitrations.models.Arbitration',
+                ),
+            )
+        )
+
         self.children.append(
             modules.AppList(
                 'WEBSOCKET',
