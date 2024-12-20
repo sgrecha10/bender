@@ -6,6 +6,13 @@ from market_data.constants import AllowedInterval
 
 
 class Arbitration(BaseModel):
+
+    class PriceComparison(models.TextChoices):
+        OPEN = 'OPEN', 'Open price'
+        CLOSE = 'CLOSE', 'Close price'
+        HIGH = 'HIGH', 'High price'
+        LOW = 'LOW', 'Low price'
+
     codename = models.CharField(
         verbose_name='Codename',
         max_length=100,
@@ -37,6 +44,11 @@ class Arbitration(BaseModel):
     end_time = models.DateTimeField(
         verbose_name='End time',
         null=True, blank=True,
+    )
+    price_comparison = models.CharField(
+        verbose_name='Price comparison',
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
     )
 
     class Meta:
