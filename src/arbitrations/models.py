@@ -1,6 +1,7 @@
 from django.db import models
 
 from core.utils.db_utils import BaseModel
+from indicators.models import MovingAverage
 from market_data.models import Kline, ExchangeInfo
 from market_data.constants import AllowedInterval
 
@@ -8,10 +9,10 @@ from market_data.constants import AllowedInterval
 class Arbitration(BaseModel):
 
     class PriceComparison(models.TextChoices):
-        OPEN = 'OPEN', 'Open price'
-        CLOSE = 'CLOSE', 'Close price'
-        HIGH = 'HIGH', 'High price'
-        LOW = 'LOW', 'Low price'
+        OPEN = 'open_price', 'Open price'
+        CLOSE = 'close_price', 'Close price'
+        HIGH = 'high_price', 'High price'
+        LOW = 'low_price', 'Low price'
 
     codename = models.CharField(
         verbose_name='Codename',
@@ -49,6 +50,12 @@ class Arbitration(BaseModel):
         verbose_name='Price comparison',
         choices=PriceComparison.choices,
         default=PriceComparison.CLOSE,
+    )
+    moving_average = models.ForeignKey(  # или стразу индикатор стандартного отклонения сюда?
+        MovingAverage,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name='Moving average',
     )
 
     class Meta:

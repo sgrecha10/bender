@@ -48,9 +48,7 @@ class ChartView(View):
 
         if form.is_valid():
             cleaned_data = form.cleaned_data
-            # context['title'] = cleaned_data['symbol'].symbol
-            symbol = cleaned_data.get('symbol')
-            context['title'] = symbol and symbol.symbol
+            context['title'] = cleaned_data['symbol'].symbol
             context['chart'] = self._get_chart(cleaned_data)
 
         return render(request, self.template_name, context=context)
@@ -136,54 +134,22 @@ class ChartView(View):
         return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
 
     def _get_chart(self, cleaned_data):
-        prepared_symbol = cleaned_data.get('symbol')
-        symbol = prepared_symbol and prepared_symbol.symbol
-
+        symbol = cleaned_data['symbol'].symbol
         interval = cleaned_data['interval']
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
         volume = cleaned_data.get('volume')
         strategy = cleaned_data.get('strategy')
-        arbitration = cleaned_data.get('arbitration')
         bollinger_bands = cleaned_data.get('bollinger_bands')
 
         moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
         standard_deviations = [item.pk for item in cleaned_data.get('standard_deviations', [])]
 
-        if arbitration:
-            start_time = arbitration.start_time
-            end_time = arbitration.end_time
-
-            qs_1 = Kline.objects.filter(symbol_id=arbitration.symbol_1_id)
-            qs_1 = qs_1.filter(open_time__gte=start_time) if start_time else qs_1
-            qs_1 = qs_1.filter(open_time__lte=end_time) if end_time else qs_1
-            qs_1 = qs_1.group_by_interval(arbitration.interval)
-            df_1 = qs_1.to_dataframe(index='open_time_group')
-
-            qs_2 = Kline.objects.filter(symbol_id=arbitration.symbol_2_id)
-            qs_2 = qs_2.filter(open_time__gte=start_time) if start_time else qs_2
-            qs_2 = qs_2.filter(open_time__lte=end_time) if end_time else qs_2
-            qs_2 = qs_2.group_by_interval(arbitration.interval)
-            df_2 = qs_2.to_dataframe(index='open_time_group')
-
-            df = pd.DataFrame(columns=[
-                'open_price',
-                'close_price',
-                'high_price',
-                'low_price',
-                'volume',
-            ])
-            df['close_price'] = df_1['close_price'] / df_2['close_price']
-            df['open_price'] = df['close_price']
-            df['high_price'] = df['close_price']
-            df['low_price'] = df['close_price']
-
-        else:
-            qs = Kline.objects.filter(symbol_id=symbol)
-            qs = qs.filter(open_time__gte=start_time) if start_time else qs
-            qs = qs.filter(open_time__lte=end_time) if end_time else qs
-            qs = qs.group_by_interval(interval)
-            df = qs.to_dataframe(index='open_time_group')
+        qs = Kline.objects.filter(symbol_id=symbol)
+        qs = qs.filter(open_time__gte=start_time) if start_time else qs
+        qs = qs.filter(open_time__lte=end_time) if end_time else qs
+        qs = qs.group_by_interval(interval)
+        df = qs.to_dataframe(index='open_time_group')
 
         """
         1. Определяем количество необходимых строк. 1 - всегда инструмент, 2, 3 - всегда пустые (для слайдера)
@@ -454,12 +420,6 @@ class ChartView(View):
 class ArbitrationChartView(View):
     template_name = 'market_data/chart.html'
 
-    # SEPARATE_ROW_INDICATORS = (
-    #     'volume',
-    #     'standard_deviations',
-    #     # 'moving_averages',
-    # )
-
     def get(self, request, *args, **kwargs):
         """Show arbitration chart"""
         from .forms import ArbitrationChartForm
@@ -480,5 +440,86 @@ class ArbitrationChartView(View):
 
         return render(request, self.template_name, context=context)
 
+    def _get_candlestick_trace(self, df: pd.DataFrame, name: str):
+        return go.Candlestick(
+            x=df.index,
+            open=df['open_price'],
+            high=df['high_price'],
+            low=df['low_price'],
+            close=df['close_price'],
+            name=name,
+        )
+
+    def _get_cross_course_trace(self, df: pd.DataFrame, name: str):
+        return go.Scatter(
+            x=df.index,
+            y=df['cross_course'],
+            # mode='markers',
+            name=name,
+            marker={
+                'color': list(np.random.choice(range(256), size=3)),
+            },
+        )
+
     def _get_arbitration_chart(self, cleaned_data):
-        return 1
+        arbitration = cleaned_data.get('arbitration')
+        start_time = arbitration.start_time
+        end_time = arbitration.end_time
+
+        qs_1 = Kline.objects.filter(symbol_id=arbitration.symbol_1_id)
+        qs_1 = qs_1.filter(open_time__gte=start_time) if start_time else qs_1
+        qs_1 = qs_1.filter(open_time__lte=end_time) if end_time else qs_1
+        qs_1 = qs_1.group_by_interval(arbitration.interval)
+        df_1 = qs_1.to_dataframe(index='open_time_group')
+
+        qs_2 = Kline.objects.filter(symbol_id=arbitration.symbol_2_id)
+        qs_2 = qs_2.filter(open_time__gte=start_time) if start_time else qs_2
+        qs_2 = qs_2.filter(open_time__lte=end_time) if end_time else qs_2
+        qs_2 = qs_2.group_by_interval(arbitration.interval)
+        df_2 = qs_2.to_dataframe(index='open_time_group')
+
+        df_cross_course = pd.DataFrame(columns=['cross_course'])
+        df_cross_course['cross_course'] = df_1[arbitration.price_comparison] / df_2[arbitration.price_comparison]
+
+        row_count = 3
+
+        fig = make_subplots(
+            rows=row_count, cols=1,
+            shared_xaxes=True,
+            # vertical_spacing=0.02,
+            # row_titles=row_titles,
+            # row_heights=self._get_subplots_row_heights(rows=row_count),
+
+        )
+        fig.add_trace(
+            row=1, col=1,
+            trace=self._get_candlestick_trace(df_1, arbitration.symbol_1.symbol),
+        )
+        fig.add_trace(
+            row=2, col=1,
+            trace=self._get_candlestick_trace(df_2, arbitration.symbol_2.symbol),
+        )
+        fig.add_trace(
+            row=3, col=1,
+            trace=self._get_cross_course_trace(df_cross_course, 'Cross course'),
+        )
+
+        fig.update_layout(
+            # autosize=False,
+            # margin=dict(l=50, r=50, t=50, b=100),
+            # xaxis=dict(
+            #     rangeslider=dict(visible=True),
+            #     domain=[1, 0]
+            # ),
+            # height=1000,
+            # title=title,
+            # yaxis_title='Volume',
+            # xaxis2_rangeslider_thickness=0.1,
+            # xaxis_rangeslider_borderwidth=1,
+            xaxis_rangeslider_visible=False,
+            xaxis2_rangeslider_visible=False,
+            # yaxis2_visible=False,
+            # xaxis2_visible=False,
+        )
+
+        return pio.to_html(fig, include_plotlyjs=False, full_html=False)
