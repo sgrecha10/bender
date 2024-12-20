@@ -14,6 +14,7 @@ from indicators.models import (
     BollingerBands,
 )
 from django.contrib import admin
+from arbitrations.models import Arbitration
 
 
 class DateTimeField(forms.DateTimeField):
@@ -123,3 +124,10 @@ class ChartForm(forms.Form):
         symbol = cleaned_data.get('symbol')
         if not Kline.objects.filter(symbol=symbol).exists():
             self.add_error('symbol', 'Data not found')
+
+
+class ArbitrationChartForm(forms.Form):
+    arbitration = forms.ModelChoiceField(
+        queryset=Arbitration.objects.all(),
+        label='Arbitration',
+    )

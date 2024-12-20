@@ -48,7 +48,9 @@ class ChartView(View):
 
         if form.is_valid():
             cleaned_data = form.cleaned_data
-            context['title'] = cleaned_data['symbol'].symbol
+            # context['title'] = cleaned_data['symbol'].symbol
+            symbol = cleaned_data.get('symbol')
+            context['title'] = symbol and symbol.symbol
             context['chart'] = self._get_chart(cleaned_data)
 
         return render(request, self.template_name, context=context)
@@ -134,22 +136,54 @@ class ChartView(View):
         return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
 
     def _get_chart(self, cleaned_data):
-        symbol = cleaned_data['symbol'].symbol
+        prepared_symbol = cleaned_data.get('symbol')
+        symbol = prepared_symbol and prepared_symbol.symbol
+
         interval = cleaned_data['interval']
         start_time = cleaned_data.get('start_time')
         end_time = cleaned_data.get('end_time')
         volume = cleaned_data.get('volume')
         strategy = cleaned_data.get('strategy')
+        arbitration = cleaned_data.get('arbitration')
         bollinger_bands = cleaned_data.get('bollinger_bands')
 
         moving_averages = [item.pk for item in cleaned_data.get('moving_averages', [])]
         standard_deviations = [item.pk for item in cleaned_data.get('standard_deviations', [])]
 
-        qs = Kline.objects.filter(symbol_id=symbol)
-        qs = qs.filter(open_time__gte=start_time) if start_time else qs
-        qs = qs.filter(open_time__lte=end_time) if end_time else qs
-        qs = qs.group_by_interval(interval)
-        df = qs.to_dataframe(index='open_time_group')
+        if arbitration:
+            start_time = arbitration.start_time
+            end_time = arbitration.end_time
+
+            qs_1 = Kline.objects.filter(symbol_id=arbitration.symbol_1_id)
+            qs_1 = qs_1.filter(open_time__gte=start_time) if start_time else qs_1
+            qs_1 = qs_1.filter(open_time__lte=end_time) if end_time else qs_1
+            qs_1 = qs_1.group_by_interval(arbitration.interval)
+            df_1 = qs_1.to_dataframe(index='open_time_group')
+
+            qs_2 = Kline.objects.filter(symbol_id=arbitration.symbol_2_id)
+            qs_2 = qs_2.filter(open_time__gte=start_time) if start_time else qs_2
+            qs_2 = qs_2.filter(open_time__lte=end_time) if end_time else qs_2
+            qs_2 = qs_2.group_by_interval(arbitration.interval)
+            df_2 = qs_2.to_dataframe(index='open_time_group')
+
+            df = pd.DataFrame(columns=[
+                'open_price',
+                'close_price',
+                'high_price',
+                'low_price',
+                'volume',
+            ])
+            df['close_price'] = df_1['close_price'] / df_2['close_price']
+            df['open_price'] = df['close_price']
+            df['high_price'] = df['close_price']
+            df['low_price'] = df['close_price']
+
+        else:
+            qs = Kline.objects.filter(symbol_id=symbol)
+            qs = qs.filter(open_time__gte=start_time) if start_time else qs
+            qs = qs.filter(open_time__lte=end_time) if end_time else qs
+            qs = qs.group_by_interval(interval)
+            df = qs.to_dataframe(index='open_time_group')
 
         """
         1. Определяем количество необходимых строк. 1 - всегда инструмент, 2, 3 - всегда пустые (для слайдера)
@@ -415,3 +449,36 @@ class ChartView(View):
             name='b_2',
         )
         return b_0, b_1, b_2
+
+
+class ArbitrationChartView(View):
+    template_name = 'market_data/chart.html'
+
+    # SEPARATE_ROW_INDICATORS = (
+    #     'volume',
+    #     'standard_deviations',
+    #     # 'moving_averages',
+    # )
+
+    def get(self, request, *args, **kwargs):
+        """Show arbitration chart"""
+        from .forms import ArbitrationChartForm
+
+        form = ArbitrationChartForm(data=request.GET)
+
+        context = {
+            'title': None,
+            'chart': None,
+            'form': form,
+            'opts': Kline._meta,
+        }
+
+        if form.is_valid():
+            cleaned_data = form.cleaned_data
+            context['title'] = cleaned_data['arbitration']
+            context['chart'] = self._get_arbitration_chart(cleaned_data)
+
+        return render(request, self.template_name, context=context)
+
+    def _get_arbitration_chart(self, cleaned_data):
+        return 1
