@@ -461,6 +461,25 @@ class ArbitrationChartView(View):
             },
         )
 
+    def _get_moving_average_trace(self, df: pd.DataFrame, column_name: str):
+        return go.Scatter(
+            x=df.index,
+            y=df[column_name],
+            # mode='markers',
+            # name=moving_average.codename,
+            # marker={
+            #     'color': list(np.random.choice(range(256), size=3)),
+            # },
+        )
+
+    def _get_bar_trace(self, df: pd.DataFrame, column_name: str):
+        return go.Bar(
+            x=df.index,
+            y=df[column_name],
+            # name='Volume',
+            # opacity=0.2,
+        )
+
     def _get_arbitration_chart(self, cleaned_data):
         arbitration = cleaned_data.get('arbitration')
         start_time = arbitration.start_time
@@ -478,10 +497,20 @@ class ArbitrationChartView(View):
         qs_2 = qs_2.group_by_interval(arbitration.interval)
         df_2 = qs_2.to_dataframe(index='open_time_group')
 
-        df_cross_course = pd.DataFrame(columns=['cross_course'])
+        df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
         df_cross_course['cross_course'] = df_1[arbitration.price_comparison] / df_2[arbitration.price_comparison]
 
-        row_count = 3
+        # df_cross_course['cross_course'].apply(float)
+        df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
+
+        moving_average = arbitration.moving_average
+        moving_average.calculate_values(df_cross_course, moving_average.codename)
+
+        df_cross_course['absolute_deviation'] = (
+                df_cross_course['cross_course'] - df_cross_course[moving_average.codename]
+        )
+
+        row_count = 4
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -503,6 +532,15 @@ class ArbitrationChartView(View):
             row=3, col=1,
             trace=self._get_cross_course_trace(df_cross_course, 'Cross course'),
         )
+        fig.add_trace(
+            row=3, col=1,
+            trace=self._get_moving_average_trace(df=df_cross_course, column_name=moving_average.codename),
+        )
+        fig.add_trace(
+            row=4, col=1,
+            trace=self._get_bar_trace(df=df_cross_course, column_name='absolute_deviation'),
+        )
+
 
         fig.update_layout(
             # autosize=False,

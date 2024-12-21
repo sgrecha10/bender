@@ -34,6 +34,7 @@ class MovingAverage(BaseModel):
         LOW = 'low', 'Low price'
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
+        CROSS_COURSE = 'cross_course', 'Cross course'
 
     codename = models.CharField(
         verbose_name='Codename',
@@ -80,11 +81,13 @@ class MovingAverage(BaseModel):
         ExchangeInfo,
         on_delete=models.CASCADE,
         verbose_name='Symbol',
+        null=True, blank=True,
     )
     interval = models.CharField(
         verbose_name='Interval',
         choices=AllowedInterval.choices,
         max_length=10,
+        null=True, blank=True,
     )
 
     class Meta:
@@ -194,6 +197,11 @@ class MovingAverage(BaseModel):
                 return
 
         return average_price_sum / self.kline_count
+
+    def calculate_values(self, df: DataFrame, column_name: str) -> None:
+        """Добавляет в переданный df колонку с значением
+        """
+        df[column_name] = df[self.data_source].rolling(window=self.kline_count).mean()
 
 
 class StandardDeviation(BaseModel):
