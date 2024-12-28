@@ -213,6 +213,7 @@ class StandardDeviation(BaseModel):
         LOW = 'low', 'Low price'
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
+        CROSS_COURSE = 'cross_course', 'Cross course'
 
     codename = models.CharField(
         verbose_name='Codename',
@@ -253,7 +254,7 @@ class StandardDeviation(BaseModel):
         return (
             f'{self.id} - '
             f'{self.codename} - '
-            f'{self.moving_average.codename} - '
+            f'{self.moving_average and self.moving_average.codename} - '
             f'{self.get_data_source_display()} - '
             f'{self.kline_count}'
         )
@@ -320,6 +321,11 @@ class StandardDeviation(BaseModel):
                 return
 
         return (deviation / self.kline_count) ** Decimal(0.5)
+
+    def calculate_values(self, df: DataFrame, column_name: str) -> None:
+        """Добавляет в переданный df колонку с значением
+        """
+        df[column_name] = df[self.data_source].rolling(window=self.kline_count).std()
 
 
 class BollingerBands(BaseModel):

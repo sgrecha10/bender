@@ -1,7 +1,7 @@
 from django.db import models
 
 from core.utils.db_utils import BaseModel
-from indicators.models import MovingAverage
+from indicators.models import MovingAverage, StandardDeviation
 from market_data.models import Kline, ExchangeInfo
 from market_data.constants import AllowedInterval
 
@@ -56,6 +56,12 @@ class Arbitration(BaseModel):
         on_delete=models.SET_NULL,
         null=True,
         verbose_name='Moving average',
+    )
+    standard_deviation = models.ForeignKey(
+        StandardDeviation,
+        on_delete=models.SET_NULL,
+        null=True,
+        verbose_name='Standard deviation',
     )
 
     class Meta:
