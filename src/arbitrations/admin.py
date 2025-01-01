@@ -18,6 +18,10 @@ class ArbitrationAdmin(admin.ModelAdmin):
         'symbol_1',
         'symbol_2',
     )
+    readonly_fields = (
+        'updated',
+        'created',
+    )
     list_display_links = ('codename',)
     fieldsets = [
         ('Main', {
@@ -46,6 +50,7 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'open_deal_sd',
                 'close_deal_sd',
                 'fixed_bet_amount',
+                'ratio_type',
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),
@@ -56,5 +61,11 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'taker_commission',
             ],
             'classes': ('grp-collapse', 'grp-open'),
+        }),
+        ('Information', {
+            'fields': [
+                'updated',
+                'created',
+            ],
         }),
     ]

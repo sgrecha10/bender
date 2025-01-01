@@ -22,6 +22,9 @@ class Arbitration(BaseModel):
         HIGH = 'high_price', 'High price'
         LOW = 'low_price', 'Low price'
 
+    class RatioType(models.TextChoices):
+        PRICE = 'price', 'By price ratio on opening deal'
+
     codename = models.CharField(
         max_length=100,
         verbose_name='Codename',
@@ -89,6 +92,13 @@ class Arbitration(BaseModel):
         default=1.0000,
         verbose_name='Fixed bet amount',
         help_text='Сумма двух инструментов в сделке',
+    )
+    ratio_type = models.CharField(
+        max_length=20,
+        choices=RatioType.choices,
+        default=RatioType.PRICE,
+        verbose_name='Ratio type',
+        help_text='Определение соотношения инструментов на входе в сделку',
     )
     entry_price_order = models.CharField(
         max_length=50,
