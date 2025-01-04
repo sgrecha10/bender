@@ -233,6 +233,69 @@ class MovingAverageNewTest(TestCase, TestHelperMixin):
         self.assertEqual(get_value_by_index_result_1_3, get_value_by_index_result_3_3)
 
 
+    def test_calculate_values_1m(self):
+        qs = Kline.objects.all()
+        qs = qs.group_by_interval()
+        df = qs.to_dataframe(index='open_time_group')
+
+
+
+        # index_1 = self.klines_list[20].open_time
+        # index_2 = self.klines_list[30].open_time
+        # index_3 = self.klines_list[40].open_time
+        #
+        # get_value_by_index_result_1_1 = self.moving_average.get_value_by_index(index=index_1)
+        # get_value_by_index_result_1_2 = self.moving_average.get_value_by_index(index=index_2)
+        # get_value_by_index_result_1_3 = self.moving_average.get_value_by_index(index=index_3)
+        #
+        # source_df = self.moving_average.get_source_df()
+        # get_value_by_index_result_2_1 = self.moving_average.get_value_by_index(
+        #     index=index_1,
+        #     source_df=source_df,
+        # )
+        # get_value_by_index_result_2_2 = self.moving_average.get_value_by_index(
+        #     index=index_2,
+        #     source_df=source_df,
+        # )
+        # get_value_by_index_result_2_3 = self.moving_average.get_value_by_index(
+        #     index=index_3,
+        #     source_df=source_df,
+        # )
+        #
+        # self.assertEqual(get_value_by_index_result_1_1, get_value_by_index_result_2_1)
+        # self.assertEqual(get_value_by_index_result_1_2, get_value_by_index_result_2_2)
+        # self.assertEqual(get_value_by_index_result_1_3, get_value_by_index_result_2_3)
+        #
+        # base_df = source_df[20:40]
+        # self.assertEqual(len(base_df), 20)
+        #
+        # source_df = self.moving_average.get_source_df(base_df=base_df)
+        # get_value_by_index_result_3_1 = self.moving_average.get_value_by_index(
+        #     index=index_1,
+        #     source_df=source_df,
+        # )
+        # get_value_by_index_result_3_2 = self.moving_average.get_value_by_index(
+        #     index=index_2,
+        #     source_df=source_df,
+        # )
+        # get_value_by_index_result_3_3 = self.moving_average.get_value_by_index(
+        #     index=index_3,
+        #     source_df=source_df,
+        # )
+        #
+        # self.assertEqual(get_value_by_index_result_1_1, get_value_by_index_result_3_1)
+        # self.assertEqual(get_value_by_index_result_1_2, get_value_by_index_result_3_2)
+        # self.assertEqual(get_value_by_index_result_1_3, get_value_by_index_result_3_3)
+
+
+
+
+
+
+
+
+
+
 class StandardDeviationTest(TestCase, TestHelperMixin):
     def setUp(self):
         self.exchange_info = self.create_exchange_info()

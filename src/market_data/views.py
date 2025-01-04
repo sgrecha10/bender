@@ -18,6 +18,8 @@ from market_data.models import Kline, ExchangeInfo
 from strategies.models import Strategy, StrategyResult
 from .constants import Interval
 from decimal import Decimal
+from datetime import datetime, timedelta
+from market_data.constants import MAP_MINUTE_COUNT
 
 
 class ChartView(View):
@@ -480,22 +482,53 @@ class ArbitrationChartView(View):
             # opacity=0.2,
         )
 
+    def _get_scatter_trace(self, df: pd.DataFrame, column_name: str):
+        return go.Scatter(
+            x=df.index,
+            y=df[column_name],
+            mode='markers',
+            # name=column_name.codename,
+            # marker={
+            #     # 'color': list(np.random.choice(range(256), size=3)),
+            #     'color': 'orange',
+            # },
+        )
+
     def _get_arbitration_chart(self, cleaned_data):
         arbitration = cleaned_data.get('arbitration')
         start_time = arbitration.start_time
         end_time = arbitration.end_time
 
-        qs_1 = Kline.objects.filter(symbol_id=arbitration.symbol_1_id)
-        qs_1 = qs_1.filter(open_time__gte=start_time) if start_time else qs_1
-        qs_1 = qs_1.filter(open_time__lte=end_time) if end_time else qs_1
-        qs_1 = qs_1.group_by_interval(arbitration.interval)
-        df_1 = qs_1.to_dataframe(index='open_time_group')
+        moving_average = arbitration.moving_average
+        standard_deviation = arbitration.standard_deviation
 
-        qs_2 = Kline.objects.filter(symbol_id=arbitration.symbol_2_id)
-        qs_2 = qs_2.filter(open_time__gte=start_time) if start_time else qs_2
-        qs_2 = qs_2.filter(open_time__lte=end_time) if end_time else qs_2
-        qs_2 = qs_2.group_by_interval(arbitration.interval)
-        df_2 = qs_2.to_dataframe(index='open_time_group')
+        # kline_max = max(moving_average.kline_count, moving_average.kline_count)
+        # computed_minutes_count = MAP_MINUTE_COUNT[arbitration.interval]
+        # prepared_kline_max = kline_max * computed_minutes_count
+        # qs_start_time = start_time - timedelta(minutes=prepared_kline_max)
+
+        qs_start_time = arbitration.get_qs_start_time()
+
+        # qs_1 = Kline.objects.filter(symbol_id=arbitration.symbol_1_id)
+        # qs_1 = qs_1.filter(open_time__gte=qs_start_time) if start_time else qs_1
+        # # qs_1 = qs_1.filter(open_time__lte=end_time) if end_time else qs_1
+        # qs_1 = qs_1.group_by_interval(arbitration.interval)
+        # df_1 = qs_1.to_dataframe(index='open_time_group')
+
+        df_1 = arbitration.get_symbol_df(
+            symbol_pk=arbitration.symbol_1_id,
+            qs_start_time=qs_start_time,
+        )
+        df_2 = arbitration.get_symbol_df(
+            symbol_pk=arbitration.symbol_2_id,
+            qs_start_time=qs_start_time,
+        )
+
+        # qs_2 = Kline.objects.filter(symbol_id=arbitration.symbol_2_id)
+        # qs_2 = qs_2.filter(open_time__gte=qs_start_time) if start_time else qs_2
+        # # qs_2 = qs_2.filter(open_time__lte=end_time) if end_time else qs_2
+        # qs_2 = qs_2.group_by_interval(arbitration.interval)
+        # df_2 = qs_2.to_dataframe(index='open_time_group')
 
         df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
         df_cross_course['cross_course'] = df_1[arbitration.price_comparison] / df_2[arbitration.price_comparison]
@@ -503,14 +536,24 @@ class ArbitrationChartView(View):
         # df_cross_course['cross_course'].apply(float)
         df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
 
-        moving_average = arbitration.moving_average
         moving_average.calculate_values(df_cross_course, moving_average.codename)
+        standard_deviation.calculate_values(df_cross_course, standard_deviation.codename)
 
         df_cross_course['absolute_deviation'] = (
                 df_cross_course['cross_course'] - df_cross_course[moving_average.codename]
         )
 
-        row_count = 4
+        df_cross_course['standard_deviation'] = (
+            (df_cross_course['cross_course'] - df_cross_course[moving_average.codename])
+            / df_cross_course[standard_deviation.codename]
+        )
+
+        # df_cross_course = df_cross_course.loc[start_time:end_time]
+        df_cross_course = arbitration.get_df(df_1=df_1, df_2=df_2)
+        df_1 = df_1.loc[start_time:end_time]
+        df_2 = df_2.loc[start_time:end_time]
+
+        row_count = 6
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -540,7 +583,14 @@ class ArbitrationChartView(View):
             row=4, col=1,
             trace=self._get_bar_trace(df=df_cross_course, column_name='absolute_deviation'),
         )
-
+        fig.add_trace(
+            row=5, col=1,
+            trace=self._get_scatter_trace(df=df_cross_course, column_name=standard_deviation.codename),
+        )
+        fig.add_trace(
+            row=6, col=1,
+            trace=self._get_bar_trace(df=df_cross_course, column_name='standard_deviation'),
+        )
 
         fig.update_layout(
             # autosize=False,
@@ -549,7 +599,7 @@ class ArbitrationChartView(View):
             #     rangeslider=dict(visible=True),
             #     domain=[1, 0]
             # ),
-            # height=1000,
+            height=1200,
             # title=title,
             # yaxis_title='Volume',
             # xaxis2_rangeslider_thickness=0.1,
