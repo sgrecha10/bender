@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Arbitration
+from .models import Arbitration, ArbitrationDeal
 from django.urls import path, reverse
 from django.shortcuts import redirect
 from urllib.parse import urlencode
@@ -100,3 +100,23 @@ class ArbitrationAdmin(admin.ModelAdmin):
 
     def test_run(self, request, *args, **kwargs):
         pass
+
+
+@admin.register(ArbitrationDeal)
+class ArbitrationDealAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'arbitration',
+        'symbol',
+        'deal_time',
+        'buy',
+        'sell',
+        'state',
+        'updated',
+        'created',
+    )
+    readonly_fields = (
+        'server_time',
+        'updated',
+        'created',
+    )

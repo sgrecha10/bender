@@ -25,7 +25,7 @@ class Arbitration(BaseModel):
         HIGH = 'high_price', 'High price'
         LOW = 'low_price', 'Low price'
 
-    class RatioType(models.TextChoices):
+    class SymbolsRatioType(models.TextChoices):
         PRICE = 'price', 'By price ratio on opening deal'
 
     codename = models.CharField(
@@ -98,8 +98,8 @@ class Arbitration(BaseModel):
     )
     ratio_type = models.CharField(
         max_length=20,
-        choices=RatioType.choices,
-        default=RatioType.PRICE,
+        choices=SymbolsRatioType.choices,
+        default=SymbolsRatioType.PRICE,
         verbose_name='Ratio type',
         help_text='Определение соотношения инструментов на входе в сделку',
     )
@@ -188,3 +188,54 @@ class Arbitration(BaseModel):
             qs_end_time=self.end_time,
         )
         return self._get_df(df_1=df_1, df_2=df_2)
+
+
+class ArbitrationDeal(BaseModel):
+    """Arbitration History Data"""
+
+    class State(models.TextChoices):
+        OPEN = 'open', 'Open'
+        CLOSE = 'close', 'Close'
+        PROFIT = 'profit', 'Profit'
+        LOSS = 'loss', 'Loss'
+        UNKNOWN = 'unknown', 'Unknown'
+
+    arbitration = models.ForeignKey(
+        Arbitration,
+        on_delete=models.CASCADE,
+        verbose_name='Arbitration',
+    )
+    symbol = models.ForeignKey(
+        ExchangeInfo,
+        on_delete=models.CASCADE,
+        verbose_name='Symbol',
+    )
+    deal_time = models.DateTimeField(
+        verbose_name='Deal time',
+    )
+    buy = models.DecimalField(
+        verbose_name='Buy',
+        max_digits=20,
+        decimal_places=10,
+        null=True, blank=True,
+    )
+    sell = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        null=True, blank=True,
+        verbose_name='Sell',
+    )
+    state = models.CharField(
+        choices=State.choices,
+        verbose_name='State',
+    )
+
+    class Meta:
+        verbose_name = 'Arbitration Deal'
+        verbose_name_plural = 'Arbitration Deals'
+        indexes = [
+            models.Index(fields=['arbitration', 'symbol', 'deal_time']),
+        ]
+
+    def __str__(self):
+        return self.arbitration.codename

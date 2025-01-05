@@ -66,6 +66,7 @@ class CustomIndexDashboard(Dashboard):
                 collapsible=True,
                 models=(
                     'arbitrations.models.Arbitration',
+                    'arbitrations.models.ArbitrationDeal',
                 ),
             )
         )
