@@ -20,6 +20,7 @@ from .constants import Interval
 from decimal import Decimal
 from datetime import datetime, timedelta
 from market_data.constants import MAP_MINUTE_COUNT
+from arbitrations.models import Arbitration, ArbitrationDeal
 
 
 class ChartView(View):
@@ -461,6 +462,56 @@ class BaseChartView(View):
             name=column_name,
         )
 
+    def _get_arbitration_deal_trace(self, arbitration: Arbitration) -> tuple:
+        arbitration_deal_qs = ArbitrationDeal.objects.filter(
+            arbitration=arbitration,
+            symbol=arbitration.symbol_1,
+            deal_time__gte=arbitration.start_time,
+            deal_time__lte=arbitration.end_time,
+        ).values_list('deal_time', 'buy', 'sell', 'state')
+
+        df = pd.DataFrame(
+            data=arbitration_deal_qs,
+            columns=['open_time', 'buy', 'sell', 'state'],
+        )
+        df.set_index('open_time', inplace=True, drop=True)
+        df.sort_index(inplace=True)
+
+        buy_trace = go.Scatter(
+            x=df.index,
+            y=df['buy'],
+            mode='markers+text',
+            # name=strategy.name,
+            marker={
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'green',
+                'symbol': 'triangle-up',  # triangle-down, triangle-up
+                'size': 13,
+            },
+            text=df['state'],
+            textposition='top center',
+        )
+        sell_trace = go.Scatter(
+            x=df.index,
+            y=df['sell'],
+            mode='markers+text',
+            # mode='markers',
+            # name=strategy.name,
+            marker={
+                'color': 'red',
+                'symbol': 'triangle-down',  # triangle-down, triangle-up
+                'size': 13,
+            },
+            text=df['state'],
+            textposition='top center',
+            textfont=dict(
+                family='Arial',
+                size=14,
+                color='blue',
+            ),
+        )
+        return buy_trace, sell_trace
+
 
 class ArbitrationChartView(BaseChartView):
 
@@ -486,6 +537,7 @@ class ArbitrationChartView(BaseChartView):
 
     def _get_arbitration_chart(self, cleaned_data):
         arbitration = cleaned_data.get('arbitration')
+        is_show_result = cleaned_data.get('is_show_result')
         start_time = arbitration.start_time
         end_time = arbitration.end_time
 
@@ -507,6 +559,7 @@ class ArbitrationChartView(BaseChartView):
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
+            row_heights=[30, 30, 10, 10, 10, 10]
         )
         fig.add_trace(
             row=1, col=1,
@@ -517,11 +570,11 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_candlestick_trace(df_2, arbitration.symbol_2.symbol),
         )
         fig.add_trace(
-            row=3, col=1,
+            row=6, col=1,
             trace=self._get_cross_course_trace(df_cross_course, 'Cross course'),
         )
         fig.add_trace(
-            row=3, col=1,
+            row=6, col=1,
             trace=self._get_moving_average_trace(df=df_cross_course, column_name=arbitration.moving_average.codename),
         )
         fig.add_trace(
@@ -536,9 +589,14 @@ class ArbitrationChartView(BaseChartView):
             ),
         )
         fig.add_trace(
-            row=6, col=1,
+            row=3, col=1,
             trace=self._get_deviation_trace(df=df_cross_course, column_name='standard_deviation'),
         )
+
+        if is_show_result:
+            arbitration_deal_tuple = self._get_arbitration_deal_trace(arbitration)
+            fig.add_trace(arbitration_deal_tuple[0], row=1, col=1)
+            fig.add_trace(arbitration_deal_tuple[1], row=1, col=1)
 
         fig.update_layout(
             # autosize=False,
@@ -547,7 +605,7 @@ class ArbitrationChartView(BaseChartView):
             #     rangeslider=dict(visible=True),
             #     domain=[1, 0]
             # ),
-            height=1200,
+            height=1500,
             # title=title,
             # yaxis_title='Volume',
             # xaxis2_rangeslider_thickness=0.1,
