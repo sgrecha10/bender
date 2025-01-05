@@ -5,6 +5,7 @@ from market_data.models import Kline
 import random
 import numpy as np
 from decimal import Decimal
+from arbitrations.backends import ArbitrationBackend
 
 
 @app.task(bind=True)
@@ -26,14 +27,8 @@ def run_arbitration_test_mode(self, arbitration_id: int):
         open_time__lte=arbitration.end_time,
     ).order_by('open_time')
 
-    # получаем df с рассчитанными характеристиками стратегии
-    arbitration_df = arbitration.get_df()
-
-    # сдвигаем, что бы не высчитывать каждую итерацию предыдущий индекс
-    arbitration_df = arbitration_df.shift(1)
-
-    # флаг, что сделка открыта
-    is_opened_deal = False
+    # получаем backend
+    backend = ArbitrationBackend(arbitration_id=arbitration.id)
 
     # обходим одновременно оба qs
     for kline_1, kline_2 in zip(kline_qs_1, kline_qs_2):
@@ -46,29 +41,8 @@ def run_arbitration_test_mode(self, arbitration_id: int):
         # цены, между которыми надо определять кросс курс. при тестировании Entry price order
         price_1 = kline_1.open_price
         price_2 = kline_2.open_price
-        current_cross_curs = float(price_1 / price_2)
 
-        # приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
-        index = str(open_time_1)
-
-        moving_average_value = arbitration_df.loc[index, arbitration.moving_average.codename]
-        standard_deviation_err = arbitration_df.loc[index, arbitration.standard_deviation.codename]
-
-        if np.isnan(moving_average_value) or np.isnan(standard_deviation_err):
-            continue
-
-        # определяем на сколько стандартных отклонений отличается кросс курс
-        standard_deviation = (current_cross_curs - moving_average_value) / standard_deviation_err
-
-        # проверяем, что нужно открывать сделку
-        if not is_opened_deal and abs(standard_deviation) >= float(arbitration.open_deal_sd):
-            is_opened_deal = True
-            print('open')
-
-        # проверяем, что нужно закрывать сделку
-        if is_opened_deal and abs(standard_deviation) <= float(arbitration.close_deal_sd):
-            is_opened_deal = False
-            print('close')
+        backend.run_step(price_1=price_1, price_2=price_2, deal_time=open_time_1)
 
 
     # # получаем бекенд стратегии
