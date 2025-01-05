@@ -1,5 +1,8 @@
 from django.contrib import admin
 from .models import Arbitration
+from django.urls import path, reverse
+from django.shortcuts import redirect
+from urllib.parse import urlencode
 
 
 @admin.register(Arbitration)
@@ -69,3 +72,31 @@ class ArbitrationAdmin(admin.ModelAdmin):
             ],
         }),
     ]
+
+    def get_urls(self):
+        urls = super().get_urls()
+        added_urls = [
+            path(
+                '<int:id>/show_chart/',
+                self.show_chart,
+                name='arbitration-show-chart',
+            ),
+            path(
+                '<int:id>/test_run/',
+                self.test_run,
+                name='arbitration-test-run',
+            ),
+        ]
+        return added_urls + urls
+
+    def show_chart(self, request, *args, **kwargs):
+        instance = self.model.objects.get(pk=kwargs['id'])
+        data = {
+            'arbitration': instance.id,
+        }
+
+        url = reverse('arbitration-chart') + '?' + urlencode(data)
+        return redirect(url)
+
+    def test_run(self, request, *args, **kwargs):
+        pass

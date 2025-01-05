@@ -4,9 +4,25 @@
 {% block after_related_objects %}
     {{ block.super }}
     {% if original.pk %}
-        <div class="submit-row">
-                <input type="submit" value="Run ⏩" name="_run-strategy">
-                <a href="{% url 'admin:show_strategy_result' original.pk %}" target="_blank" class="grp-button">Show result 📈</a>
-        </div>
+        <li id="show-chart-button" class="grp-float-left">
+            <a href="{% url 'admin:arbitration-show-chart' original.pk %}" target="_blank" class="grp-button grp-default">Show chart 📈</a>
+        </li>
+        
+        <li id="test-run-button" class="grp-float-left">
+            <a href="{% url 'admin:arbitration-test-run' original.pk %}" class="grp-button grp-default">Test run ⏩</a>
+        </li>
     {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <script>
+        (function($) {
+            $(document).ready(function() {
+                let ul = $("footer.grp-submit-row ul")
+                ul.prepend($("#show-chart-button"));
+                ul.prepend($("#test-run-button"));
+            });
+        })(grp.jQuery);
+    </script>
 {% endblock %}

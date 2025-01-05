@@ -6,6 +6,7 @@ from market_data.models import Kline, ExchangeInfo
 from market_data.constants import AllowedInterval, MAP_MINUTE_COUNT
 from datetime import datetime, timedelta
 import pandas as pd
+from typing import Optional, Type
 
 
 class Arbitration(BaseModel):
@@ -135,13 +136,17 @@ class Arbitration(BaseModel):
         prepared_kline_max = kline_max * computed_minutes_count
         return self.start_time - timedelta(minutes=prepared_kline_max)
 
-    def get_symbol_df(self, symbol_pk: str, qs_start_time: datetime):
+    def get_symbol_df(self,
+                      symbol_pk: str | Type[int],
+                      qs_start_time: Optional[datetime] = None,
+                      qs_end_time: Optional[datetime] = None) -> pd.DataFrame:
         qs = Kline.objects.filter(symbol_id=symbol_pk)
         qs = qs.filter(open_time__gte=qs_start_time) if qs_start_time else qs
+        qs = qs.filter(open_time__lte=qs_end_time) if qs_end_time else qs
         qs = qs.group_by_interval(self.interval)
         return qs.to_dataframe(index='open_time_group')
 
-    def get_df(self, df_1: pd.DataFrame, df_2: pd.DataFrame):
+    def _get_df(self, df_1: pd.DataFrame, df_2: pd.DataFrame):
         """Returned DataFrame"""
         start_time = self.start_time
         end_time = self.end_time
@@ -149,24 +154,9 @@ class Arbitration(BaseModel):
         moving_average = self.moving_average
         standard_deviation = self.standard_deviation
 
-        # kline_max = max(moving_average.kline_count, moving_average.kline_count)
-        # computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
-        # prepared_kline_max = kline_max * computed_minutes_count
-        # qs_start_time = start_time - timedelta(minutes=prepared_kline_max)
-
-        # df_1 = self.get_symbol_df(
-        #     symbol_pk=self.symbol_1_id,
-        #     qs_start_time=qs_start_time,
-        # )
-        # df_2 = self.get_symbol_df(
-        #     symbol_pk=self.symbol_2_id,
-        #     qs_start_time=qs_start_time,
-        # )
-
         df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
         df_cross_course['cross_course'] = df_1[self.price_comparison] / df_2[self.price_comparison]
 
-        # df_cross_course['cross_course'].apply(float)
         df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
 
         moving_average.calculate_values(df_cross_course, moving_average.codename)
@@ -177,12 +167,24 @@ class Arbitration(BaseModel):
         )
 
         df_cross_course['standard_deviation'] = (
-            (df_cross_course['cross_course'] - df_cross_course[moving_average.codename])
-            / df_cross_course[standard_deviation.codename]
+            df_cross_course['absolute_deviation'] / df_cross_course[standard_deviation.codename]
         )
 
-        # df_1 = df_1.loc[start_time:end_time]
-        # df_2 = df_2.loc[start_time:end_time]
         df_cross_course = df_cross_course.loc[start_time:end_time]
 
         return df_cross_course
+
+    def get_df(self):
+        qs_start_time = self.get_qs_start_time()
+
+        df_1 = self.get_symbol_df(
+            symbol_pk=self.symbol_1_id,
+            qs_start_time=qs_start_time,
+            qs_end_time=self.end_time,
+        )
+        df_2 = self.get_symbol_df(
+            symbol_pk=self.symbol_2_id,
+            qs_start_time=qs_start_time,
+            qs_end_time=self.end_time,
+        )
+        return self._get_df(df_1=df_1, df_2=df_2)
