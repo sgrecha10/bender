@@ -131,3 +131,7 @@ class ArbitrationChartForm(forms.Form):
         queryset=Arbitration.objects.all(),
         label='Arbitration',
     )
+    is_show_result = forms.BooleanField(
+        required=False,
+        label='Show Result',
+    )
