@@ -38,7 +38,7 @@ class ArbitrationBackend:
         # проверяем, что нужно открывать сделку
         if not self.is_opened_deal and abs(standard_deviation) >= float(self.arbitration.open_deal_sd):
             self.is_opened_deal = True
-            print('open')
+            # print('open')
             self._open_deal(
                 price_1=price_1,
                 price_2=price_2,
@@ -49,7 +49,7 @@ class ArbitrationBackend:
         # проверяем, что нужно закрывать сделку
         if self.is_opened_deal and abs(standard_deviation) <= float(self.arbitration.close_deal_sd):
             self.is_opened_deal = False
-            print('close')
+            # print('close')
             self._close_deal(
                 price_1=price_1,
                 price_2=price_2,
