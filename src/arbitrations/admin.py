@@ -3,6 +3,8 @@ from .models import Arbitration, ArbitrationDeal
 from django.urls import path, reverse
 from django.shortcuts import redirect
 from urllib.parse import urlencode
+from .tasks import run_arbitration_test_mode
+from core.utils.admin_utils import redirect_to_change_form
 
 
 @admin.register(Arbitration)
@@ -99,7 +101,9 @@ class ArbitrationAdmin(admin.ModelAdmin):
         return redirect(url)
 
     def test_run(self, request, *args, **kwargs):
-        pass
+        run_arbitration_test_mode(arbitration_id=kwargs['id'])
+        message = 'Run arbitration test mode started..'
+        return redirect_to_change_form(request, self.model, kwargs['id'], message)
 
 
 @admin.register(ArbitrationDeal)
