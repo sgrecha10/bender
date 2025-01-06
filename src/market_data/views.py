@@ -520,6 +520,7 @@ class BaseChartView(View):
 
 
 class ArbitrationChartView(BaseChartView):
+    # template_name = 'admin/arbitrations/arbitration_chart.html'
 
     def get(self, request, *args, **kwargs):
         """Show arbitration chart"""
@@ -532,6 +533,7 @@ class ArbitrationChartView(BaseChartView):
             'chart': None,
             'form': form,
             'opts': Kline._meta,
+            'info': self._get_info_context(data=request.GET),
         }
 
         if form.is_valid():
@@ -627,3 +629,75 @@ class ArbitrationChartView(BaseChartView):
         )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
+
+    def _get_info_context(self, data: dict) -> Optional[dict]:
+        if data.get('is_show_result'):
+            arbitration = Arbitration.objects.get(id=data['arbitration'])
+            arbitration_deal_qs = ArbitrationDeal.objects.filter(arbitration_id=data['arbitration'])
+            #
+            # for item in arbitration_deal_qs:
+            #     pass
+
+            closed_deals = arbitration_deal_qs.filter(state=ArbitrationDeal.State.CLOSE).count() / 2
+
+            return {
+                'arbitration_codename': arbitration.codename,
+                'arbitration_range': f'{arbitration.start_time.strftime("%d.%m.%Y %H:%M")} <br> {arbitration.end_time.strftime("%d.%m.%Y %H:%M")}',
+                'closed_deals': closed_deals,
+            }
+
+
+
+            # commission_sum = Decimal(0)
+            # strategy_result_points = 0
+            # for item in strategy_result_qs:
+            #     buy = item.buy
+            #     sell = item.sell
+            #     if buy:
+            #         strategy_result_points -= buy
+            #         commission_sum += (buy / 100) * strategy.taker_commission
+            #     elif sell:
+            #         strategy_result_points += sell
+            #         commission_sum += (sell / 100) * strategy.taker_commission
+            #
+            # strategy_result_with_commission_points = strategy_result_points - commission_sum
+            # first_item = strategy_result_qs.first()
+            # last_item = strategy_result_qs.last()
+            # first_deal_price = first_item.buy or first_item.sell
+            # strategy_result_percent = (((first_deal_price + strategy_result_points) / first_deal_price) - 1) * 100
+            # strategy_result_with_commission_percent = (
+            #         (((first_deal_price + strategy_result_with_commission_points) / first_deal_price) - 1) * 100
+            # )
+            #
+            # first_change_open_price = Kline.objects.get(
+            #     symbol=strategy.base_symbol,
+            #     open_time=first_item.deal_time,
+            # ).open_price
+            # last_change_close_prioce = Kline.objects.get(
+            #     symbol=strategy.base_symbol,
+            #     open_time=last_item.deal_time,
+            # ).close_price
+            # price_change_points = last_change_close_prioce - first_change_open_price
+            # price_change_percent = ((last_change_close_prioce / first_change_open_price) - 1) * 100
+            #
+            # # strategy_efficiency = ((strategy_result_points / price_change_points) - 1) * 100
+            #
+            # total_deals = strategy_result_qs.filter(state=StrategyResult.State.OPEN).count()
+            # successful_deals = strategy_result_qs.filter(state=StrategyResult.State.PROFIT).count()
+            # winrate = (successful_deals / total_deals) * 100
+            #
+            # return {
+            #     'strategy_codename': first_item.strategy.get_codename_display(),
+            #     'strategy_range': f'{first_item.strategy.start_time} <br> {first_item.strategy.end_time}',
+            #     'strategy_result_percent': strategy_result_percent,
+            #     'strategy_result_points': strategy_result_points,
+            #     # 'strategy_efficiency': strategy_efficiency,
+            #     'price_change_percent': price_change_percent,
+            #     'price_change_points': price_change_points,
+            #     'total_deals': total_deals,
+            #     'successful_deals': successful_deals,
+            #     'winrate': winrate,
+            #     'commission_sum': commission_sum,
+            #     'strategy_result_with_commission_points': strategy_result_with_commission_points,
+            #     'strategy_result_with_commission_percent': strategy_result_with_commission_percent,
+            # }
