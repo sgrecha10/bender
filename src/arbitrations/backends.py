@@ -9,9 +9,9 @@ from django.db.models.enums import IntegerChoices
 class ArbitrationBackend:
 
     class DealState(IntegerChoices):
-        CLOSED = 0
-        OPENED_SYMBOL_FIRST_SELL = 1
-        OPENED_SYMBOL_FIRST_BUY = 2
+        CLOSED = 10
+        OPENED_SYMBOL_FIRST_SELL = 20
+        OPENED_SYMBOL_FIRST_BUY = 30
 
     def __init__(self, arbitration_id: int, **kwargs):
         self.arbitration = Arbitration.objects.get(pk=arbitration_id)
@@ -19,7 +19,7 @@ class ArbitrationBackend:
         # arbitration_df = self.arbitration.get_df()
         # сдвигаем, что бы не высчитывать каждую итерацию предыдущий индекс
         self.arbitration_df = self.arbitration.get_df().shift(1)
-        self.is_opened_deal = self.DealState.CLOSED
+        self.deal_state = self.DealState.CLOSED
 
     def run_step(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
         """ Получает цену 1 и 2 и timestamp, открывает/закрывает позицию
@@ -50,7 +50,7 @@ class ArbitrationBackend:
         standard_deviation = (current_cross_curs - moving_average_value) / standard_deviation_err
 
         # проверяем, что нужно открывать сделку
-        if (self.is_opened_deal == self.DealState.CLOSED
+        if (self.deal_state == self.DealState.CLOSED
                 and abs(standard_deviation) >= float(self.arbitration.open_deal_sd)):
             # print('open')
             self._open_deal(
@@ -61,7 +61,7 @@ class ArbitrationBackend:
             )
 
         # проверяем, что нужно закрывать сделку
-        if (self.is_opened_deal != self.DealState.CLOSED
+        if (self.deal_state != self.DealState.CLOSED
                 and abs(standard_deviation) <= float(self.arbitration.close_deal_sd)):
             # print('close')
             self._close_deal(
@@ -88,7 +88,7 @@ class ArbitrationBackend:
                 buy=price_2,
                 **data,
             )
-            self.is_opened_deal = self.DealState.OPENED_SYMBOL_FIRST_SELL
+            self.deal_state = self.DealState.OPENED_SYMBOL_FIRST_SELL
         else:
             ArbitrationDeal.objects.create(
                 symbol=self.arbitration.symbol_1,
@@ -100,7 +100,7 @@ class ArbitrationBackend:
                 sell=price_2,
                 **data,
             )
-            self.is_opened_deal = self.DealState.OPENED_SYMBOL_FIRST_BUY
+            self.deal_state = self.DealState.OPENED_SYMBOL_FIRST_BUY
 
     def _close_deal(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
         data = {
@@ -109,7 +109,7 @@ class ArbitrationBackend:
             'state': ArbitrationDeal.State.CLOSE,
         }
 
-        if self.is_opened_deal == self.DealState.OPENED_SYMBOL_FIRST_BUY:
+        if self.deal_state == self.DealState.OPENED_SYMBOL_FIRST_BUY:
             ArbitrationDeal.objects.create(
                 symbol=self.arbitration.symbol_1,
                 sell=price_1,
@@ -132,4 +132,4 @@ class ArbitrationBackend:
                 **data,
             )
 
-        self.is_opened_deal = self.DealState.CLOSED
+        self.deal_state = self.DealState.CLOSED
