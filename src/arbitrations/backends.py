@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from arbitrations.models import Arbitration, ArbitrationDeal
 import numpy as np
+from market_data.constants import AllowedInterval
 
 
 class ArbitrationBackend:
@@ -21,10 +22,16 @@ class ArbitrationBackend:
         :param price_2:
         :param deal_time:
         """
-        current_cross_curs = float(price_1 / price_2)
 
         # приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
-        index = str(deal_time)
+        if self.arbitration.interval == AllowedInterval.MINUTE_1:
+            index = str(deal_time)
+        elif self.arbitration.interval == AllowedInterval.HOUR_1:
+            index = str(deal_time.replace(minute=0))
+        elif self.arbitration.interval == AllowedInterval.DAY_1:
+            index = str(deal_time.replace(hour=0, minute=0))
+        else:
+            raise ValueError('Disallowed interval of arbitration')
 
         moving_average_value = self.arbitration_df.loc[index, self.arbitration.moving_average.codename]
         standard_deviation_err = self.arbitration_df.loc[index, self.arbitration.standard_deviation.codename]
@@ -33,6 +40,7 @@ class ArbitrationBackend:
             return
 
         # определяем на сколько стандартных отклонений отличается кросс курс
+        current_cross_curs = float(price_1 / price_2)
         standard_deviation = (current_cross_curs - moving_average_value) / standard_deviation_err
 
         # проверяем, что нужно открывать сделку
