@@ -84,8 +84,14 @@ class ChartView(View):
                     (((first_deal_price + strategy_result_with_commission_points) / first_deal_price) - 1) * 100
             )
 
-            first_change_open_price = Kline.objects.get(open_time=first_item.deal_time).open_price
-            last_change_close_prioce = Kline.objects.get(open_time=last_item.deal_time).close_price
+            first_change_open_price = Kline.objects.get(
+                symbol=strategy.base_symbol,
+                open_time=first_item.deal_time,
+            ).open_price
+            last_change_close_prioce = Kline.objects.get(
+                symbol=strategy.base_symbol,
+                open_time=last_item.deal_time,
+            ).close_price
             price_change_points = last_change_close_prioce - first_change_open_price
             price_change_percent = ((last_change_close_prioce / first_change_open_price) - 1) * 100
 
@@ -462,10 +468,10 @@ class BaseChartView(View):
             name=column_name,
         )
 
-    def _get_arbitration_deal_trace(self, arbitration: Arbitration) -> tuple:
+    def _get_arbitration_deal_trace(self, arbitration: Arbitration, symbol: ExchangeInfo) -> tuple:
         arbitration_deal_qs = ArbitrationDeal.objects.filter(
             arbitration=arbitration,
-            symbol=arbitration.symbol_1,
+            symbol=symbol,
             deal_time__gte=arbitration.start_time,
             deal_time__lte=arbitration.end_time,
         ).values_list('deal_time', 'buy', 'sell', 'state')
@@ -594,9 +600,13 @@ class ArbitrationChartView(BaseChartView):
         )
 
         if is_show_result:
-            arbitration_deal_tuple = self._get_arbitration_deal_trace(arbitration)
-            fig.add_trace(arbitration_deal_tuple[0], row=1, col=1)
-            fig.add_trace(arbitration_deal_tuple[1], row=1, col=1)
+            symbol_1_deal_tuple = self._get_arbitration_deal_trace(arbitration, symbol=arbitration.symbol_1)
+            fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
+            fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
+
+            symbol_2_deal_tuple = self._get_arbitration_deal_trace(arbitration, symbol=arbitration.symbol_2)
+            fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
+            fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
         fig.update_layout(
             # autosize=False,
