@@ -115,6 +115,7 @@ class ArbitrationDealAdmin(admin.ModelAdmin):
         'deal_time',
         'buy',
         'sell',
+        'quantity',
         'state',
         'updated',
         'created',

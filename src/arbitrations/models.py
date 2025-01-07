@@ -225,6 +225,12 @@ class ArbitrationDeal(BaseModel):
         null=True, blank=True,
         verbose_name='Sell',
     )
+    quantity = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        default=0,
+        verbose_name='Quantity',
+    )
     state = models.CharField(
         choices=State.choices,
         verbose_name='State',
