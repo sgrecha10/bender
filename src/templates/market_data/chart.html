@@ -65,8 +65,14 @@
                 </div>
                 <div>
                     <div>
-                        <dit class="sr-title">Закрыто сделок</dit>
+                        <dit class="sr-title">Сделок закрытых:</dit>
                         <dit class="sr-value">{{ info.closed_deals|floatformat:0 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Корреляция инструментов:</dit>
+                        <dit class="sr-value">{{ info.correlation|floatformat:3 }}</dit>
                     </div>
                 </div>
             </div>
