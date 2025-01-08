@@ -77,15 +77,20 @@ class ArbitrationBackend:
             'state': ArbitrationDeal.State.OPEN,
         }
 
+        symbol_1_quantity = 1
+        symbol_2_quantity = 1
+
         if float(standard_deviation) >= 0:
             ArbitrationDeal.objects.create(
                 symbol=self.arbitration.symbol_1,
                 sell=price_1,
+                quantity=symbol_1_quantity,
                 **data,
             )
             ArbitrationDeal.objects.create(
                 symbol=self.arbitration.symbol_2,
                 buy=price_2,
+                quantity=symbol_2_quantity,
                 **data,
             )
             self.deal_state = self.DealState.OPENED_SYMBOL_FIRST_SELL
@@ -93,43 +98,39 @@ class ArbitrationBackend:
             ArbitrationDeal.objects.create(
                 symbol=self.arbitration.symbol_1,
                 buy=price_1,
+                quantity=symbol_1_quantity,
                 **data,
             )
             ArbitrationDeal.objects.create(
                 symbol=self.arbitration.symbol_2,
                 sell=price_2,
+                quantity=symbol_2_quantity,
                 **data,
             )
             self.deal_state = self.DealState.OPENED_SYMBOL_FIRST_BUY
 
     def _close_deal(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
-        data = {
-            'arbitration': self.arbitration,
-            'deal_time': deal_time,
-            'state': ArbitrationDeal.State.CLOSE,
-        }
+        open_deal_qs = ArbitrationDeal.objects.filter(
+            state=ArbitrationDeal.State.OPEN,
+        ).order_by('-deal_time')[:2]
 
-        if self.deal_state == self.DealState.OPENED_SYMBOL_FIRST_BUY:
+        buy = sell = None
+        for open_deal in open_deal_qs:
+            if open_deal.sell:
+                buy = price_1 if open_deal.symbol == self.arbitration.symbol_1 else price_2
+                sell = None
+            elif open_deal.buy:
+                buy = None
+                sell = price_1 if open_deal.symbol == self.arbitration.symbol_1 else price_2
+
             ArbitrationDeal.objects.create(
-                symbol=self.arbitration.symbol_1,
-                sell=price_1,
-                **data,
-            )
-            ArbitrationDeal.objects.create(
-                symbol=self.arbitration.symbol_2,
-                buy=price_2,
-                **data,
-            )
-        else:
-            ArbitrationDeal.objects.create(
-                symbol=self.arbitration.symbol_1,
-                buy=price_1,
-                **data,
-            )
-            ArbitrationDeal.objects.create(
-                symbol=self.arbitration.symbol_2,
-                sell=price_2,
-                **data,
+                symbol=open_deal.symbol,
+                sell=sell,
+                buy=buy,
+                quantity=open_deal.quantity,
+                arbitration=self.arbitration,
+                deal_time=deal_time,
+                state=ArbitrationDeal.State.CLOSE,
             )
 
         self.deal_state = self.DealState.CLOSED

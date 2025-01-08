@@ -634,9 +634,15 @@ class ArbitrationChartView(BaseChartView):
         if data.get('is_show_result'):
             arbitration = Arbitration.objects.get(id=data['arbitration'])
             arbitration_deal_qs = ArbitrationDeal.objects.filter(arbitration_id=data['arbitration'])
-            #
-            # for item in arbitration_deal_qs:
-            #     pass
+
+            result_pt = 0
+            for item in arbitration_deal_qs:
+                buy = item.buy
+                sell = item.sell
+                if buy:
+                    result_pt -= buy * item.quantity
+                elif sell:
+                    result_pt += sell * item.quantity
 
             closed_deals = arbitration_deal_qs.filter(state=ArbitrationDeal.State.CLOSE).count() / 2
 
@@ -658,4 +664,5 @@ class ArbitrationChartView(BaseChartView):
                 'arbitration_range': f'{arbitration.start_time.strftime("%d.%m.%Y %H:%M")} <br> {arbitration.end_time.strftime("%d.%m.%Y %H:%M")}',
                 'closed_deals': closed_deals,
                 'correlation': correlation,
+                'result_pt': result_pt,
             }

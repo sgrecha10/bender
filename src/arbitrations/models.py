@@ -128,7 +128,7 @@ class Arbitration(BaseModel):
         verbose_name_plural = 'Arbitrations'
 
     def __str__(self):
-        return f'{self.codename} {self.symbol_1} {self.symbol_2}'
+        return f'{self.codename} - {self.symbol_1} : {self.symbol_2}'
 
     def get_qs_start_time(self):
         kline_max = max(self.moving_average.kline_count, self.moving_average.kline_count)
