@@ -70,6 +70,15 @@ class ArbitrationBackend:
                 deal_time=deal_time,
             )
 
+    def _get_quantity(self, price_1, price_2) -> tuple:
+        symbol_1_quantity, symbol_2_quantity = 1, 1
+
+        ratio_type = self.arbitration.ratio_type
+        if ratio_type == self.arbitration.SymbolsRatioType.PRICE:
+            symbol_2_quantity = price_1 / price_2
+
+        return symbol_1_quantity, symbol_2_quantity
+
     def _open_deal(self, price_1: Decimal, price_2: Decimal, deal_time: datetime, standard_deviation: Decimal):
         data = {
             'arbitration': self.arbitration,
@@ -77,8 +86,8 @@ class ArbitrationBackend:
             'state': ArbitrationDeal.State.OPEN,
         }
 
-        symbol_1_quantity = 1
-        symbol_2_quantity = 1
+        symbol_1_quantity, symbol_2_quantity = self._get_quantity(price_1=price_1, price_2=price_2)
+        # symbol_2_quantity = self._get_quantity(symbol=self.arbitration.symbol_2, price_1=price_1, price_2=price_2)
 
         if float(standard_deviation) >= 0:
             ArbitrationDeal.objects.create(

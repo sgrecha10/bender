@@ -26,6 +26,7 @@ class Arbitration(BaseModel):
         LOW = 'low_price', 'Low price'
 
     class SymbolsRatioType(models.TextChoices):
+        ONE_TO_ONE = 'one_to_one', 'One to one'
         PRICE = 'price', 'By price ratio on opening deal'
 
     codename = models.CharField(
