@@ -28,6 +28,7 @@ class Arbitration(BaseModel):
     class SymbolsRatioType(models.TextChoices):
         ONE_TO_ONE = 'one_to_one', 'One to one'
         PRICE = 'price', 'By price ratio on opening deal'
+        B_FACTOR = 'b_factor', 'By b-factor'
 
     codename = models.CharField(
         max_length=100,

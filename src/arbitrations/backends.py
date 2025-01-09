@@ -76,6 +76,8 @@ class ArbitrationBackend:
         ratio_type = self.arbitration.ratio_type
         if ratio_type == self.arbitration.SymbolsRatioType.PRICE:
             symbol_2_quantity = price_1 / price_2
+        elif ratio_type == self.arbitration.SymbolsRatioType.B_FACTOR:
+            pass
 
         return symbol_1_quantity, symbol_2_quantity
 
