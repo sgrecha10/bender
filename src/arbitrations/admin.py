@@ -56,6 +56,8 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'close_deal_sd',
                 'fixed_bet_amount',
                 'ratio_type',
+                'b_factor_window',
+                'b_factor_price_comparison',
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),

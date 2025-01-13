@@ -105,6 +105,15 @@ class Arbitration(BaseModel):
         verbose_name='Ratio type',
         help_text='Определение соотношения инструментов на входе в сделку',
     )
+    b_factor_window = models.PositiveIntegerField(
+        default=1,
+        verbose_name='B-factor size of window',
+    )
+    b_factor_price_comparison = models.CharField(
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
+        verbose_name='B-factor price comparison',
+    )
     entry_price_order = models.CharField(
         max_length=50,
         choices=EntryPriceOrder.choices,
@@ -133,7 +142,13 @@ class Arbitration(BaseModel):
         return f'{self.codename} - {self.symbol_1} : {self.symbol_2}'
 
     def get_qs_start_time(self):
-        kline_max = max(self.moving_average.kline_count, self.moving_average.kline_count)
+        standard_deviation_kline_count = self.standard_deviation.kline_count if self.standard_deviation else 0
+        moving_average_kline_count = self.moving_average.kline_count if self.moving_average else 0
+        kline_max = max(
+            standard_deviation_kline_count,
+            moving_average_kline_count,
+            self.b_factor_window,
+        )
         computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
         prepared_kline_max = kline_max * computed_minutes_count
         return self.start_time - timedelta(minutes=prepared_kline_max)
@@ -161,27 +176,30 @@ class Arbitration(BaseModel):
 
         df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
 
-        moving_average.calculate_values(df_cross_course, moving_average.codename)
-        standard_deviation.calculate_values(df_cross_course, standard_deviation.codename)
+        if moving_average:
+            moving_average.calculate_values(df_cross_course, moving_average.codename)
+            df_cross_course['absolute_deviation'] = (
+                    df_cross_course['cross_course'] - df_cross_course[moving_average.codename]
+            )
 
-        df_cross_course['absolute_deviation'] = (
-                df_cross_course['cross_course'] - df_cross_course[moving_average.codename]
-        )
-
-        df_cross_course['standard_deviation'] = (
-            df_cross_course['absolute_deviation'] / df_cross_course[standard_deviation.codename]
-        )
+        if standard_deviation:
+            standard_deviation.calculate_values(df_cross_course, standard_deviation.codename)
+            df_cross_course['standard_deviation'] = (
+                df_cross_course['absolute_deviation'] / df_cross_course[standard_deviation.codename]
+            )
 
         df_cross_course = df_cross_course.loc[start_time:end_time]
 
         # все что ниже вывести в чарт, это исходники для расчета беты
-        df_cross_course['variance_1'] = df_1[self.price_comparison].rolling(window=80).var()
+        df_cross_course['variance_1'] = df_1[self.price_comparison].rolling(window=self.b_factor_window).var()
 
         df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
-        df_covariance['col_1'] = df_1['close_price']
-        df_covariance['col_2'] = df_2['close_price']
+        df_covariance['col_1'] = df_1[self.b_factor_price_comparison]
+        df_covariance['col_2'] = df_2[self.b_factor_price_comparison]
 
-        df_covariance_matrix = df_covariance.rolling(window=80).cov().dropna().unstack()['col_1']['col_2']
+        df_covariance_matrix = df_covariance.rolling(
+            window=self.b_factor_window,
+        ).cov().dropna().unstack()['col_1']['col_2']
 
         df_cross_course['covariance'] = df_covariance_matrix
 
