@@ -21,6 +21,17 @@ class ArbitrationBackend:
         self.arbitration_df = self.arbitration.get_df().shift(1)
         self.deal_state = self.DealState.CLOSED
 
+    def _prepare_index(self, deal_time: datetime) -> str:
+        # приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
+        if self.arbitration.interval == AllowedInterval.MINUTE_1:
+            return str(deal_time)
+        elif self.arbitration.interval == AllowedInterval.HOUR_1:
+            return str(deal_time.replace(minute=0))
+        elif self.arbitration.interval == AllowedInterval.DAY_1:
+            return str(deal_time.replace(hour=0, minute=0))
+        else:
+            raise ValueError('Disallowed interval of arbitration')
+
     def run_step(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
         """ Получает цену 1 и 2 и timestamp, открывает/закрывает позицию
 
@@ -38,6 +49,8 @@ class ArbitrationBackend:
             index = str(deal_time.replace(hour=0, minute=0))
         else:
             raise ValueError('Disallowed interval of arbitration')
+
+        index = self._prepare_index(deal_time=deal_time)
 
         moving_average_value = self.arbitration_df.loc[index, self.arbitration.moving_average.codename]
         standard_deviation_err = self.arbitration_df.loc[index, self.arbitration.standard_deviation.codename]
@@ -70,14 +83,17 @@ class ArbitrationBackend:
                 deal_time=deal_time,
             )
 
-    def _get_quantity(self, price_1, price_2) -> tuple:
+    def _get_quantity(self, price_1, price_2, deal_time) -> tuple:
         symbol_1_quantity, symbol_2_quantity = 1, 1
 
         ratio_type = self.arbitration.ratio_type
         if ratio_type == self.arbitration.SymbolsRatioType.PRICE:
             symbol_2_quantity = price_1 / price_2
         elif ratio_type == self.arbitration.SymbolsRatioType.B_FACTOR:
-            pass
+            index = self._prepare_index(deal_time=deal_time)
+            beta = self.arbitration_df.loc[index, 'beta']
+            symbol_2_quantity = 1 / (beta + 1)
+            symbol_1_quantity = 1 - symbol_2_quantity
 
         return symbol_1_quantity, symbol_2_quantity
 
@@ -88,7 +104,11 @@ class ArbitrationBackend:
             'state': ArbitrationDeal.State.OPEN,
         }
 
-        symbol_1_quantity, symbol_2_quantity = self._get_quantity(price_1=price_1, price_2=price_2)
+        symbol_1_quantity, symbol_2_quantity = self._get_quantity(
+            price_1=price_1,
+            price_2=price_2,
+            deal_time=deal_time,
+        )
         # symbol_2_quantity = self._get_quantity(symbol=self.arbitration.symbol_2, price_1=price_1, price_2=price_2)
 
         if float(standard_deviation) >= 0:

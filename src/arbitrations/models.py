@@ -174,6 +174,19 @@ class Arbitration(BaseModel):
 
         df_cross_course = df_cross_course.loc[start_time:end_time]
 
+        # все что ниже вывести в чарт, это исходники для расчета беты
+        df_cross_course['variance_1'] = df_1[self.price_comparison].rolling(window=80).var()
+
+        df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
+        df_covariance['col_1'] = df_1['close_price']
+        df_covariance['col_2'] = df_2['close_price']
+
+        df_covariance_matrix = df_covariance.rolling(window=80).cov().dropna().unstack()['col_1']['col_2']
+
+        df_cross_course['covariance'] = df_covariance_matrix
+
+        df_cross_course['beta'] = df_cross_course['covariance'] / df_cross_course['variance_1']
+
         return df_cross_course
 
     def get_df(self):
