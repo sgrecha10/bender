@@ -468,6 +468,14 @@ class BaseChartView(View):
             name=column_name,
         )
 
+    def _get_beta_trace(self, df: pd.DataFrame, column_name: str):
+        return go.Scatter(
+            x=df.index,
+            y=df[column_name],
+            mode='markers',
+            name=column_name,
+        )
+
     def _get_arbitration_deal_trace(self, arbitration: Arbitration, symbol: ExchangeInfo) -> tuple:
         arbitration_deal_qs = ArbitrationDeal.objects.filter(
             arbitration=arbitration,
@@ -562,12 +570,12 @@ class ArbitrationChartView(BaseChartView):
 
         df_cross_course = arbitration.get_df()
 
-        row_count = 6
+        row_count = 7
 
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
-            row_heights=[30, 30, 10, 10, 10, 10]
+            row_heights=[30, 30, 10, 10, 10, 10, 10]
         )
         fig.add_trace(
             row=1, col=1,
@@ -578,12 +586,8 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_candlestick_trace(df_2, arbitration.symbol_2.symbol),
         )
         fig.add_trace(
-            row=6, col=1,
-            trace=self._get_cross_course_trace(df_cross_course, 'Cross course'),
-        )
-        fig.add_trace(
-            row=6, col=1,
-            trace=self._get_moving_average_trace(df=df_cross_course, column_name=arbitration.moving_average.codename),
+            row=3, col=1,
+            trace=self._get_deviation_trace(df=df_cross_course, column_name='standard_deviation'),
         )
         fig.add_trace(
             row=4, col=1,
@@ -591,14 +595,22 @@ class ArbitrationChartView(BaseChartView):
         )
         fig.add_trace(
             row=5, col=1,
+            trace=self._get_beta_trace(df_cross_course, 'beta'),
+        )
+        fig.add_trace(
+            row=6, col=1,
             trace=self._get_deviation_value_trace(
                 df=df_cross_course,
                 column_name=arbitration.standard_deviation.codename,
             ),
         )
         fig.add_trace(
-            row=3, col=1,
-            trace=self._get_deviation_trace(df=df_cross_course, column_name='standard_deviation'),
+            row=7, col=1,
+            trace=self._get_cross_course_trace(df_cross_course, 'Cross course'),
+        )
+        fig.add_trace(
+            row=7, col=1,
+            trace=self._get_moving_average_trace(df=df_cross_course, column_name=arbitration.moving_average.codename),
         )
 
         if is_show_result:
