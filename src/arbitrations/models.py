@@ -232,6 +232,7 @@ class ArbitrationDeal(BaseModel):
         PROFIT = 'profit', 'Profit'
         LOSS = 'loss', 'Loss'
         UNKNOWN = 'unknown', 'Unknown'
+        CORRECTION = 'correction', 'Correction'
 
     arbitration = models.ForeignKey(
         Arbitration,
