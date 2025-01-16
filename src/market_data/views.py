@@ -649,12 +649,16 @@ class ArbitrationChartView(BaseChartView):
 
             result_pt = 0
             for item in arbitration_deal_qs:
-                buy = item.buy
-                sell = item.sell
-                if buy:
-                    result_pt -= buy * item.quantity
-                elif sell:
-                    result_pt += sell * item.quantity
+                price = item.price
+                quantity = item.quantity
+                result_pt += price * quantity
+
+                # buy = item.buy
+                # sell = item.sell
+                # if buy:
+                #     result_pt -= buy * item.quantity
+                # elif sell:
+                #     result_pt += sell * item.quantity
 
             closed_deals = arbitration_deal_qs.filter(state=ArbitrationDeal.State.CLOSE).count() / 2
 
