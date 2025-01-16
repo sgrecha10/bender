@@ -247,6 +247,23 @@ class ArbitrationDeal(BaseModel):
     deal_time = models.DateTimeField(
         verbose_name='Deal time',
     )
+    price = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        null=True, blank=True,
+        verbose_name='Price',
+        help_text='+ short position, - long position',
+    )
+    quantity = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        default=0,
+        verbose_name='Quantity',
+    )
+    state = models.CharField(
+        choices=State.choices,
+        verbose_name='State',
+    )
     buy = models.DecimalField(
         verbose_name='Buy',
         max_digits=20,
@@ -258,16 +275,6 @@ class ArbitrationDeal(BaseModel):
         decimal_places=10,
         null=True, blank=True,
         verbose_name='Sell',
-    )
-    quantity = models.DecimalField(
-        max_digits=20,
-        decimal_places=10,
-        default=0,
-        verbose_name='Quantity',
-    )
-    state = models.CharField(
-        choices=State.choices,
-        verbose_name='State',
     )
 
     class Meta:

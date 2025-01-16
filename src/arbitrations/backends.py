@@ -83,7 +83,118 @@ class ArbitrationBackend:
                 deal_time=deal_time,
             )
 
+        # проверяем, что нужно скорректировать сделку по бете
+        if (self.deal_state != self.DealState.CLOSED
+                and abs(standard_deviation) > float(self.arbitration.close_deal_sd)):
+            # print('correction')
+            self._correction_deal(
+                price_1=price_1,
+                price_2=price_2,
+                deal_time=deal_time,
+            )
+
+    def _correction_deal(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
+        if self.arbitration.ratio_type != self.arbitration.SymbolsRatioType.B_FACTOR:
+            return
+
+        data = {
+            'arbitration': self.arbitration,
+            'deal_time': deal_time,
+            'state': ArbitrationDeal.State.CORRECTION,
+        }
+
+        # это количества полученные по текущей бете
+        symbol_1_quantity, symbol_2_quantity = self._get_quantity(price_1, price_2, deal_time)
+
+        open_deal_qs = ArbitrationDeal.objects.filter(
+            state=ArbitrationDeal.State.OPEN,
+        ).order_by('-deal_time')
+
+        last_symbol_1_deal = open_deal_qs.filter(symbol=self.arbitration.symbol_1)[0]
+        last_symbol_2_deal = open_deal_qs.filter(symbol=self.arbitration.symbol_2)[0]
+
+        dt_symbol_1_quantity_source = symbol_1_quantity - float(last_symbol_1_deal.quantity)
+        dt_symbol_1_quantity = round(dt_symbol_1_quantity_source, 8)
+        # если сделка по символу_1 длинная..
+        if last_symbol_1_deal.buy:
+            # ... и разница в количестве инструмента больше нуля, надо докупить
+            if dt_symbol_1_quantity > 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_1,
+                    buy=price_1,
+                    quantity=abs(dt_symbol_1_quantity),
+                    **data,
+                )
+            # .. а если разница меньше нуля - надо продать
+            elif dt_symbol_1_quantity < 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_1,
+                    sell=price_1,
+                    quantity=abs(dt_symbol_1_quantity),
+                    **data,
+                )
+        # а если сделка по символу_1 короткая, то ...
+        else:
+            # ... и разница в количестве инструмента больше нуля, надо допродать
+            if dt_symbol_1_quantity > 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_1,
+                    sell=price_1,
+                    quantity=abs(dt_symbol_1_quantity),
+                    **data,
+                )
+            # .. а если разница меньше нуля - надо докупить
+            elif dt_symbol_1_quantity < 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_1,
+                    buy=price_1,
+                    quantity=abs(dt_symbol_1_quantity),
+                    **data,
+                )
+
+        dt_symbol_2_quantity_source = symbol_2_quantity - float(last_symbol_2_deal.quantity)
+        dt_symbol_2_quantity = round(dt_symbol_2_quantity_source, 8)
+        # если сделка по символу_2 длинная..
+        if last_symbol_2_deal.buy:
+            # ... и разница в количестве инструмента больше нуля, надо докупить
+            if dt_symbol_2_quantity > 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_2,
+                    buy=price_2,
+                    quantity=abs(dt_symbol_2_quantity),
+                    **data,
+                )
+            # .. а если разница меньше нуля - надо продать
+            elif dt_symbol_2_quantity < 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_2,
+                    sell=price_2,
+                    quantity=abs(dt_symbol_2_quantity),
+                    **data,
+                )
+        # а если сделка по символу_2 короткая, то ...
+        else:
+            # ... и разница в количестве инструмента больше нуля, надо допродать
+            if dt_symbol_2_quantity > 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_2,
+                    sell=price_2,
+                    quantity=abs(dt_symbol_2_quantity),
+                    **data,
+                )
+            # .. а если разница меньше нуля - надо докупить
+            elif dt_symbol_2_quantity < 0:
+                ArbitrationDeal.objects.create(
+                    symbol=self.arbitration.symbol_2,
+                    buy=price_2,
+                    quantity=abs(dt_symbol_2_quantity),
+                    **data,
+                )
+
     def _get_quantity(self, price_1, price_2, deal_time) -> tuple:
+        """Возвращает соотношение инструментов.
+        Используется при открытии сделки и при коррекции по бета.
+        """
         symbol_1_quantity, symbol_2_quantity = 1, 1
 
         ratio_type = self.arbitration.ratio_type

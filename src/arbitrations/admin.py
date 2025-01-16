@@ -115,9 +115,11 @@ class ArbitrationDealAdmin(admin.ModelAdmin):
         'arbitration',
         'symbol',
         'deal_time',
+        'price',
+        'quantity',
+        'display_direction',
         'buy',
         'sell',
-        'quantity',
         'state',
         'updated',
         'created',
@@ -127,3 +129,8 @@ class ArbitrationDealAdmin(admin.ModelAdmin):
         'updated',
         'created',
     )
+
+    @admin.display(description='Direction')
+    def display_direction(self, obj):
+        if obj.quantity:
+            return 'LONG' if obj.quantity < 0 else 'SHORT'
