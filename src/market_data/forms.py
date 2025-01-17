@@ -131,6 +131,11 @@ class ArbitrationChartForm(forms.Form):
         queryset=Arbitration.objects.all(),
         label='Arbitration',
     )
+    interval = forms.ChoiceField(
+        choices=AllowedInterval.choices,
+        required=False,
+        label='Interval',
+    )
     is_show_result = forms.BooleanField(
         required=False,
         label='Show Result',

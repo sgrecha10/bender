@@ -30,6 +30,10 @@ class Arbitration(BaseModel):
         PRICE = 'price', 'By price ratio on opening deal'
         B_FACTOR = 'b_factor', 'By b-factor'
 
+    class CorrectionType(models.TextChoices):
+        NONE = 'none', 'None'
+        EVERY_TIME = 'every_time', 'Every time'
+
     codename = models.CharField(
         max_length=100,
         verbose_name='Codename',
@@ -113,6 +117,11 @@ class Arbitration(BaseModel):
         choices=PriceComparison.choices,
         default=PriceComparison.CLOSE,
         verbose_name='B-factor price comparison',
+    )
+    correction_type = models.CharField(
+        choices=CorrectionType.choices,
+        default=CorrectionType.NONE,
+        verbose_name='Correction type',
     )
     entry_price_order = models.CharField(
         max_length=50,
@@ -275,6 +284,18 @@ class ArbitrationDeal(BaseModel):
         decimal_places=10,
         null=True, blank=True,
         verbose_name='Sell',
+    )
+    beta_quantity_1 = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        null=True, blank=True,
+        verbose_name='Beta quantity 1',
+    )
+    beta_quantity_2 = models.DecimalField(
+        max_digits=20,
+        decimal_places=10,
+        null=True, blank=True,
+        verbose_name='Beta quantity 2',
     )
 
     class Meta:
