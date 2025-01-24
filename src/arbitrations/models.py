@@ -150,7 +150,8 @@ class Arbitration(BaseModel):
     def __str__(self):
         return f'{self.codename} - {self.symbol_1} : {self.symbol_2}'
 
-    def get_qs_start_time(self):
+    def get_qs_start_time(self, start_time: datetime) -> datetime:
+        """ Рассчитывает start_time с учетом необходимого запаса для корректного расчета индикаторов """
         standard_deviation_kline_count = self.standard_deviation.kline_count if self.standard_deviation else 0
         moving_average_kline_count = self.moving_average.kline_count if self.moving_average else 0
         kline_max = max(
@@ -160,7 +161,7 @@ class Arbitration(BaseModel):
         )
         computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
         prepared_kline_max = kline_max * computed_minutes_count
-        return self.start_time - timedelta(minutes=prepared_kline_max)
+        return start_time - timedelta(minutes=prepared_kline_max)
 
     def get_symbol_df(self,
                       symbol_pk: str | Type[int],
@@ -172,11 +173,12 @@ class Arbitration(BaseModel):
         qs = qs.group_by_interval(self.interval)
         return qs.to_dataframe(index='open_time_group')
 
-    def _get_df(self, df_1: pd.DataFrame, df_2: pd.DataFrame):
+    def _get_df(self,
+                df_1: pd.DataFrame,
+                df_2: pd.DataFrame,
+                start_time: datetime,
+                end_time: datetime) -> pd.DataFrame:
         """Returned DataFrame"""
-        start_time = self.start_time
-        end_time = self.end_time
-
         moving_average = self.moving_average
         standard_deviation = self.standard_deviation
 
@@ -216,20 +218,28 @@ class Arbitration(BaseModel):
 
         return df_cross_course
 
-    def get_df(self):
-        qs_start_time = self.get_qs_start_time()
+    def get_df(self, start_time: datetime = None, end_time: datetime = None) -> pd.DataFrame:
+        start_time = start_time or self.start_time
+        end_time = end_time or self.end_time
+
+        qs_start_time = self.get_qs_start_time(start_time=start_time)
 
         df_1 = self.get_symbol_df(
             symbol_pk=self.symbol_1_id,
             qs_start_time=qs_start_time,
-            qs_end_time=self.end_time,
+            qs_end_time=end_time,
         )
         df_2 = self.get_symbol_df(
             symbol_pk=self.symbol_2_id,
             qs_start_time=qs_start_time,
-            qs_end_time=self.end_time,
+            qs_end_time=end_time,
         )
-        return self._get_df(df_1=df_1, df_2=df_2)
+        return self._get_df(
+            df_1=df_1,
+            df_2=df_2,
+            start_time=start_time,
+            end_time=end_time,
+        )
 
 
 class ArbitrationDeal(BaseModel):
