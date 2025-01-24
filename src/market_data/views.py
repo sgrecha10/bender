@@ -18,9 +18,13 @@ from market_data.models import Kline, ExchangeInfo
 from strategies.models import Strategy, StrategyResult
 from .constants import Interval
 from decimal import Decimal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from market_data.constants import MAP_MINUTE_COUNT
 from arbitrations.models import Arbitration, ArbitrationDeal
+from django.db.models import Case, Value, When, Q, F, DecimalField
+from market_data.constants import AllowedInterval
+from copy import copy
+import pytz
 
 
 class ChartView(View):
@@ -476,13 +480,28 @@ class BaseChartView(View):
             name=column_name,
         )
 
-    def _get_arbitration_deal_trace(self, arbitration: Arbitration, symbol: ExchangeInfo) -> tuple:
+    def _get_arbitration_deal_trace(self,
+                                    arbitration: Arbitration,
+                                    symbol: ExchangeInfo,
+                                    start_time: datetime,
+                                    end_time: datetime) -> tuple:
         arbitration_deal_qs = ArbitrationDeal.objects.filter(
             arbitration=arbitration,
             symbol=symbol,
-            deal_time__gte=arbitration.start_time,
-            deal_time__lte=arbitration.end_time,
-        ).values_list('deal_time', 'buy', 'sell', 'state')
+            deal_time__gte=start_time,
+            deal_time__lte=end_time,
+        ).annotate(
+            get_buy=Case(
+                When(quantity__lt=0, then=F('price')),
+                default=None,
+                output_field=DecimalField(),
+            ),
+            get_sell=Case(
+                When(quantity__gt=0, then=F('price')),
+                default=None,
+                output_field=DecimalField(),
+            ),
+        ).values_list('deal_time', 'get_buy', 'get_sell', 'state')
 
         df = pd.DataFrame(
             data=arbitration_deal_qs,
@@ -529,12 +548,47 @@ class BaseChartView(View):
 
 class ArbitrationChartView(BaseChartView):
     # template_name = 'admin/arbitrations/arbitration_chart.html'
+    max_kline_display = 100
 
     def get(self, request, *args, **kwargs):
         """Show arbitration chart"""
         from .forms import ArbitrationChartForm
 
-        form = ArbitrationChartForm(data=request.GET)
+        data = copy(request.GET)
+        if data.get('arbitration'):
+            arbitration = Arbitration.objects.get(pk=data['arbitration'])
+            if not (data.get('start_time_0') or data.get('start_time_1')):
+                data['start_time_0'] = arbitration.start_time.strftime('%d.%m.%Y')
+                data['start_time_1'] = arbitration.start_time.strftime('%H:%M')
+
+            # """ end_time
+            # 1. end_time из формы
+            # 2. end_time из Arbitration
+            # 3. рассчитываем end_time исходя из константы 100
+            # рассчитываем так:
+            # - arbitration.interval * 100 и переводим в минуты
+            # - потом прибавляем timedelta(minutes=ХХ) к start_time
+            #
+            # Определяем максимальное количество свечей для вывода, например 100
+            # 1. в форме есть end_time. смотрим, что end_time из формы не больше 100. иначе меняем end_time на п.3
+            # 2. в форме нет end_time. смотрим, что end_time из Arbitration меньше 100, иначе устанавливаем п.3
+            # """
+
+            minutes_limit = MAP_MINUTE_COUNT[arbitration.interval] * self.max_kline_display
+            start_time = datetime.strptime(f"{data['start_time_0']} {data['start_time_1']}", '%d.%m.%Y %H:%M')
+            end_time_limit = start_time + timedelta(minutes=minutes_limit)
+
+            if not (data.get('end_time_0') or data.get('end_time_1')):
+                arbitration_end_time = arbitration.end_time.replace(tzinfo=None)
+                end_time = arbitration_end_time if arbitration_end_time < end_time_limit else end_time_limit
+            else:
+                data_end_time = datetime.strptime(f"{data['end_time_0']} {data['end_time_1']}", '%d.%m.%Y %H:%M')
+                end_time = data_end_time if data_end_time < end_time_limit else end_time_limit
+
+            data['end_time_0'] = end_time.strftime('%d.%m.%Y')
+            data['end_time_1'] = end_time.strftime('%H:%M')
+
+        form = ArbitrationChartForm(data=data)
 
         context = {
             'title': None,
@@ -554,8 +608,18 @@ class ArbitrationChartView(BaseChartView):
     def _get_arbitration_chart(self, cleaned_data):
         arbitration = cleaned_data.get('arbitration')
         is_show_result = cleaned_data.get('is_show_result')
-        start_time = arbitration.start_time
-        end_time = arbitration.end_time
+
+        """ Как определяем время начала/конца для отображения стратегии?
+        1. Если не указаны start_time/end_time в cleaned_data, 
+        то start_time = arbitration.start_time, end_time = arbitration.end_time, limit 100
+        
+        2. Если указаны start_time/end_time в cleaned_data,
+        то подставляем эти значения, но limit 100
+        
+        3. Надо бы еще clean сделать.
+        """
+        start_time = cleaned_data.get('start_time') or arbitration.start_time
+        end_time = cleaned_data.get('end_time') or arbitration.end_time
 
         df_1 = arbitration.get_symbol_df(
             symbol_pk=arbitration.symbol_1_id,
@@ -568,14 +632,17 @@ class ArbitrationChartView(BaseChartView):
             qs_end_time=end_time,
         )
 
-        df_cross_course = arbitration.get_df()
+        df_cross_course = arbitration.get_df(
+            start_time=start_time,
+            end_time=end_time,
+        )
 
         row_count = 7
 
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
-            row_heights=[30, 30, 10, 10, 10, 10, 10]
+            row_heights=[30, 30, 10, 10, 10, 10, 10],
         )
         fig.add_trace(
             row=1, col=1,
@@ -614,11 +681,21 @@ class ArbitrationChartView(BaseChartView):
         )
 
         if is_show_result:
-            symbol_1_deal_tuple = self._get_arbitration_deal_trace(arbitration, symbol=arbitration.symbol_1)
+            symbol_1_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_1,
+                start_time=start_time,
+                end_time=end_time,
+            )
             fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
             fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
 
-            symbol_2_deal_tuple = self._get_arbitration_deal_trace(arbitration, symbol=arbitration.symbol_2)
+            symbol_2_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_2,
+                start_time=start_time,
+                end_time=end_time,
+            )
             fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
             fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
@@ -646,6 +723,11 @@ class ArbitrationChartView(BaseChartView):
         if data.get('is_show_result'):
             arbitration = Arbitration.objects.get(id=data['arbitration'])
             arbitration_deal_qs = ArbitrationDeal.objects.filter(arbitration_id=data['arbitration'])
+
+# 1. ВЫБИРАТЬ ДАННЫЕ ТОЛЬКО ПО ЗАКРЫТЫМ  СДЕЛКАМ!!!!
+# 2. ПРИКРУТИТЬ "ИНТЕРВАЛ" НА СТРАНИЦУ ЧАРТА, ИНАЧЕ НЕВОЗМОЖНО ОТОБРАЗИТЬ ДЛИННЫЕ ПЕРИОДЫ ПО МИНУТАМ.
+#             НЕ ОЧЕНЬ ПОЛУЧАЕТСЯ ИНТЕРВАЛ ПРИКРУТЬ, ПОПРОБОВАТЬ ПРИКРУТИТЬ ПЕРИОД С - ПО.
+# 3. ГДЕ ТО НАДО ОТОБРАЗИТЬ МАКСИМАЛЬНОЕ РАСХОЖДЕНИЕ (В ПРОЦЕНТАХ) И В РЕЗУЛЬТАТАХ ТОЖЕ ОТОБРАЗИТЬ ПРОЦЕНТ, ДЛЯ СРАВНЕНИЯ.
 
             result_pt = 0
             for item in arbitration_deal_qs:
@@ -678,6 +760,7 @@ class ArbitrationChartView(BaseChartView):
             return {
                 'arbitration_codename': arbitration.codename,
                 'arbitration_range': f'{arbitration.start_time.strftime("%d.%m.%Y %H:%M")} <br> {arbitration.end_time.strftime("%d.%m.%Y %H:%M")}',
+                'arbitration_interval': arbitration.interval,
                 'closed_deals': closed_deals,
                 'correlation': correlation,
                 'result_pt': result_pt,

@@ -15,6 +15,7 @@ from indicators.models import (
 )
 from django.contrib import admin
 from arbitrations.models import Arbitration
+from copy import copy
 
 
 class DateTimeField(forms.DateTimeField):
@@ -131,10 +132,15 @@ class ArbitrationChartForm(forms.Form):
         queryset=Arbitration.objects.all(),
         label='Arbitration',
     )
-    interval = forms.ChoiceField(
-        choices=AllowedInterval.choices,
+    start_time = DateTimeField(
+        label='Start Time',
+        widget=AdminSplitDateTime(),
         required=False,
-        label='Interval',
+    )
+    end_time = DateTimeField(
+        label='End Time',
+        widget=AdminSplitDateTime(),
+        required=False,
     )
     is_show_result = forms.BooleanField(
         required=False,
