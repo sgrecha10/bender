@@ -4,6 +4,10 @@
 {% block after_related_objects %}
     {{ block.super }}
     {% if original.pk %}
+        <li id="show-info-button" class="grp-float-left">
+            <a href="{% url 'arbitration_results' %}?arbitration_id={{ original.pk }}" target="_blank" class="grp-button grp-default">Information 📋</a>
+        </li>
+        
         <li id="show-chart-button" class="grp-float-left">
             <a href="{% url 'admin:arbitration-show-chart' original.pk %}" target="_blank" class="grp-button grp-default">Show chart 📈</a>
         </li>
@@ -20,6 +24,7 @@
         (function($) {
             $(document).ready(function() {
                 let ul = $("footer.grp-submit-row ul")
+                ul.prepend($("#show-info-button"));
                 ul.prepend($("#show-chart-button"));
                 ul.prepend($("#test-run-button"));
             });

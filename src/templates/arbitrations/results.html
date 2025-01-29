@@ -1,0 +1,127 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_modify grp_tags %}
+
+{% block stylesheets %}
+    {{ block.super }}
+    <style>
+        .sr-wrapper{
+            width: 400px;
+            overflow: hidden;
+            {#margin-left: 80px;#}
+            margin-right: 10px;
+            position: relative;
+            vertical-align: top;
+            display: inline-block;
+        }
+        .sr-wrapper div{
+            width: 100%;
+            background-color: #FFF0B8;
+            display: table;
+            position: relative;
+            float: left;
+            clear: both;
+            overflow: hidden;
+            border-bottom: solid 1px #ffffff;
+        }
+        .sr-wrapper div div{
+            padding: 10px 15px;
+            border-right: solid 1px #ffffff;
+        }
+        .sr-title{
+            width: 140px;
+            padding-right: 20px;
+            display: table-cell;
+        }
+        .sr-value{
+            display: table-cell;
+        }
+        table{
+            margin: 20px 0 0 0;
+            background-color: lightcyan;
+        }
+        table td{
+            padding: 5px;
+            border: 1px solid #000000;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <div id="content-main">
+
+        {% if info %}
+            <div class="sr-wrapper">
+                <div>
+                    <div>
+                        <dit class="sr-title">Наименование:</dit>
+                        <dit class="sr-value">{{ info.arbitration_codename }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Период применения:</dit>
+                        <dit class="sr-value">{{ info.arbitration_range|safe }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Интервал стратегии:</dit>
+                        <dit class="sr-value">{{ info.arbitration_interval|safe }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Сделок закрытых:</dit>
+                        <dit class="sr-value">{{ info.closed_deals|floatformat:0 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Корреляция инструментов:</dit>
+                        <dit class="sr-value">{{ info.correlation|floatformat:3 }}</dit>
+                    </div>
+                </div>
+                <div>
+                    <div>
+                        <dit class="sr-title">Общий результат, pt:</dit>
+                        <dit class="sr-value">{{ info.deals_total_profit_pt|floatformat:2 }}</dit>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        <table>
+            <thead>
+                <tr>
+                    <td>№</td>
+                    <td>symbol</td>
+                    <td>open_deal_time</td>
+                    <td>close_deal_time</td>                    
+                    <td>open_deal_price</td>
+                    <td>close_deal_price</td>
+                    <td>open_deal_quantity</td>
+                    <td>close_deal_quantity</td>
+                    <td>symbol_profit_pt</td>
+                    <td>deal_profit_pt</td>
+                </tr>
+            </thead>
+            {% for item in statistics %}
+                <tr>
+                    <td>{{ item.deal_number }}</td>
+                    <td>{{ item.symbol }}</td>
+                    <td>{{ item.open_deal_time }}</td>
+                    <td>{{ item.close_deal_time }}</td>
+                    <td>{{ item.open_deal_price }}</td>
+                    <td>{{ item.close_deal_price }}</td>
+                    <td>{{ item.open_deal_quantity }}</td>
+                    <td>{{ item.close_deal_quantity }}</td>
+                    <td>{{ item.symbol_profit_pt|floatformat:2 }}</td>
+                    <td>{{ item.deal_profit_pt|floatformat:2 }}</td>  
+                </tr>
+            {% endfor %}
+
+        </table>
+
+
+    </div>
+{% endblock %}
