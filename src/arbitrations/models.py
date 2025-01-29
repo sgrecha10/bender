@@ -7,6 +7,8 @@ from market_data.constants import AllowedInterval, MAP_MINUTE_COUNT
 from datetime import datetime, timedelta
 import pandas as pd
 from typing import Optional, Type
+import statsmodels.api as sm
+import numpy as np
 
 
 class Arbitration(BaseModel):
@@ -202,7 +204,7 @@ class Arbitration(BaseModel):
         df_cross_course = df_cross_course.loc[start_time:end_time]
 
         # все что ниже вывести в чарт, это исходники для расчета беты
-        df_cross_course['variance_1'] = df_1[self.price_comparison].rolling(window=self.b_factor_window).var()
+        df_cross_course['variance_2'] = df_2[self.price_comparison].rolling(window=self.b_factor_window).var()
 
         df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
         df_covariance['col_1'] = df_1[self.b_factor_price_comparison]
@@ -214,9 +216,55 @@ class Arbitration(BaseModel):
 
         df_cross_course['covariance'] = df_covariance_matrix
 
-        df_cross_course['beta'] = df_cross_course['covariance'] / df_cross_course['variance_1']
+        df_cross_course['beta'] = df_cross_course['covariance'] / df_cross_course['variance_2']
+
+        df_cross_course['beta_sm'] = self.rolling_beta(
+            df_covariance['col_1'],
+            df_covariance['col_2'],
+            self.b_factor_window,
+        )
 
         return df_cross_course
+
+    # --- Функция для расчёта OLS ---
+    def rolling_beta(self, y, x, window):
+        """
+        Рассчитывает коэффициент бета для скользящего окна.
+        """
+        n = len(y)  # Длина исходного ряда
+        betas = []  # Список для сохранения бета-коэффициентов
+
+        for start in range(n - window + 1):
+            # Извлекаем окно данных
+            y_window = y[start:start + window]
+            x_window = x[start:start + window]
+
+            # Удаляем NaN перед созданием модели
+            valid_data = pd.concat([y_window, x_window], axis=1).dropna()
+
+            # Если в окне нет данных, пропускаем
+            if len(valid_data) == 0:
+                betas.append(np.nan)
+                continue
+
+            # Извлекаем очищенные данные
+            y_clean = valid_data.iloc[:, 0].values.astype(np.float64)  # Зависимая переменная
+            x_clean = valid_data.iloc[:, 1].values.astype(np.float64)  # Независимая переменная
+
+            # Добавляем константу для независимой переменной
+            X = sm.add_constant(x_clean)
+
+            # Строим модель
+            model = sm.OLS(y_clean, X).fit()
+
+            # Сохраняем коэффициент для X
+            betas.append(model.params[1])
+
+        # Добавляем NaN в начало (до первого окна) и в конец (до конца ряда)
+        return betas[1:]
+        # result = [np.nan] * (window - 1) + betas
+        # result = result[:n]  # Обрезаем до длины DataFrame
+        # return result
 
     def get_df(self, start_time: datetime = None, end_time: datetime = None) -> pd.DataFrame:
         start_time = start_time or self.start_time

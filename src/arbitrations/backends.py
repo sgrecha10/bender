@@ -48,8 +48,11 @@ class ArbitrationBackend:
         elif ratio_type == self.arbitration.SymbolsRatioType.B_FACTOR:
             index = self._prepare_index(deal_time=deal_time)
             beta = self.arbitration_df.loc[index, 'beta']
-            symbol_2_quantity = 1 / (beta + 1)
-            symbol_1_quantity = 1 - symbol_2_quantity
+
+            # symbol_2_quantity = 1 / (beta + 1)
+            # symbol_1_quantity = 1 - symbol_2_quantity
+            symbol_1_quantity = 1 / (beta + 1)
+            symbol_2_quantity = 1 - symbol_1_quantity
 
         return (
             Decimal(symbol_1_quantity).quantize(Decimal("1.0000000000"), ROUND_05UP),
