@@ -5,11 +5,64 @@ from django.shortcuts import redirect
 from urllib.parse import urlencode
 from .tasks import run_arbitration_test_mode
 from core.utils.admin_utils import redirect_to_change_form
+from indicators.models import MovingAverage, StandardDeviation
+
+
+class MovingAverageInlineAdmin(admin.TabularInline):
+    classes = ('grp-collapse grp-open',)
+    extra = 0
+    model = MovingAverage
+    fields = (
+        'pk',
+        'codename',
+        'description',
+        'symbol',
+        'interval',
+        'data_source',
+        'type',
+        'kline_count',
+        'factor_alfa',
+        'factor_alfa_auto',
+    )
+    show_change_link = True
+    readonly_fields = (
+        'pk',
+        'codename',
+        'description',
+        'symbol',
+        'data_source',
+    )
+
+
+class StandardDeviationInlineAdmin(admin.TabularInline):
+    classes = ('grp-collapse grp-open',)
+    extra = 0
+    model = StandardDeviation
+    fields = (
+        'pk',
+        'codename',
+        'description',
+        'moving_average',
+        'data_source',
+        'kline_count',
+    )
+    show_change_link = True
+    readonly_fields = (
+        'pk',
+        'codename',
+        'description',
+        'moving_average',
+        'data_source',
+    )
 
 
 @admin.register(Arbitration)
 class ArbitrationAdmin(admin.ModelAdmin):
     change_form_template = 'admin/arbitrations/change_form.html'
+    inlines = (
+        MovingAverageInlineAdmin,
+        StandardDeviationInlineAdmin,
+    )
     list_display = (
         'id',
         'codename',
@@ -44,8 +97,8 @@ class ArbitrationAdmin(admin.ModelAdmin):
         ('Difference', {
             'fields': [
                 'price_comparison',
-                'moving_average',
-                'standard_deviation',
+                # 'moving_average',
+                # 'standard_deviation',
 
             ],
             'classes': ('grp-collapse', 'grp-open'),

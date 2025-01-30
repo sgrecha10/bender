@@ -22,6 +22,7 @@ class MovingAverageAdmin(admin.ModelAdmin):
         'factor_alfa',
         'factor_alfa_auto',
         'strategy',
+        'arbitration',
         'updated',
         'created',
     )
@@ -49,6 +50,7 @@ class StandardDeviationAdmin(admin.ModelAdmin):
         'data_source',
         'kline_count',
         'strategy',
+        'arbitration',
         'updated',
         'created',
     )

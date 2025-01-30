@@ -1,7 +1,7 @@
 from django.db import models
 
 from core.utils.db_utils import BaseModel
-from indicators.models import MovingAverage, StandardDeviation
+# from indicators.models import MovingAverage, StandardDeviation
 from market_data.models import Kline, ExchangeInfo
 from market_data.constants import AllowedInterval, MAP_MINUTE_COUNT
 from datetime import datetime, timedelta
@@ -73,18 +73,18 @@ class Arbitration(BaseModel):
         default=PriceComparison.CLOSE,
         verbose_name='Price comparison',
     )
-    moving_average = models.ForeignKey(
-        MovingAverage,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        verbose_name='Moving average',
-    )
-    standard_deviation = models.ForeignKey(
-        StandardDeviation,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        verbose_name='Standard deviation',
-    )
+    # moving_average = models.ForeignKey(
+    #     MovingAverage,
+    #     on_delete=models.SET_NULL,
+    #     null=True, blank=True,
+    #     verbose_name='Moving average',
+    # )
+    # standard_deviation = models.ForeignKey(
+    #     StandardDeviation,
+    #     on_delete=models.SET_NULL,
+    #     null=True, blank=True,
+    #     verbose_name='Standard deviation',
+    # )
     open_deal_sd = models.DecimalField(
         max_digits=20,
         decimal_places=10,
@@ -154,8 +154,11 @@ class Arbitration(BaseModel):
 
     def get_qs_start_time(self, start_time: datetime) -> datetime:
         """ Рассчитывает start_time с учетом необходимого запаса для корректного расчета индикаторов """
-        standard_deviation_kline_count = self.standard_deviation.kline_count if self.standard_deviation else 0
-        moving_average_kline_count = self.moving_average.kline_count if self.moving_average else 0
+        standard_deviation = self.standarddeviation_set.first()
+        moving_average = self.movingaverage_set.first()
+
+        standard_deviation_kline_count = standard_deviation.kline_count if standard_deviation else 0
+        moving_average_kline_count = moving_average.kline_count if moving_average else 0
         kline_max = max(
             standard_deviation_kline_count,
             moving_average_kline_count,
@@ -181,8 +184,8 @@ class Arbitration(BaseModel):
                 start_time: datetime,
                 end_time: datetime) -> pd.DataFrame:
         """Returned DataFrame"""
-        moving_average = self.moving_average
-        standard_deviation = self.standard_deviation
+        standard_deviation = self.standarddeviation_set.first()
+        moving_average = self.movingaverage_set.first()
 
         df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
         df_cross_course['cross_course'] = df_1[self.price_comparison] / df_2[self.price_comparison]

@@ -11,6 +11,7 @@ from market_data.constants import AllowedInterval, Interval
 from market_data.constants import MAP_MINUTE_COUNT
 from market_data.models import ExchangeInfo, Kline
 from strategies.models import Strategy
+from arbitrations.models import Arbitration
 
 
 class MovingAverage(BaseModel):
@@ -37,45 +38,51 @@ class MovingAverage(BaseModel):
         CROSS_COURSE = 'cross_course', 'Cross course'
 
     codename = models.CharField(
-        verbose_name='Codename',
         max_length=255,
         unique=True,
+        verbose_name='Codename',
     )
     description = models.TextField(
-        verbose_name='Description',
         blank=True, default='',
+        verbose_name='Description',
     )
     data_source = models.CharField(
-        verbose_name='Data source',
         max_length=20,
         choices=DataSource.choices,
+        verbose_name='Data source',
     )
     type = models.CharField(
-        verbose_name='Type',
         max_length=20,
         choices=Type.choices,
+        verbose_name='Type',
     )
     kline_count = models.IntegerField(
         verbose_name='K-Line Count',
         help_text='Количество свечей для расчета',
     )
     factor_alfa = models.DecimalField(
-        verbose_name='Factor Alfa',
-        help_text='Используется для расчета EMA',
         max_digits=5,
         decimal_places=4,
         default=0,
+        verbose_name='Factor Alfa',
+        help_text='Используется для расчета EMA',
     )
     factor_alfa_auto = models.BooleanField(
+        default=False,
         verbose_name='Factor Alfa Auto',
         help_text='Используется для расчета EMA',
-        default=False,
     )
     strategy = models.ForeignKey(
         Strategy,
         on_delete=models.SET_NULL,
-        verbose_name='Strategy',
         null=True, blank=True,
+        verbose_name='Strategy',
+    )
+    arbitration = models.ForeignKey(
+        Arbitration,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Arbitration',
     )
     symbol = models.ForeignKey(
         ExchangeInfo,
@@ -216,13 +223,13 @@ class StandardDeviation(BaseModel):
         CROSS_COURSE = 'cross_course', 'Cross course'
 
     codename = models.CharField(
-        verbose_name='Codename',
         max_length=255,
         unique=True,
+        verbose_name='Codename',
     )
     description = models.TextField(
-        verbose_name='Description',
         blank=True, default='',
+        verbose_name='Description',
     )
     moving_average = models.ForeignKey(
         MovingAverage,
@@ -231,9 +238,9 @@ class StandardDeviation(BaseModel):
         verbose_name='Moving Average',
     )
     data_source = models.CharField(
-        verbose_name='Data source',
         max_length=20,
         choices=DataSource.choices,
+        verbose_name='Data source',
     )
     kline_count = models.IntegerField(
         verbose_name='K-Line Count',
@@ -242,8 +249,14 @@ class StandardDeviation(BaseModel):
     strategy = models.ForeignKey(
         Strategy,
         on_delete=models.SET_NULL,
-        verbose_name='Strategy',
         null=True, blank=True,
+        verbose_name='Strategy',
+    )
+    arbitration = models.ForeignKey(
+        Arbitration,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Arbitration',
     )
 
     class Meta:

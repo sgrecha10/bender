@@ -70,8 +70,11 @@ class ArbitrationBackend:
         # приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
         index = self._prepare_index(deal_time=deal_time)
 
-        moving_average_value = self.arbitration_df.loc[index, self.arbitration.moving_average.codename]
-        standard_deviation_err = self.arbitration_df.loc[index, self.arbitration.standard_deviation.codename]
+        standard_deviation_model = self.arbitration.standarddeviation_set.first()
+        moving_average_model = self.arbitration.movingaverage_set.first()
+
+        moving_average_value = self.arbitration_df.loc[index, moving_average_model.codename]
+        standard_deviation_err = self.arbitration_df.loc[index, standard_deviation_model.codename]
 
         if np.isnan(moving_average_value) or np.isnan(standard_deviation_err):
             return

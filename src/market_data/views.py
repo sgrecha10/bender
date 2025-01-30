@@ -548,7 +548,7 @@ class BaseChartView(View):
 
 class ArbitrationChartView(BaseChartView):
     # template_name = 'admin/arbitrations/arbitration_chart.html'
-    max_kline_display = 100
+    max_kline_display = 200
 
     def get(self, request, *args, **kwargs):
         """Show arbitration chart"""
@@ -668,7 +668,7 @@ class ArbitrationChartView(BaseChartView):
             row=6, col=1,
             trace=self._get_deviation_value_trace(
                 df=df_cross_course,
-                column_name=arbitration.standard_deviation.codename,
+                column_name=arbitration.standarddeviation_set.first().codename,
             ),
         )
         fig.add_trace(
@@ -677,7 +677,9 @@ class ArbitrationChartView(BaseChartView):
         )
         fig.add_trace(
             row=7, col=1,
-            trace=self._get_moving_average_trace(df=df_cross_course, column_name=arbitration.moving_average.codename),
+            trace=self._get_moving_average_trace(
+                df=df_cross_course,
+                column_name=arbitration.movingaverage_set.first().codename),
         )
 
         if is_show_result:
