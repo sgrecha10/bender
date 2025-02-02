@@ -17,10 +17,11 @@ class MovingAverageInlineAdmin(admin.TabularInline):
         'codename',
         'description',
         'symbol',
-        'interval',
         'data_source',
-        'type',
         'kline_count',
+        'interval',
+        'price_comparison',
+        'type',
         'factor_alfa',
         'factor_alfa_auto',
     )
@@ -45,6 +46,8 @@ class StandardDeviationInlineAdmin(admin.TabularInline):
         'moving_average',
         'data_source',
         'kline_count',
+        'interval',
+        'price_comparison',
     )
     show_change_link = True
     readonly_fields = (
@@ -88,17 +91,9 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'symbol_1',
                 'symbol_2',
                 'interval',
+                'price_comparison',
                 'start_time',
                 'end_time',
-
-            ],
-            'classes': ('grp-collapse', 'grp-open'),
-        }),
-        ('Difference', {
-            'fields': [
-                'price_comparison',
-                # 'moving_average',
-                # 'standard_deviation',
 
             ],
             'classes': ('grp-collapse', 'grp-open'),

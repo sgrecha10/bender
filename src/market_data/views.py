@@ -548,45 +548,27 @@ class BaseChartView(View):
 
 class ArbitrationChartView(BaseChartView):
     # template_name = 'admin/arbitrations/arbitration_chart.html'
-    max_kline_display = 200
+    max_kline_display = 999999999
 
     def get(self, request, *args, **kwargs):
         """Show arbitration chart"""
         from .forms import ArbitrationChartForm
 
         data = copy(request.GET)
-        if data.get('arbitration'):
-            arbitration = Arbitration.objects.get(pk=data['arbitration'])
+
+        if arbitration_id := data.get('arbitration'):
+            arbitration = Arbitration.objects.get(pk=arbitration_id)
+
             if not (data.get('start_time_0') or data.get('start_time_1')):
                 data['start_time_0'] = arbitration.start_time.strftime('%d.%m.%Y')
                 data['start_time_1'] = arbitration.start_time.strftime('%H:%M')
 
-            # """ end_time
-            # 1. end_time из формы
-            # 2. end_time из Arbitration
-            # 3. рассчитываем end_time исходя из константы 100
-            # рассчитываем так:
-            # - arbitration.interval * 100 и переводим в минуты
-            # - потом прибавляем timedelta(minutes=ХХ) к start_time
-            #
-            # Определяем максимальное количество свечей для вывода, например 100
-            # 1. в форме есть end_time. смотрим, что end_time из формы не больше 100. иначе меняем end_time на п.3
-            # 2. в форме нет end_time. смотрим, что end_time из Arbitration меньше 100, иначе устанавливаем п.3
-            # """
-
-            minutes_limit = MAP_MINUTE_COUNT[arbitration.interval] * self.max_kline_display
-            start_time = datetime.strptime(f"{data['start_time_0']} {data['start_time_1']}", '%d.%m.%Y %H:%M')
-            end_time_limit = start_time + timedelta(minutes=minutes_limit)
-
             if not (data.get('end_time_0') or data.get('end_time_1')):
-                arbitration_end_time = arbitration.end_time.replace(tzinfo=None)
-                end_time = arbitration_end_time if arbitration_end_time < end_time_limit else end_time_limit
-            else:
-                data_end_time = datetime.strptime(f"{data['end_time_0']} {data['end_time_1']}", '%d.%m.%Y %H:%M')
-                end_time = data_end_time if data_end_time < end_time_limit else end_time_limit
+                data['end_time_0'] = arbitration.end_time.strftime('%d.%m.%Y')
+                data['end_time_1'] = arbitration.end_time.strftime('%H:%M')
 
-            data['end_time_0'] = end_time.strftime('%d.%m.%Y')
-            data['end_time_1'] = end_time.strftime('%H:%M')
+            if not data.get('interval'):
+                data['interval'] = arbitration.interval
 
         form = ArbitrationChartForm(data=data)
 
@@ -605,36 +587,48 @@ class ArbitrationChartView(BaseChartView):
 
         return render(request, self.template_name, context=context)
 
+    def _resampled_dfs(self,
+                       df_1: pd.DataFrame,
+                       df_2: pd.DataFrame,
+                       cross_course_df: pd.DataFrame,
+                       start_time: datetime,
+                       end_time: datetime,
+                       interval: str) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """ Преобразовывает дата фреймы для вывода в чарт """
+
+        resampled_df_1 = df_1.resample(interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        }).loc[start_time:end_time]
+        resampled_df_2 = df_2.resample(interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        }).loc[start_time:end_time]
+        resampled_cross_course_df = cross_course_df.resample(interval).agg('last').loc[start_time:end_time]
+
+        return (
+            resampled_df_1,
+            resampled_df_2,
+            resampled_cross_course_df,
+        )
+
     def _get_arbitration_chart(self, cleaned_data):
         arbitration = cleaned_data.get('arbitration')
-        is_show_result = cleaned_data.get('is_show_result')
-
-        """ Как определяем время начала/конца для отображения стратегии?
-        1. Если не указаны start_time/end_time в cleaned_data, 
-        то start_time = arbitration.start_time, end_time = arbitration.end_time, limit 100
-        
-        2. Если указаны start_time/end_time в cleaned_data,
-        то подставляем эти значения, но limit 100
-        
-        3. Надо бы еще clean сделать.
-        """
         start_time = cleaned_data.get('start_time') or arbitration.start_time
         end_time = cleaned_data.get('end_time') or arbitration.end_time
+        interval = cleaned_data.get('interval') or arbitration.interval
+        is_show_result = cleaned_data.get('is_show_result')
 
-        df_1 = arbitration.get_symbol_df(
-            symbol_pk=arbitration.symbol_1_id,
-            qs_start_time=start_time,
-            qs_end_time=end_time,
-        )
-        df_2 = arbitration.get_symbol_df(
-            symbol_pk=arbitration.symbol_2_id,
-            qs_start_time=start_time,
-            qs_end_time=end_time,
-        )
+        df_1, df_2, cross_course = arbitration.get_source_dfs()
 
-        df_cross_course = arbitration.get_df(
-            start_time=start_time,
-            end_time=end_time,
+        chart_df_1, chart_df_2, chart_cross_course_df = self._resampled_dfs(
+            df_1, df_2, cross_course, start_time, end_time, interval,
         )
 
         row_count = 7
@@ -642,64 +636,65 @@ class ArbitrationChartView(BaseChartView):
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
-            row_heights=[30, 30, 10, 10, 10, 10, 10],
+            # row_heights=[30, 30, 10, 10, 10, 10, 10],
         )
         fig.add_trace(
             row=1, col=1,
-            trace=self._get_candlestick_trace(df_1, arbitration.symbol_1.symbol),
+            trace=self._get_candlestick_trace(chart_df_1, arbitration.symbol_1.symbol),
         )
         fig.add_trace(
             row=2, col=1,
-            trace=self._get_candlestick_trace(df_2, arbitration.symbol_2.symbol),
+            trace=self._get_candlestick_trace(chart_df_2, arbitration.symbol_2.symbol),
         )
         fig.add_trace(
             row=3, col=1,
-            trace=self._get_deviation_trace(df=df_cross_course, column_name='standard_deviation'),
+            trace=self._get_deviation_trace(df=chart_cross_course_df, column_name='standard_deviation'),
         )
         fig.add_trace(
             row=4, col=1,
-            trace=self._get_deviation_trace(df=df_cross_course, column_name='absolute_deviation'),
+            trace=self._get_deviation_trace(df=chart_cross_course_df, column_name='absolute_deviation'),
         )
         fig.add_trace(
             row=5, col=1,
-            trace=self._get_beta_trace(df_cross_course, 'beta'),
+            trace=self._get_beta_trace(chart_cross_course_df, 'beta'),
         )
         fig.add_trace(
             row=6, col=1,
             trace=self._get_deviation_value_trace(
-                df=df_cross_course,
+                df=chart_cross_course_df,
                 column_name=arbitration.standarddeviation_set.first().codename,
             ),
         )
+
         fig.add_trace(
             row=7, col=1,
-            trace=self._get_cross_course_trace(df_cross_course, 'Cross course'),
+            trace=self._get_cross_course_trace(chart_cross_course_df, 'Cross course'),
         )
         fig.add_trace(
             row=7, col=1,
-            trace=self._get_moving_average_trace(
-                df=df_cross_course,
-                column_name=arbitration.movingaverage_set.first().codename),
+            trace=self._get_moving_average_trace(chart_cross_course_df, arbitration.movingaverage_set.first().codename),
         )
 
-        if is_show_result:
-            symbol_1_deal_tuple = self._get_arbitration_deal_trace(
-                arbitration=arbitration,
-                symbol=arbitration.symbol_1,
-                start_time=start_time,
-                end_time=end_time,
-            )
-            fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
-            fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
 
-            symbol_2_deal_tuple = self._get_arbitration_deal_trace(
-                arbitration=arbitration,
-                symbol=arbitration.symbol_2,
-                start_time=start_time,
-                end_time=end_time,
-            )
-            fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
-            fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
+        #
+        # if is_show_result:
+        #     symbol_1_deal_tuple = self._get_arbitration_deal_trace(
+        #         arbitration=arbitration,
+        #         symbol=arbitration.symbol_1,
+        #         start_time=start_time,
+        #         end_time=end_time,
+        #     )
+        #     fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
+        #     fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
+        #
+        #     symbol_2_deal_tuple = self._get_arbitration_deal_trace(
+        #         arbitration=arbitration,
+        #         symbol=arbitration.symbol_2,
+        #         start_time=start_time,
+        #         end_time=end_time,
+        #     )
+        #     fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
+        #     fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
         fig.update_layout(
             # autosize=False,

@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Optional
 
 from django.db import models
-from pandas import DataFrame
+import pandas as pd
 
 from core.utils.db_utils import BaseModel
 from market_data.constants import AllowedInterval, Interval
@@ -36,6 +36,12 @@ class MovingAverage(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
+
+    class PriceComparison(models.TextChoices):
+        OPEN = 'open_price', 'Open price'
+        CLOSE = 'close_price', 'Close price'
+        HIGH = 'high_price', 'High price'
+        LOW = 'low_price', 'Low price'
 
     codename = models.CharField(
         max_length=255,
@@ -96,6 +102,12 @@ class MovingAverage(BaseModel):
         max_length=10,
         null=True, blank=True,
     )
+    price_comparison = models.CharField(
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
+        verbose_name='Price comparison',
+        help_text='For Cross course'
+    )
 
     class Meta:
         verbose_name = 'Moving Average'
@@ -112,14 +124,14 @@ class MovingAverage(BaseModel):
             f'- {self.get_interval_display()} '
         )
 
-    def get_source_df(self, base_df: DataFrame = None, **kwargs) -> DataFrame:
+    def get_source_df(self, base_df: pd.DataFrame = None, **kwargs) -> pd.DataFrame:
         """Возвращает source DataFrame
 
         Если передан base_df, то ограничивает выборку из бд по максимальному
         и минимальному значению с учетом interval,
         если нет, то выбирает все значения из бд.
         """
-        if isinstance(base_df, DataFrame) and not base_df.empty:
+        if isinstance(base_df, pd.DataFrame) and not base_df.empty:
             base_df.sort_index(inplace=True)
             min_index = base_df.iloc[0].name
             max_index = base_df.iloc[-1].name
@@ -139,7 +151,7 @@ class MovingAverage(BaseModel):
 
     def get_value_by_index(self,
                            index: datetime | Hashable,
-                           source_df: DataFrame = None) -> Optional[Decimal]:
+                           source_df: pd.DataFrame = None) -> Optional[Decimal]:
         """Возвращает значение MA рассчитанное на переданный index (open_time) включительно
 
         :param index: datetime
@@ -148,7 +160,7 @@ class MovingAverage(BaseModel):
         1. Если index не найден в source_df - return None
         2. Если количество свечей для расчета в source_df меньше self.kline_count - return None
         """
-        if not isinstance(source_df, DataFrame) or source_df.empty:
+        if not isinstance(source_df, pd.DataFrame) or source_df.empty:
             # Генерируем source_df если отсутствует в аргументах
             computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
             qs = Kline.objects.filter(
@@ -185,7 +197,7 @@ class MovingAverage(BaseModel):
         elif self.type == self.Type.EMA:
             return
 
-    def _get_sma_value(self, df: DataFrame) -> Optional[Decimal]:
+    def _get_sma_value(self, df: pd.DataFrame) -> Optional[Decimal]:
         average_price_sum = Decimal(0)
         for idx, row in df.iterrows():
             if self.data_source == self.DataSource.OPEN:
@@ -205,10 +217,36 @@ class MovingAverage(BaseModel):
 
         return average_price_sum / self.kline_count
 
-    def calculate_values(self, df: DataFrame, column_name: str) -> None:
+    def calculate_values(self, df: pd.DataFrame, column_name: str) -> None:
         """Добавляет в переданный df колонку с значением
         """
         df[column_name] = df[self.data_source].rolling(window=self.kline_count).mean()
+
+    def get_series(self, df_1: pd.DataFrame, df_2: pd.DataFrame) -> pd.Series:
+        """ Арбитраж. Возвращает данные для арбитражных стратегий. """
+
+        resample_df_1 = df_1.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+        resample_df_2 = df_2.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+
+        df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
+        df_cross_course['cross_course'] = (
+                resample_df_1[self.price_comparison] / resample_df_2[self.price_comparison]
+        )
+        df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
+
+        return df_cross_course[self.data_source].rolling(window=self.kline_count).mean()
 
 
 class StandardDeviation(BaseModel):
@@ -221,6 +259,12 @@ class StandardDeviation(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
+
+    class PriceComparison(models.TextChoices):
+        OPEN = 'open_price', 'Open price'
+        CLOSE = 'close_price', 'Close price'
+        HIGH = 'high_price', 'High price'
+        LOW = 'low_price', 'Low price'
 
     codename = models.CharField(
         max_length=255,
@@ -258,6 +302,18 @@ class StandardDeviation(BaseModel):
         null=True, blank=True,
         verbose_name='Arbitration',
     )
+    interval = models.CharField(
+        verbose_name='Interval',
+        choices=AllowedInterval.choices,
+        max_length=10,
+        null=True, blank=True,
+    )
+    price_comparison = models.CharField(
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
+        verbose_name='Price comparison',
+        help_text='For Cross course'
+    )
 
     class Meta:
         verbose_name = 'Standard Deviation'
@@ -272,13 +328,13 @@ class StandardDeviation(BaseModel):
             f'{self.kline_count}'
         )
 
-    def get_source_df(self, base_df: DataFrame = None, **kwargs) -> DataFrame:
+    def get_source_df(self, base_df: pd.DataFrame = None, **kwargs) -> pd.DataFrame:
         """Возвращает source DataFrame
 
         Алгоритм как у moving_average, за исключением того, что kline_count выбирается большее между опорным MA
         и собственной настройкой у SD
         """
-        if isinstance(base_df, DataFrame) and not base_df.empty:
+        if isinstance(base_df, pd.DataFrame) and not base_df.empty:
             base_df.sort_index(inplace=True)
             min_index = base_df.iloc[0].name
             max_index = base_df.iloc[-1].name
@@ -299,7 +355,7 @@ class StandardDeviation(BaseModel):
 
     def get_value_by_index(self,
                            index: datetime | Hashable,
-                           source_df: DataFrame = None) -> Optional[Decimal]:
+                           source_df: pd.DataFrame = None) -> Optional[Decimal]:
         """Возвращает значение SD рассчитанное на переданный index (open_time) включительно
 
         :param index: datetime
@@ -335,10 +391,36 @@ class StandardDeviation(BaseModel):
 
         return (deviation / self.kline_count) ** Decimal(0.5)
 
-    def calculate_values(self, df: DataFrame, column_name: str) -> None:
+    def calculate_values(self, df: pd.DataFrame, column_name: str) -> None:
         """Добавляет в переданный df колонку с значением
         """
         df[column_name] = df[self.data_source].rolling(window=self.kline_count).std()
+
+    def get_series(self, df_1: pd.DataFrame, df_2: pd.DataFrame) -> pd.Series:
+        """ Арбитраж. Возвращает данные для арбитражных стратегий. """
+
+        resample_df_1 = df_1.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+        resample_df_2 = df_2.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+
+        df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
+        df_cross_course['cross_course'] = (
+                resample_df_1[self.price_comparison] / resample_df_2[self.price_comparison]
+        )
+        df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
+
+        return df_cross_course[self.data_source].rolling(window=self.kline_count).std()
 
 
 class BollingerBands(BaseModel):
@@ -379,7 +461,7 @@ class BollingerBands(BaseModel):
 
     def get_values_by_index(self,
                            index: datetime | Hashable,
-                           source_df: DataFrame = None) -> Optional[tuple]:
+                           source_df: pd.DataFrame = None) -> Optional[tuple]:
         """
         Возвращает кортеж из трех значений.
         """

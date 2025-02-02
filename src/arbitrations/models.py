@@ -59,6 +59,7 @@ class Arbitration(BaseModel):
         default=AllowedInterval.MINUTE_1,
         max_length=10,
         verbose_name='Base interval',
+        help_text='Влияет только на отображение результатов в чарте.'
     )
     start_time = models.DateTimeField(
         null=True, blank=True,
@@ -72,6 +73,7 @@ class Arbitration(BaseModel):
         choices=PriceComparison.choices,
         default=PriceComparison.CLOSE,
         verbose_name='Price comparison',
+        help_text='Влияет только на отображение результатов в чарте. Обычно должен совпадать с настройкой в MA.'
     )
     # moving_average = models.ForeignKey(
     #     MovingAverage,
@@ -153,31 +155,92 @@ class Arbitration(BaseModel):
         return f'{self.codename} - {self.symbol_1} : {self.symbol_2}'
 
     def get_qs_start_time(self, start_time: datetime) -> datetime:
-        """ Рассчитывает start_time с учетом необходимого запаса для корректного расчета индикаторов """
+        """ Возвращает start_time с учетом необходимого запаса для корректного расчета индикаторов. """
+
         standard_deviation = self.standarddeviation_set.first()
         moving_average = self.movingaverage_set.first()
 
         standard_deviation_kline_count = standard_deviation.kline_count if standard_deviation else 0
         moving_average_kline_count = moving_average.kline_count if moving_average else 0
-        kline_max = max(
-            standard_deviation_kline_count,
-            moving_average_kline_count,
-            self.b_factor_window,
+
+        moving_average_converted_to_minutes = (
+                moving_average_kline_count * MAP_MINUTE_COUNT[moving_average.interval]
         )
-        computed_minutes_count = MAP_MINUTE_COUNT[self.interval]
-        prepared_kline_max = kline_max * computed_minutes_count
+
+        prepared_kline_max = max(
+            moving_average_converted_to_minutes,
+            standard_deviation_kline_count,
+        )
         return start_time - timedelta(minutes=prepared_kline_max)
 
     def get_symbol_df(self,
                       symbol_pk: str | Type[int],
                       qs_start_time: Optional[datetime] = None,
                       qs_end_time: Optional[datetime] = None) -> pd.DataFrame:
+        """ Возвращает df указанного символа за указанный период. """
+
         qs = Kline.objects.filter(symbol_id=symbol_pk)
         qs = qs.filter(open_time__gte=qs_start_time) if qs_start_time else qs
         qs = qs.filter(open_time__lte=qs_end_time) if qs_end_time else qs
-        qs = qs.group_by_interval(self.interval)
+        qs = qs.group_by_interval()
         return qs.to_dataframe(index='open_time_group')
 
+    def get_source_dfs(self) -> tuple:
+        """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
+
+        prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
+
+        df_1 = self.get_symbol_df(
+            symbol_pk=self.symbol_1_id,
+            qs_start_time=prepared_start_time,
+            qs_end_time=self.end_time,
+        )
+        df_2 = self.get_symbol_df(
+            symbol_pk=self.symbol_2_id,
+            qs_start_time=prepared_start_time,
+            qs_end_time=self.end_time,
+        )
+
+        cross_course_df = pd.DataFrame(columns=['cross_course'], dtype=float)
+        cross_course_df['cross_course'] = (
+                df_1[self.price_comparison] / df_2[self.price_comparison]
+        )
+        cross_course_df = cross_course_df.apply(pd.to_numeric, downcast='float')
+
+        moving_average = self.movingaverage_set.first()
+        standard_deviation = self.standarddeviation_set.first()
+        cross_course_df[moving_average.codename] = (
+            moving_average.get_series(df_1, df_2).reindex(cross_course_df.index, method='ffill')
+        )
+        cross_course_df[standard_deviation.codename] = (
+            standard_deviation.get_series(df_1, df_2).reindex(cross_course_df.index, method='ffill')
+        )
+
+        cross_course_df['absolute_deviation'] = (
+                cross_course_df['cross_course'] - cross_course_df[moving_average.codename]
+        )
+        cross_course_df['standard_deviation'] = (
+                cross_course_df['absolute_deviation'] / cross_course_df[standard_deviation.codename]
+        )
+
+        # beta  ПЕРЕНЕСТИ ОТСЮДА В ИНДИКАТОР
+        cross_course_df['variance_1'] = df_1[self.price_comparison].rolling(window=self.b_factor_window).var()
+
+        df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
+        df_covariance['col_1'] = df_1[self.b_factor_price_comparison]
+        df_covariance['col_2'] = df_2[self.b_factor_price_comparison]
+
+        df_covariance_matrix = df_covariance.rolling(
+            window=self.b_factor_window,
+        ).cov().dropna().unstack()['col_1']['col_2']
+
+        cross_course_df['covariance'] = df_covariance_matrix
+
+        cross_course_df['beta'] = cross_course_df['covariance'] / cross_course_df['variance_1']
+
+        return df_1, df_2, cross_course_df
+
+    #  Ниже надо выпилить методы
     def _get_df(self,
                 df_1: pd.DataFrame,
                 df_2: pd.DataFrame,
@@ -221,11 +284,11 @@ class Arbitration(BaseModel):
 
         df_cross_course['beta'] = df_cross_course['covariance'] / df_cross_course['variance_2']
 
-        df_cross_course['beta_sm'] = self.rolling_beta(
-            df_covariance['col_1'],
-            df_covariance['col_2'],
-            self.b_factor_window,
-        )
+        # df_cross_course['beta_sm'] = self.rolling_beta(
+        #     df_covariance['col_1'],
+        #     df_covariance['col_2'],
+        #     self.b_factor_window,
+        # )
 
         return df_cross_course
 
