@@ -5,7 +5,7 @@ from django.shortcuts import redirect
 from urllib.parse import urlencode
 from .tasks import run_arbitration_test_mode
 from core.utils.admin_utils import redirect_to_change_form
-from indicators.models import MovingAverage, StandardDeviation
+from indicators.models import MovingAverage, StandardDeviation, BetaFactor
 
 
 class MovingAverageInlineAdmin(admin.TabularInline):
@@ -16,14 +16,14 @@ class MovingAverageInlineAdmin(admin.TabularInline):
         'pk',
         'codename',
         'description',
-        'symbol',
-        'data_source',
         'kline_count',
         'interval',
         'price_comparison',
         'type',
-        'factor_alfa',
-        'factor_alfa_auto',
+        # 'factor_alfa',
+        # 'factor_alfa_auto',
+        'symbol',
+        'data_source',
     )
     show_change_link = True
     readonly_fields = (
@@ -32,6 +32,7 @@ class MovingAverageInlineAdmin(admin.TabularInline):
         'description',
         'symbol',
         'data_source',
+        'type',
     )
 
 
@@ -43,11 +44,11 @@ class StandardDeviationInlineAdmin(admin.TabularInline):
         'pk',
         'codename',
         'description',
-        'moving_average',
-        'data_source',
         'kline_count',
         'interval',
         'price_comparison',
+        'moving_average',
+        'data_source',
     )
     show_change_link = True
     readonly_fields = (
@@ -59,12 +60,36 @@ class StandardDeviationInlineAdmin(admin.TabularInline):
     )
 
 
+class BetaFactorInlineAdmin(admin.TabularInline):
+    classes = ('grp-collapse grp-open',)
+    extra = 0
+    model = BetaFactor
+    fields = (
+        'pk',
+        'codename',
+        'description',
+        'kline_count',
+        'interval',
+        'price_comparison',
+        'market_symbol',
+        'variance_price_comparison',
+        'covariance_price_comparison',
+    )
+    show_change_link = True
+    readonly_fields = (
+        'pk',
+        'codename',
+        'description',
+    )
+
+
 @admin.register(Arbitration)
 class ArbitrationAdmin(admin.ModelAdmin):
     change_form_template = 'admin/arbitrations/change_form.html'
     inlines = (
         MovingAverageInlineAdmin,
         StandardDeviationInlineAdmin,
+        BetaFactorInlineAdmin,
     )
     list_display = (
         'id',
@@ -104,8 +129,6 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'close_deal_sd',
                 'fixed_bet_amount',
                 'ratio_type',
-                'b_factor_window',
-                'b_factor_price_comparison',
                 'correction_type',
             ],
             'classes': ('grp-collapse', 'grp-open'),

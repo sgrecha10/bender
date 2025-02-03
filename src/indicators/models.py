@@ -480,3 +480,116 @@ class BollingerBands(BaseModel):
             average_price,
             average_price + standard_deviation * self.sigma_factor,
         )
+
+
+class BetaFactor(BaseModel):
+
+    class PriceComparison(models.TextChoices):
+        OPEN = 'open_price', 'Open price'
+        CLOSE = 'close_price', 'Close price'
+        HIGH = 'high_price', 'High price'
+        LOW = 'low_price', 'Low price'
+
+    class MarketSymbol(models.TextChoices):
+        SYMBOL_1 = 'symbol_1', 'Symbol 1'
+        SYMBOL_2 = 'symbol_2', 'Symbol 2'
+
+    codename = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name='Codename',
+    )
+    description = models.TextField(
+        blank=True, default='',
+        verbose_name='Description',
+    )
+    kline_count = models.IntegerField(
+        verbose_name='K-Line Count',
+        help_text='Количество свечей для расчета',
+    )
+    variance_price_comparison = models.CharField(
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
+        verbose_name='Variance price comparison ',
+    )
+    covariance_price_comparison = models.CharField(
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
+        verbose_name='Covariance price comparison ',
+    )
+    arbitration = models.ForeignKey(
+        Arbitration,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        verbose_name='Arbitration',
+    )
+    interval = models.CharField(
+        verbose_name='Interval',
+        choices=AllowedInterval.choices,
+        max_length=10,
+        null=True, blank=True,
+    )
+    price_comparison = models.CharField(
+        choices=PriceComparison.choices,
+        default=PriceComparison.CLOSE,
+        verbose_name='Price comparison',
+        help_text='For Cross course'
+    )
+    market_symbol = models.CharField(
+        choices=MarketSymbol.choices,
+        default=MarketSymbol.SYMBOL_1,
+        verbose_name='Market symbol',
+        help_text='Symbol for variance',
+    )
+
+    class Meta:
+        verbose_name = 'Beta Factor'
+        verbose_name_plural = 'Beta Factor'
+
+    def __str__(self):
+        return f'{self.id} - {self.codename}'
+
+    def get_series(self, df_1: pd.DataFrame, df_2: pd.DataFrame) -> pd.Series:
+        """ Арбитраж. Возвращает данные для арбитражных стратегий. """
+
+        resample_df_1 = df_1.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+        resample_df_2 = df_2.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+
+        df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
+        df_cross_course['cross_course'] = (
+                resample_df_1[self.price_comparison] / resample_df_2[self.price_comparison]
+        )
+        df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
+
+
+        if self.market_symbol == self.MarketSymbol.SYMBOL_1:
+            df_cross_course['variance'] = (
+                df_1[self.price_comparison].rolling(window=self.kline_count).var()
+            )
+        else:
+            df_cross_course['variance'] = (
+                df_2[self.price_comparison].rolling(window=self.kline_count).var()
+            )
+
+        df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
+        df_covariance['col_1'] = df_1[self.covariance_price_comparison]
+        df_covariance['col_2'] = df_2[self.covariance_price_comparison]
+
+        df_covariance_matrix = df_covariance.rolling(
+            window=self.kline_count,
+        ).cov().dropna().unstack()['col_1']['col_2']
+        df_cross_course['covariance'] = df_covariance_matrix
+
+        return df_cross_course['covariance'] / df_cross_course['variance']

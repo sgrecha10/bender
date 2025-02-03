@@ -44,6 +44,7 @@ class CustomIndexDashboard(Dashboard):
                     'indicators.models.MovingAverage',
                     'indicators.models.StandardDeviation',
                     'indicators.models.BollingerBands',
+                    'indicators.models.BetaFactor',
                 ),
             )
         )

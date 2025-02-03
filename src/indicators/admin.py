@@ -5,6 +5,7 @@ from .models import (
     MovingAverage,
     StandardDeviation,
     BollingerBands,
+    BetaFactor,
 )
 
 
@@ -79,6 +80,25 @@ class BollingerBandsAdmin(admin.ModelAdmin):
         'moving_average',
         'standard_deviation',
         'sigma_factor',
+        'updated',
+        'created',
+    )
+    readonly_fields = (
+        'updated',
+        'created',
+    )
+
+
+@admin.register(BetaFactor)
+class BetaFactorAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'codename',
+        'kline_count',
+        'variance_price_comparison',
+        'covariance_price_comparison',
+        'arbitration',
+        'interval',
         'updated',
         'created',
     )

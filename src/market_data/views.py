@@ -577,13 +577,35 @@ class ArbitrationChartView(BaseChartView):
             'chart': None,
             'form': form,
             'opts': Kline._meta,
-            'info': self._get_info_context(data=request.GET),
+            'info': None,
         }
 
         if form.is_valid():
             cleaned_data = form.cleaned_data
+            arbitration = cleaned_data.get('arbitration')
+            start_time = cleaned_data.get('start_time') or arbitration.start_time
+            end_time = cleaned_data.get('end_time') or arbitration.end_time
+            interval = cleaned_data.get('interval') or arbitration.interval
+            is_show_result = cleaned_data.get('is_show_result')
+
+            df_1, df_2, cross_course = arbitration.get_source_dfs()
+
+            chart_df_1, chart_df_2, chart_cross_course_df = self._resampled_dfs(
+                df_1, df_2, cross_course, start_time, end_time, interval,
+            )
+
             context['title'] = cleaned_data['arbitration']
-            context['chart'] = self._get_arbitration_chart(cleaned_data)
+            context['chart'] = self._get_arbitration_chart(
+                arbitration=arbitration,
+                chart_df_1=chart_df_1,
+                chart_df_2=chart_df_2,
+                chart_cross_course_df=chart_cross_course_df,
+            )
+            context['info'] = self._get_info_context(
+                arbitration=arbitration,
+                chart_df_1=chart_df_1,
+                chart_df_2=chart_df_2,
+            )
 
         return render(request, self.template_name, context=context)
 
@@ -618,19 +640,11 @@ class ArbitrationChartView(BaseChartView):
             resampled_cross_course_df,
         )
 
-    def _get_arbitration_chart(self, cleaned_data):
-        arbitration = cleaned_data.get('arbitration')
-        start_time = cleaned_data.get('start_time') or arbitration.start_time
-        end_time = cleaned_data.get('end_time') or arbitration.end_time
-        interval = cleaned_data.get('interval') or arbitration.interval
-        is_show_result = cleaned_data.get('is_show_result')
-
-        df_1, df_2, cross_course = arbitration.get_source_dfs()
-
-        chart_df_1, chart_df_2, chart_cross_course_df = self._resampled_dfs(
-            df_1, df_2, cross_course, start_time, end_time, interval,
-        )
-
+    def _get_arbitration_chart(self,
+                               arbitration: Arbitration,
+                               chart_df_1: pd.DataFrame,
+                               chart_df_2: pd.DataFrame,
+                               chart_cross_course_df: pd.DataFrame):
         row_count = 7
 
         fig = make_subplots(
@@ -675,8 +689,6 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_moving_average_trace(chart_cross_course_df, arbitration.movingaverage_set.first().codename),
         )
 
-
-        #
         # if is_show_result:
         #     symbol_1_deal_tuple = self._get_arbitration_deal_trace(
         #         arbitration=arbitration,
@@ -716,49 +728,32 @@ class ArbitrationChartView(BaseChartView):
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
 
-    def _get_info_context(self, data: dict) -> Optional[dict]:
-        if data.get('is_show_result'):
-            arbitration = Arbitration.objects.get(id=data['arbitration'])
-            arbitration_deal_qs = ArbitrationDeal.objects.filter(arbitration_id=data['arbitration'])
+    def _get_info_context(self,
+                          arbitration: Arbitration,
+                          chart_df_1: pd.DataFrame,
+                          chart_df_2: pd.DataFrame) -> Optional[dict]:
+        arbitration_deal_qs = ArbitrationDeal.objects.filter(arbitration=arbitration)
 
-# 1. ВЫБИРАТЬ ДАННЫЕ ТОЛЬКО ПО ЗАКРЫТЫМ  СДЕЛКАМ!!!!
-# 2. ПРИКРУТИТЬ "ИНТЕРВАЛ" НА СТРАНИЦУ ЧАРТА, ИНАЧЕ НЕВОЗМОЖНО ОТОБРАЗИТЬ ДЛИННЫЕ ПЕРИОДЫ ПО МИНУТАМ.
-#             НЕ ОЧЕНЬ ПОЛУЧАЕТСЯ ИНТЕРВАЛ ПРИКРУТЬ, ПОПРОБОВАТЬ ПРИКРУТИТЬ ПЕРИОД С - ПО.
-# 3. ГДЕ ТО НАДО ОТОБРАЗИТЬ МАКСИМАЛЬНОЕ РАСХОЖДЕНИЕ (В ПРОЦЕНТАХ) И В РЕЗУЛЬТАТАХ ТОЖЕ ОТОБРАЗИТЬ ПРОЦЕНТ, ДЛЯ СРАВНЕНИЯ.
+        result_pt = 0
+        for item in arbitration_deal_qs:
+            price = item.price
+            quantity = item.quantity
+            result_pt += price * quantity
 
-            result_pt = 0
-            for item in arbitration_deal_qs:
-                price = item.price
-                quantity = item.quantity
-                result_pt += price * quantity
+        closed_deals = arbitration_deal_qs.filter(state=ArbitrationDeal.State.CLOSE).count() / 2
+        correlation = chart_df_1[arbitration.price_comparison].corr(
+            chart_df_2[arbitration.price_comparison],
+            method='spearman',
+        )
 
-                # buy = item.buy
-                # sell = item.sell
-                # if buy:
-                #     result_pt -= buy * item.quantity
-                # elif sell:
-                #     result_pt += sell * item.quantity
-
-            closed_deals = arbitration_deal_qs.filter(state=ArbitrationDeal.State.CLOSE).count() / 2
-
-            # надо бы вынести в __init__, получаем так же в _get_arbitration_chart
-            df_1 = arbitration.get_symbol_df(
-                symbol_pk=arbitration.symbol_1_id,
-                qs_start_time=arbitration.start_time,
-                qs_end_time=arbitration.end_time,
-            )
-            df_2 = arbitration.get_symbol_df(
-                symbol_pk=arbitration.symbol_2_id,
-                qs_start_time=arbitration.start_time,
-                qs_end_time=arbitration.end_time,
-            )
-            correlation = df_1[arbitration.price_comparison].corr(df_2[arbitration.price_comparison])
-
-            return {
-                'arbitration_codename': arbitration.codename,
-                'arbitration_range': f'{arbitration.start_time.strftime("%d.%m.%Y %H:%M")} <br> {arbitration.end_time.strftime("%d.%m.%Y %H:%M")}',
-                'arbitration_interval': arbitration.interval,
-                'closed_deals': closed_deals,
-                'correlation': correlation,
-                'result_pt': result_pt,
-            }
+        return {
+            'arbitration_codename': arbitration.codename,
+            'arbitration_range': (
+                f'{arbitration.start_time.strftime("%d.%m.%Y %H:%M")} <br> '
+                f'{arbitration.end_time.strftime("%d.%m.%Y %H:%M")}'
+            ),
+            'arbitration_interval': arbitration.interval,
+            'closed_deals': closed_deals,
+            'correlation': correlation,
+            'result_pt': result_pt,
+        }
