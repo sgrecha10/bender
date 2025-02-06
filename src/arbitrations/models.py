@@ -397,6 +397,7 @@ class ArbitrationDeal(BaseModel):
         verbose_name_plural = 'Arbitration Deals'
         indexes = [
             models.Index(fields=['arbitration', 'symbol', 'deal_time']),
+            models.Index(fields=['arbitration', 'symbol', 'state', 'deal_time']),
         ]
 
     def __str__(self):

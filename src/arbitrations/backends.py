@@ -7,6 +7,7 @@ from arbitrations.models import Arbitration, ArbitrationDeal
 import numpy as np
 from market_data.constants import AllowedInterval
 from django.db.models.enums import IntegerChoices
+from indicators.models import BetaFactor
 
 
 class ArbitrationBackend:
@@ -18,10 +19,16 @@ class ArbitrationBackend:
 
     def __init__(self, arbitration_id: int, **kwargs):
         self.arbitration = Arbitration.objects.get(pk=arbitration_id)
+        self.standard_deviation_model = self.arbitration.standarddeviation_set.first()
+        self.moving_average_model = self.arbitration.movingaverage_set.first()
+        self.beta_factor_model = self.arbitration.betafactor_set.first()
         # получаем df с рассчитанными характеристиками стратегии
         # arbitration_df = self.arbitration.get_df()
         # сдвигаем, что бы не высчитывать каждую итерацию предыдущий индекс
-        self.arbitration_df = self.arbitration.get_df().shift(1)
+        # self.arbitration_df = self.arbitration.get_df().shift(1)
+        _, _, cross_course = self.arbitration.get_source_dfs()
+        self.arbitration_df = cross_course.shift(1)
+
         self.deal_state = self.DealState.CLOSED
 
     def _prepare_index(self, deal_time: datetime) -> str:
@@ -49,10 +56,14 @@ class ArbitrationBackend:
             index = self._prepare_index(deal_time=deal_time)
             beta = self.arbitration_df.loc[index, 'beta']
 
-            # symbol_2_quantity = 1 / (beta + 1)
-            # symbol_1_quantity = 1 - symbol_2_quantity
-            symbol_1_quantity = 1 / (beta + 1)
-            symbol_2_quantity = 1 - symbol_1_quantity
+            if self.beta_factor_model.market_symbol == BetaFactor.MarketSymbol.SYMBOL_1:
+                symbol_2_quantity = 1 / (beta + 1)
+                symbol_1_quantity = 1 - symbol_2_quantity
+            elif self.beta_factor_model.market_symbol == BetaFactor.MarketSymbol.SYMBOL_2:
+                symbol_1_quantity = 1 / (beta + 1)
+                symbol_2_quantity = 1 - symbol_1_quantity
+            else:
+                raise ValueError('BetaFactor.MarketSymbol не найден')
 
         return (
             Decimal(symbol_1_quantity).quantize(Decimal("1.0000000000"), ROUND_05UP),
@@ -70,11 +81,8 @@ class ArbitrationBackend:
         # приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
         index = self._prepare_index(deal_time=deal_time)
 
-        standard_deviation_model = self.arbitration.standarddeviation_set.first()
-        moving_average_model = self.arbitration.movingaverage_set.first()
-
-        moving_average_value = self.arbitration_df.loc[index, moving_average_model.codename]
-        standard_deviation_err = self.arbitration_df.loc[index, standard_deviation_model.codename]
+        moving_average_value = self.arbitration_df.loc[index, self.moving_average_model.codename]
+        standard_deviation_err = self.arbitration_df.loc[index, self.standard_deviation_model.codename]
 
         if np.isnan(moving_average_value) or np.isnan(standard_deviation_err):
             return
@@ -115,6 +123,9 @@ class ArbitrationBackend:
                     deal_time=deal_time,
                     standard_deviation=standard_deviation,
                 )
+
+        # временной стоп-лосс
+        pass
 
     def _open_deal(self, price_1: Decimal, price_2: Decimal, deal_time: datetime, standard_deviation: Decimal):
         """ Открываем сделку

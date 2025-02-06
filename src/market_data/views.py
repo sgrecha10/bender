@@ -600,6 +600,7 @@ class ArbitrationChartView(BaseChartView):
                 chart_df_1=chart_df_1,
                 chart_df_2=chart_df_2,
                 chart_cross_course_df=chart_cross_course_df,
+                is_show_result=is_show_result,
             )
             context['info'] = self._get_info_context(
                 arbitration=arbitration,
@@ -644,7 +645,8 @@ class ArbitrationChartView(BaseChartView):
                                arbitration: Arbitration,
                                chart_df_1: pd.DataFrame,
                                chart_df_2: pd.DataFrame,
-                               chart_cross_course_df: pd.DataFrame):
+                               chart_cross_course_df: pd.DataFrame,
+                               is_show_result: bool = False):
         row_count = 7
 
         fig = make_subplots(
@@ -689,24 +691,24 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_moving_average_trace(chart_cross_course_df, arbitration.movingaverage_set.first().codename),
         )
 
-        # if is_show_result:
-        #     symbol_1_deal_tuple = self._get_arbitration_deal_trace(
-        #         arbitration=arbitration,
-        #         symbol=arbitration.symbol_1,
-        #         start_time=start_time,
-        #         end_time=end_time,
-        #     )
-        #     fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
-        #     fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
-        #
-        #     symbol_2_deal_tuple = self._get_arbitration_deal_trace(
-        #         arbitration=arbitration,
-        #         symbol=arbitration.symbol_2,
-        #         start_time=start_time,
-        #         end_time=end_time,
-        #     )
-        #     fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
-        #     fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
+        if is_show_result:
+            symbol_1_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_1,
+                start_time=arbitration.start_time,
+                end_time=arbitration.end_time,
+            )
+            fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
+            fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
+
+            symbol_2_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_2,
+                start_time= arbitration.start_time,
+                end_time=arbitration.end_time,
+            )
+            fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
+            fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
         fig.update_layout(
             # autosize=False,
