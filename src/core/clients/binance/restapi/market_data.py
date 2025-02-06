@@ -1,4 +1,6 @@
 import urllib.parse
+from core.clients.binance.constants import BINANCE_INTERVAL_MAP
+
 
 from core.utils.value_utils import (
     clean_none_value,
@@ -35,7 +37,7 @@ def get_klines(client, symbol=None, interval='1d', start_time=None, end_time=Non
     method = 'GET'
     payload = {
         'symbol': symbol,
-        'interval': interval,
+        'interval': BINANCE_INTERVAL_MAP[interval],
         'startTime': start_time,
         'endTime': end_time,
         'limit': int(limit),
