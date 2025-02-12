@@ -181,6 +181,7 @@ class Kline(BaseModel):
     )
     open_time = models.DateTimeField(
         verbose_name='openTime',
+        db_index=True,
     )
     open_price = models.DecimalField(
         verbose_name='openPrice',
@@ -244,7 +245,10 @@ class Kline(BaseModel):
     class Meta:
         verbose_name = 'Kline'
         verbose_name_plural = 'Klines'
-        unique_together = ('symbol', 'open_time')
+        index_together = (
+            ('symbol', 'open_time'),
+            ('open_time', 'symbol'),
+        )
 
     def __str__(self):
         return str(self.open_time)

@@ -12,6 +12,9 @@ from market_data.constants import MAP_MINUTE_COUNT
 from market_data.models import ExchangeInfo, Kline
 from strategies.models import Strategy
 from arbitrations.models import Arbitration
+import numpy as np
+import statsmodels.api as sm
+from scipy.signal import butter, filtfilt
 
 
 class MovingAverage(BaseModel):
@@ -36,6 +39,7 @@ class MovingAverage(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
+        BETA_SPREAD = 'beta_spread', 'Beta spread'
 
     class PriceComparison(models.TextChoices):
         OPEN = 'open_price', 'Open price'
@@ -248,6 +252,20 @@ class MovingAverage(BaseModel):
 
         return df_cross_course[self.data_source].rolling(window=self.kline_count).mean()
 
+    def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
+        """ Возвращает Series
+        :param source_df: DataFrame
+        :param interval: Interval базовой стратегии
+        """
+        if self.interval != interval:
+            source_df = source_df.resample(
+                self.interval,
+                label='left',
+                closed='left',
+            ).agg('last')
+
+        return source_df[self.data_source].rolling(window=self.kline_count).mean()
+
 
 class StandardDeviation(BaseModel):
 
@@ -259,6 +277,7 @@ class StandardDeviation(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
+        BETA_SPREAD = 'beta_spread', 'Beta spread'
 
     class PriceComparison(models.TextChoices):
         OPEN = 'open_price', 'Open price'
@@ -422,6 +441,20 @@ class StandardDeviation(BaseModel):
 
         return df_cross_course[self.data_source].rolling(window=self.kline_count).std()
 
+    def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
+        """ Возвращает Series
+        :param source_df: DataFrame
+        :param interval: Interval базовой стратегии
+        """
+        if self.interval != interval:
+            source_df = source_df.resample(
+                self.interval,
+                label='left',
+                closed='left',
+            ).agg('last')
+
+        return source_df[self.data_source].rolling(window=self.kline_count).std()
+
 
 class BollingerBands(BaseModel):
     codename = models.CharField(
@@ -494,6 +527,12 @@ class BetaFactor(BaseModel):
         SYMBOL_1 = 'symbol_1', 'Symbol 1'
         SYMBOL_2 = 'symbol_2', 'Symbol 2'
 
+    class Type(models.TextChoices):
+        MANUAL = 'manual', 'Manual'
+        OLS = 'ols', 'OLS'
+        EMA = 'ema', 'EMA'
+        BUTTERWORTH_FILTER = 'bw', 'Butterworth'
+
     codename = models.CharField(
         max_length=255,
         unique=True,
@@ -541,6 +580,29 @@ class BetaFactor(BaseModel):
         verbose_name='Market symbol',
         help_text='Symbol for variance',
     )
+    type = models.CharField(
+        choices=Type.choices,
+        default=Type.OLS,
+        verbose_name='Type',
+    )
+    ema_span = models.PositiveSmallIntegerField(
+        default=20,
+        verbose_name='EMA span',
+        help_text='Период span для сглаживания',
+    )
+    butterworth_order = models.PositiveSmallIntegerField(
+        default=3,
+        verbose_name='Butterworth order',
+        help_text=(
+            '✔ Для короткосрочного анализа (1-10 дней) → cutoff=0.1, order=3 '
+            '✔ Для среднесрочного анализа (10-50 дней) → cutoff=0.05, order=3-5 '
+            '✔ Для долгосрочного анализа (50+ дней) → cutoff=0.01, order=5-7'
+        )
+    )
+    butterworth_cutoff = models.FloatField(
+        default=0.05,
+        verbose_name='Butterworth cutoff',
+    )
 
     class Meta:
         verbose_name = 'Beta Factor'
@@ -573,7 +635,6 @@ class BetaFactor(BaseModel):
         )
         df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
 
-
         if self.market_symbol == self.MarketSymbol.SYMBOL_1:
             df_cross_course['variance'] = (
                 df_1[self.price_comparison].rolling(window=self.kline_count).var()
@@ -593,3 +654,92 @@ class BetaFactor(BaseModel):
         df_cross_course['covariance'] = df_covariance_matrix
 
         return df_cross_course['covariance'] / df_cross_course['variance']
+
+    def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
+        """ Возвращает Series
+        :param source_df: DataFrame
+        :param interval: Interval базовой стратегии
+        """
+        if self.interval != interval:
+            source_df = source_df.resample(
+                self.interval,
+                label='left',
+                closed='left',
+            ).agg('last')
+
+        def _type_ols() -> pd.Series:
+            betas = []  # Список для хранения значений беты
+            window = self.kline_count
+            for i in range(len(source_df) - window + 1):
+                window_data = source_df.iloc[i: i + window]  # Берём скользящее окно
+
+                # Если в окне нет данных, пропускаем
+                if len(window_data) == 0:
+                    betas.append(np.nan)
+                    continue
+
+                # Извлекаем очищенные данные
+                if self.market_symbol == self.MarketSymbol.SYMBOL_1:
+                    x_clean = window_data.iloc[:, 0].values.astype(np.float64)  # Независимая переменная
+                    y_clean = window_data.iloc[:, 1].values.astype(np.float64)  # Зависимая переменная
+                elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
+                    x_clean = window_data.iloc[:, 1].values.astype(np.float64)
+                    y_clean = window_data.iloc[:, 0].values.astype(np.float64)
+                else:
+                    raise ValueError('Market symbol not supported')
+
+                X = sm.add_constant(x_clean)  # Добавляем константу (intercept) для регрессии
+
+                model = sm.OLS(y_clean, X).fit()  # Строим линейную регрессию
+                betas.append(model.params[1])  # Извлекаем коэффициент беты
+
+            betas_list = [np.nan] * (window - 1) + betas
+            index_series = pd.Series(source_df.index)
+            return pd.Series(betas_list, index=index_series)
+
+        def _type_manual() -> pd.Series:
+            if self.market_symbol == self.MarketSymbol.SYMBOL_1:
+                source_df['variance'] = source_df['df_1'].rolling(window=self.kline_count).var()
+            elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
+                source_df['variance'] = source_df['df_2'].rolling(window=self.kline_count).var()
+            else:
+                raise ValueError('Market symbol not supported')
+
+            df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
+            df_covariance['col_1'] = source_df['df_1']
+            df_covariance['col_2'] = source_df['df_2']
+
+            df_covariance_matrix = df_covariance.rolling(
+                window=self.kline_count,
+            ).cov().dropna().unstack()['col_1']['col_2']
+
+            source_df['covariance'] = df_covariance_matrix
+
+            return source_df['covariance'] / source_df['variance']
+
+        def _type_ema() -> pd.Series:
+            betas = _type_ols()
+            return betas.ewm(span=self.ema_span, adjust=False).mean()
+
+        def _type_butterworth() -> pd.Series:
+            betas = _type_ols()
+            b, a = butter(
+                N=self.butterworth_order,
+                Wn=self.butterworth_cutoff,
+                btype='low',
+                analog=False,
+            )
+            result = filtfilt(b, a, betas)
+
+            index_series = pd.Series(source_df.index)
+            return pd.Series(result, index=index_series)
+
+
+        if self.type == self.Type.OLS:
+            return _type_ols()
+        elif self.type == self.Type.MANUAL:
+            return _type_manual()
+        elif self.type == self.Type.EMA:
+            return _type_ema()
+        elif self.type == self.Type.BUTTERWORTH_FILTER:
+            return _type_butterworth()

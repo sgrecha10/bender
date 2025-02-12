@@ -9,9 +9,16 @@ import pandas as pd
 from typing import Optional, Type
 import statsmodels.api as sm
 import numpy as np
+# from indicators.models import BetaFactor
+from decimal import Decimal
 
 
 class Arbitration(BaseModel):
+    ma_cross_course_codename = 'AR_MA_1'
+    ma_beta_spread_codename = 'AR_MA_2'
+
+    sd_cross_course_codename = 'AR_SD_1'
+    sd_beta_spread_codename = 'AR_SD_2'
 
     class EntryPriceOrder(models.TextChoices):
         OPEN = 'OPEN', 'Open price'
@@ -36,6 +43,10 @@ class Arbitration(BaseModel):
         NONE = 'none', 'None'
         EVERY_TIME = 'every_time', 'Every time'
 
+    class ZIndex(models.TextChoices):
+        CROSS_COURSE = 'cross_course', 'Cross course'
+        BETA_SPREAD = 'beta_spread', 'Beta spread'
+
     codename = models.CharField(
         max_length=100,
         verbose_name='Codename',
@@ -59,7 +70,7 @@ class Arbitration(BaseModel):
         default=AllowedInterval.MINUTE_1,
         max_length=10,
         verbose_name='Base interval',
-        help_text='Влияет только на отображение результатов в чарте.'
+        help_text='Задает базовый интервал. Интервалы в индикаторах могут быть больше, но не меньше.'
     )
     start_time = models.DateTimeField(
         null=True, blank=True,
@@ -73,7 +84,7 @@ class Arbitration(BaseModel):
         choices=PriceComparison.choices,
         default=PriceComparison.CLOSE,
         verbose_name='Price comparison',
-        help_text='Влияет только на отображение результатов в чарте. Обычно должен совпадать с настройкой в MA.'
+        help_text='Задает базовую цену для расчета индикаторов и cross course.'
     )
     open_deal_sd = models.DecimalField(
         max_digits=20,
@@ -93,6 +104,12 @@ class Arbitration(BaseModel):
         default=1.0000,
         verbose_name='Fixed bet amount',
         help_text='Сумма двух инструментов в сделке',
+    )
+    z_index = models.CharField(
+        choices=ZIndex.choices,
+        default=ZIndex.CROSS_COURSE,
+        verbose_name='Z-Index',
+        help_text='Выбор способа определения спреда для арбитража',
     )
     ratio_type = models.CharField(
         max_length=20,
@@ -136,19 +153,33 @@ class Arbitration(BaseModel):
     def get_qs_start_time(self, start_time: datetime) -> datetime:
         """ Возвращает start_time с учетом необходимого запаса для корректного расчета индикаторов. """
 
-        standard_deviation = self.standarddeviation_set.first()
-        moving_average = self.movingaverage_set.first()
+        beta_factor = self.betafactor_set.first()
 
-        standard_deviation_kline_count = standard_deviation.kline_count if standard_deviation else 0
-        moving_average_kline_count = moving_average.kline_count if moving_average else 0
+        standard_deviation_cross_course = self.standarddeviation_set.get(codename=self.sd_cross_course_codename)
+        standard_deviation_beta_spread = self.standarddeviation_set.get(codename=self.sd_beta_spread_codename)
+
+        moving_average_cross_course = self.movingaverage_set.get(codename=self.ma_cross_course_codename)
+        moving_average_beta_spread = self.movingaverage_set.get(codename=self.ma_beta_spread_codename)
 
         moving_average_converted_to_minutes = (
-                moving_average_kline_count * MAP_MINUTE_COUNT[moving_average.interval]
+                moving_average_cross_course.kline_count * MAP_MINUTE_COUNT[moving_average_cross_course.interval]
+        )
+        standard_deviation_cross_course_converted_to_minutes = (
+            standard_deviation_cross_course.kline_count * MAP_MINUTE_COUNT[standard_deviation_cross_course.interval]
+        )
+        standard_deviation_beta_spread_converted_to_minutes = (
+            standard_deviation_beta_spread.kline_count * MAP_MINUTE_COUNT[standard_deviation_beta_spread.interval]
+        )
+        beta_factor_converted_to_minutes = (
+            beta_factor.kline_count * MAP_MINUTE_COUNT[beta_factor.interval]
+            + moving_average_beta_spread.kline_count * MAP_MINUTE_COUNT[moving_average_beta_spread.interval]
         )
 
         prepared_kline_max = max(
             moving_average_converted_to_minutes,
-            standard_deviation_kline_count,
+            standard_deviation_cross_course_converted_to_minutes,
+            standard_deviation_beta_spread_converted_to_minutes,
+            beta_factor_converted_to_minutes,
         )
         return start_time - timedelta(minutes=prepared_kline_max)
 
@@ -157,12 +188,24 @@ class Arbitration(BaseModel):
                       qs_start_time: Optional[datetime] = None,
                       qs_end_time: Optional[datetime] = None) -> pd.DataFrame:
         """ Возвращает df указанного символа за указанный период. """
-
-        qs = Kline.objects.filter(symbol_id=symbol_pk)
-        qs = qs.filter(open_time__gte=qs_start_time) if qs_start_time else qs
-        qs = qs.filter(open_time__lte=qs_end_time) if qs_end_time else qs
-        qs = qs.group_by_interval()
-        return qs.to_dataframe(index='open_time_group')
+        data = {'symbol_id': symbol_pk}
+        if qs_start_time:
+            data.update({'open_time__gte': qs_start_time})
+        if qs_end_time:
+            data.update({'open_time__lte': qs_end_time})
+        kline_list = list(
+            Kline.objects.filter(**data).values(
+                'open_time',
+                'open_price',
+                'high_price',
+                'low_price',
+                'close_price',
+                'volume',
+            )
+        )
+        df = pd.DataFrame(kline_list)
+        df.set_index("open_time", inplace=True)
+        return df
 
     def get_source_dfs(self) -> tuple:
         """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
@@ -179,36 +222,75 @@ class Arbitration(BaseModel):
             qs_start_time=prepared_start_time,
             qs_end_time=self.end_time,
         )
+        source_df = pd.DataFrame(columns=[
+            'df_1',
+            'df_2',
+            'cross_course',
+        ], dtype=float)
 
-        cross_course_df = pd.DataFrame(columns=['cross_course'], dtype=float)
-        cross_course_df['cross_course'] = (
-                df_1[self.price_comparison] / df_2[self.price_comparison]
+        source_df['df_1'] = df_1[self.price_comparison]
+        source_df['df_2'] = df_2[self.price_comparison]
+        source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
+
+        source_df = source_df.resample(self.interval).agg({
+            'df_1': 'last',
+            'df_2': 'last',
+            'cross_course': 'last',
+        })
+
+        #  Cross course
+        moving_average_cross_course = self.movingaverage_set.get(codename=self.ma_cross_course_codename)
+        source_df[moving_average_cross_course.codename] = moving_average_cross_course.get_data(
+            source_df=source_df,
+            interval=self.interval,
+        ).reindex(source_df.index, method='ffill')
+
+        standard_deviation_cross_course = self.standarddeviation_set.get(codename=self.sd_cross_course_codename)
+        source_df[standard_deviation_cross_course.codename] = standard_deviation_cross_course.get_data(
+            source_df=source_df,
+            interval=self.interval,
+        ).reindex(source_df.index, method='ffill')
+
+        source_df['ad_cross_course'] = (
+                source_df['cross_course'] - source_df[moving_average_cross_course.codename].apply(Decimal)
         )
-        cross_course_df = cross_course_df.apply(pd.to_numeric, downcast='float')
+        source_df['sd_cross_course'] = (
+                source_df['ad_cross_course'] / source_df[standard_deviation_cross_course.codename].apply(Decimal)
+        )
 
-        moving_average = self.movingaverage_set.first()
-        standard_deviation = self.standarddeviation_set.first()
+        # Beta spread
         beta_factor = self.betafactor_set.first()
+        source_df['beta'] = beta_factor.get_data(
+            source_df=source_df,
+            interval=self.interval,
+        ).reindex(source_df.index, method='ffill')
 
-        cross_course_df[moving_average.codename] = (
-            moving_average.get_series(df_1, df_2).reindex(cross_course_df.index, method='ffill')
-        )
-        cross_course_df[standard_deviation.codename] = (
-            standard_deviation.get_series(df_1, df_2).reindex(cross_course_df.index, method='ffill')
-        )
-
-        cross_course_df['absolute_deviation'] = (
-                cross_course_df['cross_course'] - cross_course_df[moving_average.codename]
-        )
-        cross_course_df['standard_deviation'] = (
-                cross_course_df['absolute_deviation'] / cross_course_df[standard_deviation.codename]
+        source_df['beta_spread'] = (
+                source_df['df_1'] - source_df['df_2'] * source_df['beta'].apply(Decimal)
+                if beta_factor.market_symbol == 'symbol_2' else
+                source_df['df_2'] - source_df['df_1'] * source_df['beta'].apply(Decimal)
         )
 
-        cross_course_df['beta'] = (
-            beta_factor.get_series(df_1, df_2).reindex(cross_course_df.index, method='ffill')
+        moving_average_beta_spread = self.movingaverage_set.get(codename=self.ma_beta_spread_codename)
+        source_df[moving_average_beta_spread.codename] = moving_average_beta_spread.get_data(
+            source_df=source_df,
+            interval=self.interval,
+        ).reindex(source_df.index, method='ffill')
+
+        standard_deviation_beta_spread = self.standarddeviation_set.get(codename=self.sd_beta_spread_codename)
+        source_df[standard_deviation_beta_spread.codename] = standard_deviation_beta_spread.get_data(
+            source_df=source_df,
+            interval=self.interval,
+        ).reindex(source_df.index, method='ffill')
+
+        source_df['ad_beta_spread'] = (
+                source_df['beta_spread'] - source_df[moving_average_beta_spread.codename].apply(Decimal)
+        )
+        source_df['sd_beta_spread'] = (
+                source_df['ad_beta_spread'] / source_df[standard_deviation_beta_spread.codename].apply(Decimal)
         )
 
-        return df_1, df_2, cross_course_df
+        return df_1, df_2, source_df
 
     #  Ниже надо выпилить методы
     # def _get_df(self,

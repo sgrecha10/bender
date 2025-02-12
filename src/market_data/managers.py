@@ -94,6 +94,24 @@ class KlineQuerySet(models.QuerySet):
             df.sort_index(inplace=True)
         return df
 
+    def to_df(self) -> pd.DataFrame:
+        """ Легкий способ создать DataFrame
+        не использую ибо  вызывает дополнительный запрос
+        """
+        kline_list = list(
+            self.values(
+                'open_time',
+                'open_price',
+                'high_price',
+                'low_price',
+                'close_price',
+                'volume',
+            )
+        )
+        df = pd.DataFrame(kline_list)
+        df.set_index("open_time", inplace=True)
+        return df
+
     def _batched_insert(
         self,
         objs,
