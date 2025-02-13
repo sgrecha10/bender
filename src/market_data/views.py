@@ -721,24 +721,24 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_beta_spread'),
         )
 
-        # if is_show_result:
-        #     symbol_1_deal_tuple = self._get_arbitration_deal_trace(
-        #         arbitration=arbitration,
-        #         symbol=arbitration.symbol_1,
-        #         start_time=arbitration.start_time,
-        #         end_time=arbitration.end_time,
-        #     )
-        #     fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
-        #     fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
-        #
-        #     symbol_2_deal_tuple = self._get_arbitration_deal_trace(
-        #         arbitration=arbitration,
-        #         symbol=arbitration.symbol_2,
-        #         start_time=arbitration.start_time,
-        #         end_time=arbitration.end_time,
-        #     )
-        #     fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
-        #     fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
+        if is_show_result:
+            symbol_1_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_1,
+                start_time=arbitration.start_time,
+                end_time=arbitration.end_time,
+            )
+            fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
+            fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
+
+            symbol_2_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_2,
+                start_time=arbitration.start_time,
+                end_time=arbitration.end_time,
+            )
+            fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
+            fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
         fig.update_layout(
             # autosize=False,

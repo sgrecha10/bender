@@ -19,9 +19,22 @@ class ArbitrationBackend:
 
     def __init__(self, arbitration_id: int, **kwargs):
         self.arbitration = Arbitration.objects.get(pk=arbitration_id)
-        self.standard_deviation_model = self.arbitration.standarddeviation_set.first()
-        self.moving_average_model = self.arbitration.movingaverage_set.first()
+
+        self.standard_deviation_cross_course = self.arbitration.standarddeviation_set.get(
+            codename=self.arbitration.sd_cross_course_codename,
+        )
+        self.moving_average_cross_course = self.arbitration.movingaverage_set.get(
+            codename=self.arbitration.ma_cross_course_codename,
+        )
+
         self.beta_factor_model = self.arbitration.betafactor_set.first()
+        self.standard_deviation_beta_spread = self.arbitration.standarddeviation_set.get(
+            codename=self.arbitration.sd_beta_spread_codename,
+        )
+        self.moving_average_beta_spread = self.arbitration.movingaverage_set.get(
+            codename=self.arbitration.ma_beta_spread_codename,
+        )
+
         # получаем df с рассчитанными характеристиками стратегии
         # arbitration_df = self.arbitration.get_df()
         # сдвигаем, что бы не высчитывать каждую итерацию предыдущий индекс
@@ -81,15 +94,31 @@ class ArbitrationBackend:
         # приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
         index = self._prepare_index(deal_time=deal_time)
 
-        moving_average_value = self.arbitration_df.loc[index, self.moving_average_model.codename]
-        standard_deviation_err = self.arbitration_df.loc[index, self.standard_deviation_model.codename]
+        if self.arbitration.z_index == Arbitration.ZIndex.CROSS_COURSE:
+            moving_average_value = self.arbitration_df.loc[index, self.moving_average_cross_course.codename]
+            standard_deviation_err = self.arbitration_df.loc[index, self.standard_deviation_cross_course.codename]
 
-        if np.isnan(moving_average_value) or np.isnan(standard_deviation_err):
-            return
+            if np.isnan(moving_average_value) or np.isnan(standard_deviation_err):
+                return
 
-        # определяем на сколько стандартных отклонений отличается кросс курс
-        current_cross_curs = float(price_1 / price_2)
-        standard_deviation = (current_cross_curs - moving_average_value) / standard_deviation_err
+            # определяем на сколько стандартных отклонений отличается кросс курс
+            current_cross_curs = float(price_1 / price_2)
+            standard_deviation = (current_cross_curs - moving_average_value) / standard_deviation_err
+
+        elif self.arbitration.z_index == Arbitration.ZIndex.BETA_SPREAD:
+            beta_factor_value = self.arbitration_df.loc[index, 'beta']  # self.beta_factor_model.codename
+            moving_average_value = self.arbitration_df.loc[index, self.moving_average_beta_spread.codename]
+            standard_deviation_err = self.arbitration_df.loc[index, self.standard_deviation_beta_spread.codename]
+
+            beta_spread = (
+                float(price_1) - float(price_2) * beta_factor_value
+                if self.beta_factor_model.market_symbol == 'symbol_2' else
+                float(price_2) - float(price_1) * beta_factor_value
+            )
+            standard_deviation = (beta_spread - moving_average_value) / standard_deviation_err
+
+        else:
+            raise ValueError('ZIndex does not exist.')
 
         # проверяем, что нужно открывать сделку
         if (self.deal_state == self.DealState.CLOSED
