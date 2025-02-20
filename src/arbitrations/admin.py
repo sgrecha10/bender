@@ -114,7 +114,7 @@ class ArbitrationAdmin(admin.ModelAdmin):
     )
     list_display_links = ('codename',)
     fieldsets = [
-        ('Main', {
+        ('Основное', {
             'fields': [
                 'codename',
                 'symbol_1',
@@ -127,14 +127,14 @@ class ArbitrationAdmin(admin.ModelAdmin):
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),
-        ('Analytics', {
+        ('Аналитика', {
             'fields': [
                 'correlation_window',
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),
 
-        ('Conditions deal', {
+        ('Условия открытия/закрытия сделок', {
             'fields': [
                 'open_deal_sd',
                 'close_deal_sd',
@@ -145,7 +145,7 @@ class ArbitrationAdmin(admin.ModelAdmin):
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),
-        ('Conditions test', {
+        ('Настройки для теста', {
             'fields': [
                 'entry_price_order',
                 'maker_commission',
@@ -153,7 +153,7 @@ class ArbitrationAdmin(admin.ModelAdmin):
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),
-        ('Information', {
+        ('Информация', {
             'fields': [
                 'updated',
                 'created',
