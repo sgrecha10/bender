@@ -659,7 +659,7 @@ class ArbitrationChartView(BaseChartView):
             codename=arbitration.sd_beta_spread_codename,
         )
 
-        row_count = 11
+        row_count = 13
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -677,47 +677,57 @@ class ArbitrationChartView(BaseChartView):
 
         fig.add_trace(
             row=3, col=1,
+            trace=self._get_line_trace(chart_source_df, 'pearson'),
+        )
+        # fig.add_trace(
+        #     row=4, col=1,
+        #     trace=self._get_line_trace(chart_source_df, 'spearman'),
+        # )
+
+
+        fig.add_trace(
+            row=5, col=1,
             trace=self._get_line_trace(chart_source_df, 'cross_course'),
         )
         fig.add_trace(
-            row=3, col=1,
+            row=5, col=1,
             trace=self._get_moving_average_trace(chart_source_df, moving_average_cross_course.codename),
         )
         fig.add_trace(
-            row=4, col=1,
+            row=6, col=1,
             trace=self._get_deviation_value_trace(chart_source_df, standard_deviation_cross_course.codename),
         )
         fig.add_trace(
-            row=5, col=1,
+            row=7, col=1,
             trace=self._get_deviation_trace(df=chart_source_df, column_name='ad_cross_course'),
         )
         fig.add_trace(
-            row=6, col=1,
+            row=8, col=1,
             trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_cross_course'),
         )
 
         fig.add_trace(
-            row=7, col=1,
+            row=9, col=1,
             trace=self._get_beta_trace(chart_source_df, 'beta'),
         )
         fig.add_trace(
-            row=8, col=1,
+            row=10, col=1,
             trace=self._get_line_trace(chart_source_df, 'beta_spread'),
         )
         fig.add_trace(
-            row=8, col=1,
+            row=10, col=1,
             trace=self._get_moving_average_trace(chart_source_df, moving_average_beta_spread.codename),
         )
         fig.add_trace(
-            row=9, col=1,
+            row=11, col=1,
             trace=self._get_deviation_value_trace(chart_source_df, standard_deviation_beta_spread.codename),
         )
         fig.add_trace(
-            row=10, col=1,
+            row=12, col=1,
             trace=self._get_deviation_trace(df=chart_source_df, column_name='ad_beta_spread'),
         )
         fig.add_trace(
-            row=11, col=1,
+            row=13, col=1,
             trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_beta_spread'),
         )
 

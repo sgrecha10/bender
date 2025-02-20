@@ -142,6 +142,11 @@ class Arbitration(BaseModel):
         default=0,
         verbose_name='Taker commission',
     )
+    correlation_window = models.PositiveSmallIntegerField(
+        default=30,
+        verbose_name='Correlation window',
+        help_text='Аналитический параметр. Окно для расчета корреляции.'
+    )
 
     class Meta:
         verbose_name = 'Arbitration'
@@ -230,6 +235,7 @@ class Arbitration(BaseModel):
 
         source_df['df_1'] = df_1[self.price_comparison]
         source_df['df_2'] = df_2[self.price_comparison]
+        # source_df.to_csv('out.csv')
         source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
 
         source_df = source_df.resample(self.interval).agg({
@@ -289,6 +295,16 @@ class Arbitration(BaseModel):
         source_df['sd_beta_spread'] = (
                 source_df['ad_beta_spread'] / source_df[standard_deviation_beta_spread.codename].apply(Decimal)
         )
+
+        source_df['pearson'] = source_df['df_1'].rolling(
+            window=self.correlation_window,
+        ).corr(source_df['df_2'])
+        # source_df['spearman'] = source_df['df_1'].rolling(
+        #     window=self.correlation_window,
+        # ).corr(
+        #     source_df['df_2'],
+        #     method='spearman',
+        # )
 
         return df_1, df_2, source_df
 

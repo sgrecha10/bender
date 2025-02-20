@@ -115,7 +115,7 @@ class ArbitrationBackend:
                 if self.beta_factor_model.market_symbol == 'symbol_2' else
                 float(price_2) - float(price_1) * beta_factor_value
             )
-            standard_deviation = (beta_spread - moving_average_value) / standard_deviation_err
+            standard_deviation = - (beta_spread - moving_average_value) / standard_deviation_err
 
         else:
             raise ValueError('ZIndex does not exist.')
