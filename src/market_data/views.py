@@ -591,16 +591,16 @@ class ArbitrationChartView(BaseChartView):
 
             df_1, df_2, source_df = self.arbitration.get_source_dfs()
 
-            chart_df_1, chart_df_2, chart_source_df = self._resampled_dfs(
-                df_1, df_2, source_df, start_time, end_time, interval,
-            )
+            # chart_df_1, chart_df_2, chart_source_df = self._resampled_dfs(
+            #     df_1, df_2, source_df, start_time, end_time, interval,
+            # )
 
             context['title'] = self.arbitration.codename
             context['chart'] = self._get_arbitration_chart(
                 arbitration=arbitration,
-                chart_df_1=chart_df_1,
-                chart_df_2=chart_df_2,
-                chart_source_df=chart_source_df,
+                chart_df_1=df_1,
+                chart_df_2=df_2,
+                chart_source_df=source_df,
                 is_show_result=is_show_result,
             )
             # context['info'] = self._get_info_context(
@@ -649,17 +649,17 @@ class ArbitrationChartView(BaseChartView):
                                chart_source_df: pd.DataFrame,
                                is_show_result: bool = False):
 
-        moving_average_cross_course = arbitration.movingaverage_set.get(codename=arbitration.ma_cross_course_codename)
-        moving_average_beta_spread = arbitration.movingaverage_set.get(codename=arbitration.ma_beta_spread_codename)
+        # moving_average_cross_course = arbitration.movingaverage_set.get(codename=arbitration.ma_cross_course_codename)
+        # moving_average_beta_spread = arbitration.movingaverage_set.get(codename=arbitration.ma_beta_spread_codename)
+        #
+        # standard_deviation_cross_course = arbitration.standarddeviation_set.get(
+        #     codename=arbitration.sd_cross_course_codename,
+        # )
+        # standard_deviation_beta_spread = arbitration.standarddeviation_set.get(
+        #     codename=arbitration.sd_beta_spread_codename,
+        # )
 
-        standard_deviation_cross_course = arbitration.standarddeviation_set.get(
-            codename=arbitration.sd_cross_course_codename,
-        )
-        standard_deviation_beta_spread = arbitration.standarddeviation_set.get(
-            codename=arbitration.sd_beta_spread_codename,
-        )
-
-        row_count = 13
+        row_count = 3
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -675,10 +675,10 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_candlestick_trace(chart_df_2, arbitration.symbol_2.symbol),
         )
 
-        fig.add_trace(
-            row=3, col=1,
-            trace=self._get_line_trace(chart_source_df, 'pearson'),
-        )
+        # fig.add_trace(
+        #     row=3, col=1,
+        #     trace=self._get_line_trace(chart_source_df, 'pearson'),
+        # )
         # fig.add_trace(
         #     row=4, col=1,
         #     trace=self._get_line_trace(chart_source_df, 'spearman'),
@@ -686,69 +686,69 @@ class ArbitrationChartView(BaseChartView):
 
 
         fig.add_trace(
-            row=5, col=1,
+            row=3, col=1,
             trace=self._get_line_trace(chart_source_df, 'cross_course'),
         )
-        fig.add_trace(
-            row=5, col=1,
-            trace=self._get_moving_average_trace(chart_source_df, moving_average_cross_course.codename),
-        )
-        fig.add_trace(
-            row=6, col=1,
-            trace=self._get_deviation_value_trace(chart_source_df, standard_deviation_cross_course.codename),
-        )
-        fig.add_trace(
-            row=7, col=1,
-            trace=self._get_deviation_trace(df=chart_source_df, column_name='ad_cross_course'),
-        )
-        fig.add_trace(
-            row=8, col=1,
-            trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_cross_course'),
-        )
+        # fig.add_trace(
+        #     row=5, col=1,
+        #     trace=self._get_moving_average_trace(chart_source_df, moving_average_cross_course.codename),
+        # )
+        # fig.add_trace(
+        #     row=6, col=1,
+        #     trace=self._get_deviation_value_trace(chart_source_df, standard_deviation_cross_course.codename),
+        # )
+        # fig.add_trace(
+        #     row=7, col=1,
+        #     trace=self._get_deviation_trace(df=chart_source_df, column_name='ad_cross_course'),
+        # )
+        # fig.add_trace(
+        #     row=8, col=1,
+        #     trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_cross_course'),
+        # )
+        #
+        # fig.add_trace(
+        #     row=9, col=1,
+        #     trace=self._get_beta_trace(chart_source_df, 'beta'),
+        # )
+        # fig.add_trace(
+        #     row=10, col=1,
+        #     trace=self._get_line_trace(chart_source_df, 'beta_spread'),
+        # )
+        # fig.add_trace(
+        #     row=10, col=1,
+        #     trace=self._get_moving_average_trace(chart_source_df, moving_average_beta_spread.codename),
+        # )
+        # fig.add_trace(
+        #     row=11, col=1,
+        #     trace=self._get_deviation_value_trace(chart_source_df, standard_deviation_beta_spread.codename),
+        # )
+        # fig.add_trace(
+        #     row=12, col=1,
+        #     trace=self._get_deviation_trace(df=chart_source_df, column_name='ad_beta_spread'),
+        # )
+        # fig.add_trace(
+        #     row=13, col=1,
+        #     trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_beta_spread'),
+        # )
 
-        fig.add_trace(
-            row=9, col=1,
-            trace=self._get_beta_trace(chart_source_df, 'beta'),
-        )
-        fig.add_trace(
-            row=10, col=1,
-            trace=self._get_line_trace(chart_source_df, 'beta_spread'),
-        )
-        fig.add_trace(
-            row=10, col=1,
-            trace=self._get_moving_average_trace(chart_source_df, moving_average_beta_spread.codename),
-        )
-        fig.add_trace(
-            row=11, col=1,
-            trace=self._get_deviation_value_trace(chart_source_df, standard_deviation_beta_spread.codename),
-        )
-        fig.add_trace(
-            row=12, col=1,
-            trace=self._get_deviation_trace(df=chart_source_df, column_name='ad_beta_spread'),
-        )
-        fig.add_trace(
-            row=13, col=1,
-            trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_beta_spread'),
-        )
-
-        if is_show_result:
-            symbol_1_deal_tuple = self._get_arbitration_deal_trace(
-                arbitration=arbitration,
-                symbol=arbitration.symbol_1,
-                start_time=arbitration.start_time,
-                end_time=arbitration.end_time,
-            )
-            fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
-            fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
-
-            symbol_2_deal_tuple = self._get_arbitration_deal_trace(
-                arbitration=arbitration,
-                symbol=arbitration.symbol_2,
-                start_time=arbitration.start_time,
-                end_time=arbitration.end_time,
-            )
-            fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
-            fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
+        # if is_show_result:
+        #     symbol_1_deal_tuple = self._get_arbitration_deal_trace(
+        #         arbitration=arbitration,
+        #         symbol=arbitration.symbol_1,
+        #         start_time=arbitration.start_time,
+        #         end_time=arbitration.end_time,
+        #     )
+        #     fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
+        #     fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
+        #
+        #     symbol_2_deal_tuple = self._get_arbitration_deal_trace(
+        #         arbitration=arbitration,
+        #         symbol=arbitration.symbol_2,
+        #         start_time=arbitration.start_time,
+        #         end_time=arbitration.end_time,
+        #     )
+        #     fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
+        #     fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
         fig.update_layout(
             # autosize=False,

@@ -11,14 +11,17 @@ import statsmodels.api as sm
 import numpy as np
 # from indicators.models import BetaFactor
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class Arbitration(BaseModel):
-    ma_cross_course_codename = 'AR_MA_1'
-    ma_beta_spread_codename = 'AR_MA_2'
-
-    sd_cross_course_codename = 'AR_SD_1'
-    sd_beta_spread_codename = 'AR_SD_2'
+    # ma_cross_course_codename = 'AR_MA_1'
+    # ma_beta_spread_codename = 'AR_MA_2'
+    #
+    # sd_cross_course_codename = 'AR_SD_1'
+    # sd_beta_spread_codename = 'AR_SD_2'
 
     class EntryPriceOrder(models.TextChoices):
         OPEN = 'OPEN', 'Open price'
@@ -43,10 +46,6 @@ class Arbitration(BaseModel):
         NONE = 'none', 'None'
         EVERY_TIME = 'every_time', 'Every time'
 
-    class ZIndex(models.TextChoices):
-        CROSS_COURSE = 'cross_course', 'Cross course'
-        BETA_SPREAD = 'beta_spread', 'Beta spread'
-
     codename = models.CharField(
         max_length=100,
         verbose_name='Codename',
@@ -70,7 +69,6 @@ class Arbitration(BaseModel):
         default=AllowedInterval.MINUTE_1,
         max_length=10,
         verbose_name='Base interval',
-        help_text='Задает базовый интервал. Интервалы в индикаторах могут быть больше, но не меньше.'
     )
     start_time = models.DateTimeField(
         null=True, blank=True,
@@ -104,12 +102,6 @@ class Arbitration(BaseModel):
         default=1.0000,
         verbose_name='Fixed bet amount',
         help_text='Сумма двух инструментов в сделке',
-    )
-    z_index = models.CharField(
-        choices=ZIndex.choices,
-        default=ZIndex.CROSS_COURSE,
-        verbose_name='Z-Index',
-        help_text='Выбор способа определения спреда для арбитража',
     )
     ratio_type = models.CharField(
         max_length=20,
@@ -158,35 +150,26 @@ class Arbitration(BaseModel):
     def get_qs_start_time(self, start_time: datetime) -> datetime:
         """ Возвращает start_time с учетом необходимого запаса для корректного расчета индикаторов. """
 
+        moving_average = self.movingaverage_set.first()
+        standard_deviation = self.standarddeviation_set.first()
         beta_factor = self.betafactor_set.first()
 
-        standard_deviation_cross_course = self.standarddeviation_set.get(codename=self.sd_cross_course_codename)
-        standard_deviation_beta_spread = self.standarddeviation_set.get(codename=self.sd_beta_spread_codename)
-
-        moving_average_cross_course = self.movingaverage_set.get(codename=self.ma_cross_course_codename)
-        moving_average_beta_spread = self.movingaverage_set.get(codename=self.ma_beta_spread_codename)
-
         moving_average_converted_to_minutes = (
-                moving_average_cross_course.kline_count * MAP_MINUTE_COUNT[moving_average_cross_course.interval]
+                moving_average.window_size * MAP_MINUTE_COUNT[self.interval]
         )
-        standard_deviation_cross_course_converted_to_minutes = (
-            standard_deviation_cross_course.kline_count * MAP_MINUTE_COUNT[standard_deviation_cross_course.interval]
-        )
-        standard_deviation_beta_spread_converted_to_minutes = (
-            standard_deviation_beta_spread.kline_count * MAP_MINUTE_COUNT[standard_deviation_beta_spread.interval]
+        standard_deviation_converted_to_minutes = (
+            standard_deviation.window_size * MAP_MINUTE_COUNT[self.interval]
         )
         beta_factor_converted_to_minutes = (
-            beta_factor.kline_count * MAP_MINUTE_COUNT[beta_factor.interval]
-            + moving_average_beta_spread.kline_count * MAP_MINUTE_COUNT[moving_average_beta_spread.interval]
+            beta_factor.window_size * MAP_MINUTE_COUNT[self.interval]
         )
 
-        prepared_kline_max = max(
+        max_minutes = max(
             moving_average_converted_to_minutes,
-            standard_deviation_cross_course_converted_to_minutes,
-            standard_deviation_beta_spread_converted_to_minutes,
+            standard_deviation_converted_to_minutes,
             beta_factor_converted_to_minutes,
         )
-        return start_time - timedelta(minutes=prepared_kline_max)
+        return start_time - timedelta(minutes=max_minutes)
 
     def get_symbol_df(self,
                       symbol_pk: str | Type[int],
@@ -215,6 +198,7 @@ class Arbitration(BaseModel):
     def get_source_dfs(self) -> tuple:
         """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
 
+        logger.info('Started')
         prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
 
         df_1 = self.get_symbol_df(
@@ -222,91 +206,148 @@ class Arbitration(BaseModel):
             qs_start_time=prepared_start_time,
             qs_end_time=self.end_time,
         )
+        logger.info('Got df_1')
+
+        resample_df_1 = df_1.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+        logger.info('Resampled df_1')
+
         df_2 = self.get_symbol_df(
             symbol_pk=self.symbol_2_id,
             qs_start_time=prepared_start_time,
             qs_end_time=self.end_time,
         )
+        logger.info('Got df_2')
+
+        resample_df_2 = df_2.resample(self.interval).agg({
+            'open_price': 'first',
+            'high_price': 'max',
+            'low_price': 'min',
+            'close_price': 'last',
+            'volume': 'sum',
+        })
+        logger.info('Resampled df_2')
+
         source_df = pd.DataFrame(columns=[
             'df_1',
             'df_2',
             'cross_course',
         ], dtype=float)
 
-        source_df['df_1'] = df_1[self.price_comparison]
-        source_df['df_2'] = df_2[self.price_comparison]
+        source_df['df_1'] = resample_df_1[self.price_comparison]
+        source_df['df_2'] = resample_df_2[self.price_comparison]
         # source_df.to_csv('out.csv')
         source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
+        logger.info('Got source_df')
 
-        source_df = source_df.resample(self.interval).agg({
-            'df_1': 'last',
-            'df_2': 'last',
-            'cross_course': 'last',
-        })
+        return resample_df_1, resample_df_2, source_df
 
-        #  Cross course
-        moving_average_cross_course = self.movingaverage_set.get(codename=self.ma_cross_course_codename)
-        source_df[moving_average_cross_course.codename] = moving_average_cross_course.get_data(
-            source_df=source_df,
-            interval=self.interval,
-        ).reindex(source_df.index, method='ffill')
 
-        standard_deviation_cross_course = self.standarddeviation_set.get(codename=self.sd_cross_course_codename)
-        source_df[standard_deviation_cross_course.codename] = standard_deviation_cross_course.get_data(
-            source_df=source_df,
-            interval=self.interval,
-        ).reindex(source_df.index, method='ffill')
 
-        source_df['ad_cross_course'] = (
-                source_df['cross_course'] - source_df[moving_average_cross_course.codename].apply(Decimal)
-        )
-        source_df['sd_cross_course'] = (
-                source_df['ad_cross_course'] / source_df[standard_deviation_cross_course.codename].apply(Decimal)
-        )
+    # И тут ниже надо выпилить
+    # def get_source_dfs(self) -> tuple:
+    #     """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
+    #
+    #     prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
+    #
+    #     df_1 = self.get_symbol_df(
+    #         symbol_pk=self.symbol_1_id,
+    #         qs_start_time=prepared_start_time,
+    #         qs_end_time=self.end_time,
+    #     )
+    #     df_2 = self.get_symbol_df(
+    #         symbol_pk=self.symbol_2_id,
+    #         qs_start_time=prepared_start_time,
+    #         qs_end_time=self.end_time,
+    #     )
+    #     source_df = pd.DataFrame(columns=[
+    #         'df_1',
+    #         'df_2',
+    #         'cross_course',
+    #     ], dtype=float)
+    #
+    #     source_df['df_1'] = df_1[self.price_comparison]
+    #     source_df['df_2'] = df_2[self.price_comparison]
+    #     # source_df.to_csv('out.csv')
+    #     source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
+    #
+    #     source_df = source_df.resample(self.interval).agg({
+    #         'df_1': 'last',
+    #         'df_2': 'last',
+    #         'cross_course': 'last',
+    #     })
+    #
+    #     #  Cross course
+    #     moving_average_cross_course = self.movingaverage_set.get(codename=self.ma_cross_course_codename)
+    #     source_df[moving_average_cross_course.codename] = moving_average_cross_course.get_data(
+    #         source_df=source_df,
+    #         interval=self.interval,
+    #     ).reindex(source_df.index, method='ffill')
+    #
+    #     standard_deviation_cross_course = self.standarddeviation_set.get(codename=self.sd_cross_course_codename)
+    #     source_df[standard_deviation_cross_course.codename] = standard_deviation_cross_course.get_data(
+    #         source_df=source_df,
+    #         interval=self.interval,
+    #     ).reindex(source_df.index, method='ffill')
+    #
+    #     source_df['ad_cross_course'] = (
+    #             source_df['cross_course'] - source_df[moving_average_cross_course.codename].apply(Decimal)
+    #     )
+    #     source_df['sd_cross_course'] = (
+    #             source_df['ad_cross_course'] / source_df[standard_deviation_cross_course.codename].apply(Decimal)
+    #     )
+    #
+    #     # Beta spread
+    #     beta_factor = self.betafactor_set.first()
+    #     source_df['beta'] = beta_factor.get_data(
+    #         source_df=source_df,
+    #         interval=self.interval,
+    #     ).reindex(source_df.index, method='ffill')
+    #
+    #     source_df['beta_spread'] = (
+    #             source_df['df_1'] - source_df['df_2'] * source_df['beta'].apply(Decimal)
+    #             if beta_factor.market_symbol == 'symbol_2' else
+    #             source_df['df_2'] - source_df['df_1'] * source_df['beta'].apply(Decimal)
+    #     )
+    #
+    #     moving_average_beta_spread = self.movingaverage_set.get(codename=self.ma_beta_spread_codename)
+    #     source_df[moving_average_beta_spread.codename] = moving_average_beta_spread.get_data(
+    #         source_df=source_df,
+    #         interval=self.interval,
+    #     ).reindex(source_df.index, method='ffill')
+    #
+    #     standard_deviation_beta_spread = self.standarddeviation_set.get(codename=self.sd_beta_spread_codename)
+    #     source_df[standard_deviation_beta_spread.codename] = standard_deviation_beta_spread.get_data(
+    #         source_df=source_df,
+    #         interval=self.interval,
+    #     ).reindex(source_df.index, method='ffill')
+    #
+    #     source_df['ad_beta_spread'] = (
+    #             source_df['beta_spread'] - source_df[moving_average_beta_spread.codename].apply(Decimal)
+    #     )
+    #     source_df['sd_beta_spread'] = (
+    #             source_df['ad_beta_spread'] / source_df[standard_deviation_beta_spread.codename].apply(Decimal)
+    #     )
+    #
+    #     source_df['pearson'] = source_df['df_1'].rolling(
+    #         window=self.correlation_window,
+    #     ).corr(source_df['df_2'])
+    #     # source_df['spearman'] = source_df['df_1'].rolling(
+    #     #     window=self.correlation_window,
+    #     # ).corr(
+    #     #     source_df['df_2'],
+    #     #     method='spearman',
+    #     # )
+    #
+    #     return df_1, df_2, source_df
 
-        # Beta spread
-        beta_factor = self.betafactor_set.first()
-        source_df['beta'] = beta_factor.get_data(
-            source_df=source_df,
-            interval=self.interval,
-        ).reindex(source_df.index, method='ffill')
 
-        source_df['beta_spread'] = (
-                source_df['df_1'] - source_df['df_2'] * source_df['beta'].apply(Decimal)
-                if beta_factor.market_symbol == 'symbol_2' else
-                source_df['df_2'] - source_df['df_1'] * source_df['beta'].apply(Decimal)
-        )
 
-        moving_average_beta_spread = self.movingaverage_set.get(codename=self.ma_beta_spread_codename)
-        source_df[moving_average_beta_spread.codename] = moving_average_beta_spread.get_data(
-            source_df=source_df,
-            interval=self.interval,
-        ).reindex(source_df.index, method='ffill')
-
-        standard_deviation_beta_spread = self.standarddeviation_set.get(codename=self.sd_beta_spread_codename)
-        source_df[standard_deviation_beta_spread.codename] = standard_deviation_beta_spread.get_data(
-            source_df=source_df,
-            interval=self.interval,
-        ).reindex(source_df.index, method='ffill')
-
-        source_df['ad_beta_spread'] = (
-                source_df['beta_spread'] - source_df[moving_average_beta_spread.codename].apply(Decimal)
-        )
-        source_df['sd_beta_spread'] = (
-                source_df['ad_beta_spread'] / source_df[standard_deviation_beta_spread.codename].apply(Decimal)
-        )
-
-        source_df['pearson'] = source_df['df_1'].rolling(
-            window=self.correlation_window,
-        ).corr(source_df['df_2'])
-        # source_df['spearman'] = source_df['df_1'].rolling(
-        #     window=self.correlation_window,
-        # ).corr(
-        #     source_df['df_2'],
-        #     method='spearman',
-        # )
-
-        return df_1, df_2, source_df
 
     #  Ниже надо выпилить методы
     # def _get_df(self,

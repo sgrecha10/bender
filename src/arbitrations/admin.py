@@ -16,14 +16,14 @@ class MovingAverageInlineAdmin(admin.TabularInline):
         'pk',
         'codename',
         'description',
-        'kline_count',
-        'interval',
+        'window_size',
+        # 'interval',
         # 'price_comparison',
+        'data_source',
         'type',
         # 'factor_alfa',
         # 'factor_alfa_auto',
         # 'symbol',
-        'data_source',
     )
     show_change_link = True
     readonly_fields = (
@@ -31,7 +31,6 @@ class MovingAverageInlineAdmin(admin.TabularInline):
         'codename',
         'description',
         # 'symbol',
-        'data_source',
         'type',
     )
 
@@ -44,8 +43,8 @@ class StandardDeviationInlineAdmin(admin.TabularInline):
         'pk',
         'codename',
         'description',
-        'kline_count',
-        'interval',
+        'window_size',
+        # 'interval',
         # 'price_comparison',
         # 'moving_average',
         'data_source',
@@ -56,7 +55,6 @@ class StandardDeviationInlineAdmin(admin.TabularInline):
         'codename',
         'description',
         # 'moving_average',
-        'data_source',
     )
 
 
@@ -68,8 +66,8 @@ class BetaFactorInlineAdmin(admin.TabularInline):
         'pk',
         'codename',
         'description',
-        'kline_count',
-        'interval',
+        'window_size',
+        # 'interval',
         # 'price_comparison',
         'market_symbol',
         'type',
@@ -139,7 +137,6 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'open_deal_sd',
                 'close_deal_sd',
                 'fixed_bet_amount',
-                'z_index',
                 'ratio_type',
                 'correction_type',
             ],

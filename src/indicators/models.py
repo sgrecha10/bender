@@ -66,8 +66,9 @@ class MovingAverage(BaseModel):
         choices=Type.choices,
         verbose_name='Type',
     )
-    kline_count = models.IntegerField(
-        verbose_name='K-Line Count',
+    window_size = models.IntegerField(
+        default=21,
+        verbose_name='Window size',
         help_text='Количество свечей для расчета',
     )
     factor_alfa = models.DecimalField(
@@ -122,7 +123,7 @@ class MovingAverage(BaseModel):
             f'{self.id} '
             f'- {self.codename} '
             f'- {self.get_type_display()} '
-            f'- {self.kline_count} '
+            f'- {self.window_size} '
             f'- {self.get_data_source_display()} '
             f'- {self.symbol} '
             f'- {self.get_interval_display()} '
@@ -144,7 +145,7 @@ class MovingAverage(BaseModel):
             qs = Kline.objects.filter(
                 symbol_id=self.symbol,
                 open_time__lte=max_index + timedelta(minutes=computed_minutes_count),
-                open_time__gte=min_index - timedelta(minutes=self.kline_count * computed_minutes_count),
+                open_time__gte=min_index - timedelta(minutes=self.window_size * computed_minutes_count),
                 **kwargs
             )
         else:
@@ -170,7 +171,7 @@ class MovingAverage(BaseModel):
             qs = Kline.objects.filter(
                 symbol=self.symbol,
                 open_time__lte=index + timedelta(minutes=computed_minutes_count),
-                open_time__gte=index - timedelta(minutes=self.kline_count * computed_minutes_count),
+                open_time__gte=index - timedelta(minutes=self.window_size * computed_minutes_count),
             )
             qs = qs.group_by_interval(self.interval)
             source_df = qs.to_dataframe(index='open_time_group')
@@ -192,8 +193,8 @@ class MovingAverage(BaseModel):
         except KeyError:
             return
 
-        prepared_source_df = source_df.loc[:index].tail(self.kline_count)
-        if len(prepared_source_df) < self.kline_count:
+        prepared_source_df = source_df.loc[:index].tail(self.window_size)
+        if len(prepared_source_df) < self.window_size:
             return
 
         if self.type == self.Type.SMA:
@@ -219,12 +220,12 @@ class MovingAverage(BaseModel):
             else:
                 return
 
-        return average_price_sum / self.kline_count
+        return average_price_sum / self.window_size
 
     def calculate_values(self, df: pd.DataFrame, column_name: str) -> None:
         """Добавляет в переданный df колонку с значением
         """
-        df[column_name] = df[self.data_source].rolling(window=self.kline_count).mean()
+        df[column_name] = df[self.data_source].rolling(window=self.window_size).mean()
 
     def get_series(self, df_1: pd.DataFrame, df_2: pd.DataFrame) -> pd.Series:
         """ Арбитраж. Возвращает данные для арбитражных стратегий. """
@@ -250,7 +251,7 @@ class MovingAverage(BaseModel):
         )
         df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
 
-        return df_cross_course[self.data_source].rolling(window=self.kline_count).mean()
+        return df_cross_course[self.data_source].rolling(window=self.window_size).mean()
 
     def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
         """ Возвращает Series
@@ -264,7 +265,7 @@ class MovingAverage(BaseModel):
                 closed='left',
             ).agg('last')
 
-        return source_df[self.data_source].rolling(window=self.kline_count).mean()
+        return source_df[self.data_source].rolling(window=self.window_size).mean()
 
 
 class StandardDeviation(BaseModel):
@@ -305,8 +306,9 @@ class StandardDeviation(BaseModel):
         choices=DataSource.choices,
         verbose_name='Data source',
     )
-    kline_count = models.IntegerField(
-        verbose_name='K-Line Count',
+    window_size = models.IntegerField(
+        default=21,
+        verbose_name='Window size',
         help_text='Количество свечей для расчета',
     )
     strategy = models.ForeignKey(
@@ -344,7 +346,7 @@ class StandardDeviation(BaseModel):
             f'{self.codename} - '
             f'{self.moving_average and self.moving_average.codename} - '
             f'{self.get_data_source_display()} - '
-            f'{self.kline_count}'
+            f'{self.window_size}'
         )
 
     def get_source_df(self, base_df: pd.DataFrame = None, **kwargs) -> pd.DataFrame:
@@ -359,7 +361,7 @@ class StandardDeviation(BaseModel):
             max_index = base_df.iloc[-1].name
 
             computed_minutes_count = MAP_MINUTE_COUNT[self.moving_average.interval]
-            kline_count = max(self.kline_count, self.moving_average.kline_count)
+            kline_count = max(self.window_size, self.moving_average.window_size)
             qs = Kline.objects.filter(
                 symbol_id=self.moving_average.symbol,
                 open_time__lte=max_index + timedelta(minutes=computed_minutes_count),
@@ -387,8 +389,8 @@ class StandardDeviation(BaseModel):
         if not (average_price := self.moving_average.get_value_by_index(index, source_df)):
             return
 
-        prepared_source_df = source_df.loc[:index].tail(self.kline_count)
-        if len(prepared_source_df) < self.kline_count:
+        prepared_source_df = source_df.loc[:index].tail(self.window_size)
+        if len(prepared_source_df) < self.window_size:
             return
 
         deviation = Decimal(0)
@@ -408,12 +410,12 @@ class StandardDeviation(BaseModel):
             else:
                 return
 
-        return (deviation / self.kline_count) ** Decimal(0.5)
+        return (deviation / self.window_size) ** Decimal(0.5)
 
     def calculate_values(self, df: pd.DataFrame, column_name: str) -> None:
         """Добавляет в переданный df колонку с значением
         """
-        df[column_name] = df[self.data_source].rolling(window=self.kline_count).std()
+        df[column_name] = df[self.data_source].rolling(window=self.window_size).std()
 
     def get_series(self, df_1: pd.DataFrame, df_2: pd.DataFrame) -> pd.Series:
         """ Арбитраж. Возвращает данные для арбитражных стратегий. """
@@ -439,7 +441,7 @@ class StandardDeviation(BaseModel):
         )
         df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
 
-        return df_cross_course[self.data_source].rolling(window=self.kline_count).std()
+        return df_cross_course[self.data_source].rolling(window=self.window_size).std()
 
     def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
         """ Возвращает Series
@@ -453,7 +455,7 @@ class StandardDeviation(BaseModel):
                 closed='left',
             ).agg('last')
 
-        return source_df[self.data_source].rolling(window=self.kline_count).std()
+        return source_df[self.data_source].rolling(window=self.window_size).std()
 
 
 class BollingerBands(BaseModel):
@@ -542,8 +544,9 @@ class BetaFactor(BaseModel):
         blank=True, default='',
         verbose_name='Description',
     )
-    kline_count = models.IntegerField(
-        verbose_name='K-Line Count',
+    window_size = models.IntegerField(
+        default=21,
+        verbose_name='Window size',
         help_text='Количество свечей для расчета',
     )
     variance_price_comparison = models.CharField(
@@ -637,11 +640,11 @@ class BetaFactor(BaseModel):
 
         if self.market_symbol == self.MarketSymbol.SYMBOL_1:
             df_cross_course['variance'] = (
-                df_1[self.price_comparison].rolling(window=self.kline_count).var()
+                df_1[self.price_comparison].rolling(window=self.window_size).var()
             )
         else:
             df_cross_course['variance'] = (
-                df_2[self.price_comparison].rolling(window=self.kline_count).var()
+                df_2[self.price_comparison].rolling(window=self.window_size).var()
             )
 
         df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
@@ -649,7 +652,7 @@ class BetaFactor(BaseModel):
         df_covariance['col_2'] = df_2[self.covariance_price_comparison]
 
         df_covariance_matrix = df_covariance.rolling(
-            window=self.kline_count,
+            window=self.window_size,
         ).cov().dropna().unstack()['col_1']['col_2']
         df_cross_course['covariance'] = df_covariance_matrix
 
@@ -669,7 +672,7 @@ class BetaFactor(BaseModel):
 
         def _type_ols() -> pd.Series:
             betas = []  # Список для хранения значений беты
-            window = self.kline_count
+            window = self.window_size
             for i in range(len(source_df) - window + 1):
                 window_data = source_df.iloc[i: i + window]  # Берём скользящее окно
 
@@ -699,9 +702,9 @@ class BetaFactor(BaseModel):
 
         def _type_manual() -> pd.Series:
             if self.market_symbol == self.MarketSymbol.SYMBOL_1:
-                source_df['variance'] = source_df['df_1'].rolling(window=self.kline_count).var()
+                source_df['variance'] = source_df['df_1'].rolling(window=self.window_size).var()
             elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
-                source_df['variance'] = source_df['df_2'].rolling(window=self.kline_count).var()
+                source_df['variance'] = source_df['df_2'].rolling(window=self.window_size).var()
             else:
                 raise ValueError('Market symbol not supported')
 
@@ -710,7 +713,7 @@ class BetaFactor(BaseModel):
             df_covariance['col_2'] = source_df['df_2']
 
             df_covariance_matrix = df_covariance.rolling(
-                window=self.kline_count,
+                window=self.window_size,
             ).cov().dropna().unstack()['col_1']['col_2']
 
             source_df['covariance'] = df_covariance_matrix

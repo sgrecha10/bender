@@ -158,20 +158,6 @@ STATIC_ROOT = '/static'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-        },
-    },
-    "root": {
-        "handlers": ["console"],
-        "level": "INFO",
-    },
-}
-
 BROKER_URL = config('BROKER_URL', default='amqp://guest:guest@rabbitmq:5672/')
 # BROKER_URL = config('BROKER_URL', default='redis://redis:6379/0')
 
@@ -197,6 +183,17 @@ PERIODIC_CELERY_TASKS_DEBUG = config(
 
 LOGGING = {
     'version': 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
     'filters': {
         'require_debug_true': {
             '()': 'django.utils.log.RequireDebugTrue',
@@ -205,8 +202,10 @@ LOGGING = {
     'handlers': {
         'console': {
             'level': 'DEBUG',
+            # 'level': 'INFO',
             'filters': ['require_debug_true'],
             'class': 'logging.StreamHandler',
+            "formatter": "verbose",
         }
     },
     'loggers': {
@@ -214,5 +213,11 @@ LOGGING = {
             'level': 'DEBUG',
             'handlers': ['console'],
         }
-    }
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+        # 'format': '[%(asctime)s | %(levelname)s]: %(message)s',
+        # 'datefmt': '%m.%d.%Y %H:%M:%S',
+    },
 }

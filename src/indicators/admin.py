@@ -19,7 +19,7 @@ class MovingAverageAdmin(admin.ModelAdmin):
         'interval',
         'data_source',
         'type',
-        'kline_count',
+        'window_size',
         'factor_alfa',
         'factor_alfa_auto',
         'strategy',
@@ -32,7 +32,7 @@ class MovingAverageAdmin(admin.ModelAdmin):
     list_editable = (
         'interval',
         'data_source',
-        'kline_count',
+        'window_size',
     )
     readonly_fields = (
         'updated',
@@ -49,7 +49,7 @@ class StandardDeviationAdmin(admin.ModelAdmin):
         'description',
         'moving_average',
         'data_source',
-        'kline_count',
+        'window_size',
         'strategy',
         'arbitration',
         'updated',
@@ -58,7 +58,7 @@ class StandardDeviationAdmin(admin.ModelAdmin):
     list_display_links = ('codename',)
     list_editable = (
         'data_source',
-        'kline_count',
+        'window_size',
     )
     readonly_fields = (
         'updated',
@@ -94,7 +94,7 @@ class BetaFactorAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'codename',
-        'kline_count',
+        'window_size',
         'variance_price_comparison',
         'covariance_price_comparison',
         'arbitration',
