@@ -142,11 +142,11 @@ class ArbitrationChartForm(forms.Form):
         widget=AdminSplitDateTime(),
         required=False,
     )
-    interval = forms.ChoiceField(
-        required=False,
-        choices=AllowedInterval.choices,
-        label='Interval',
-    )
+    # interval = forms.ChoiceField(
+    #     required=False,
+    #     choices=AllowedInterval.choices,
+    #     label='Interval',
+    # )
     is_show_result = forms.BooleanField(
         required=False,
         label='Show Result',

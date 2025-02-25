@@ -12,6 +12,9 @@ import numpy as np
 # from indicators.models import BetaFactor
 from decimal import Decimal
 import logging
+import pandas as pd
+import psycopg2
+from django.db import connection
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +85,7 @@ class Arbitration(BaseModel):
         choices=PriceComparison.choices,
         default=PriceComparison.CLOSE,
         verbose_name='Price comparison',
-        help_text='Задает базовую цену для расчета индикаторов и cross course.'
+        help_text='Задает базовую цену для расчета beta, cross course.'
     )
     open_deal_sd = models.DecimalField(
         max_digits=20,
@@ -195,57 +198,166 @@ class Arbitration(BaseModel):
         df.set_index("open_time", inplace=True)
         return df
 
-    def get_source_dfs(self) -> tuple:
-        """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
-
+    def _get_symbols_df(self, start_time: datetime = None, end_time: datetime = None) -> pd.DataFrame:
+        """ Возвращает df по двум инструментам в одной строке """
         logger.info('Started')
-        prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
 
-        df_1 = self.get_symbol_df(
-            symbol_pk=self.symbol_1_id,
-            qs_start_time=prepared_start_time,
-            qs_end_time=self.end_time,
-        )
-        logger.info('Got df_1')
+        query = """
+        SELECT 
+            t1.open_time,
+            t1.open_price  AS df_1_open_price,
+            t1.high_price  AS df_1_high_price,
+            t1.low_price   AS df_1_low_price,
+            t1.close_price AS df_1_close_price,
+            t2.open_price  AS df_2_open_price,
+            t2.high_price  AS df_2_high_price,
+            t2.low_price   AS df_2_low_price,
+            t2.close_price AS df_2_close_price
+        FROM 
+            (SELECT * FROM market_data_kline WHERE symbol_id = %s) t1
+        FULL JOIN 
+            (SELECT * FROM market_data_kline WHERE symbol_id = %s) t2
+        ON t1.open_time = t2.open_time
+        WHERE t1.open_time BETWEEN %s AND %s
+        ORDER BY t1.open_time;
+        """
 
-        resample_df_1 = df_1.resample(self.interval).agg({
-            'open_price': 'first',
-            'high_price': 'max',
-            'low_price': 'min',
-            'close_price': 'last',
-            'volume': 'sum',
+        with connection.cursor() as cursor:
+            cursor.execute(
+                query,
+                [
+                    self.symbol_1.symbol,
+                    self.symbol_2.symbol,
+                    start_time or self.start_time,
+                    end_time or self.end_time,
+                ],
+            )
+            logger.info('Got source_qs')
+
+            df = pd.DataFrame(cursor.fetchall(), columns=[col[0] for col in cursor.description])
+            logger.info('Got source_df')
+
+        df.set_index("open_time", inplace=True)
+        logger.info('Set index')
+
+        resample_df = df.resample(self.interval).agg({
+            'df_1_open_price': 'first',
+            'df_1_high_price': 'max',
+            'df_1_low_price': 'min',
+            'df_1_close_price': 'last',
+            'df_2_open_price': 'first',
+            'df_2_high_price': 'max',
+            'df_2_low_price': 'min',
+            'df_2_close_price': 'last',
         })
-        logger.info('Resampled df_1')
+        logger.info('Resampled df')
 
-        df_2 = self.get_symbol_df(
-            symbol_pk=self.symbol_2_id,
-            qs_start_time=prepared_start_time,
-            qs_end_time=self.end_time,
-        )
-        logger.info('Got df_2')
+        return resample_df
 
-        resample_df_2 = df_2.resample(self.interval).agg({
-            'open_price': 'first',
-            'high_price': 'max',
-            'low_price': 'min',
-            'close_price': 'last',
-            'volume': 'sum',
-        })
-        logger.info('Resampled df_2')
+    def _get_cross_course_df(self, df: pd.DataFrame) -> pd.Series:
+        return df[f'df_1_{self.price_comparison}'] / df[f'df_2_{self.price_comparison}']
 
-        source_df = pd.DataFrame(columns=[
-            'df_1',
-            'df_2',
-            'cross_course',
-        ], dtype=float)
+    def _get_beta_factor_df(self, df: pd.DataFrame) -> pd.Series:
+        beta_factor = self.betafactor_set.first()
+        return beta_factor.get_data(
+            source_df=df,
+            interval=self.interval,
+        ).reindex(df.index, method='ffill')
 
-        source_df['df_1'] = resample_df_1[self.price_comparison]
-        source_df['df_2'] = resample_df_2[self.price_comparison]
-        # source_df.to_csv('out.csv')
-        source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
-        logger.info('Got source_df')
+    def get_source_df(self, start_time: datetime = None, end_time: datetime = None) -> pd.DataFrame:
+        prepared_start_time = self.get_qs_start_time(start_time=start_time)
+        df = self._get_symbols_df(prepared_start_time, end_time)
+        df['cross_course'] = self._get_cross_course_df(df)
+        df['beta'] = self._get_beta_factor_df(df)
 
-        return resample_df_1, resample_df_2, source_df
+        return df.loc[start_time:end_time]
+
+
+
+        # logger.info('Started')
+        # # prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
+        #
+        # conn = psycopg2.connect("dbname=bender user=bender password=bender host=postgres")
+        # query = """
+        # SELECT
+        #     t1.open_time,
+        #     t1.open_price  AS s_1_open_price,
+        #     t1.high_price  AS s_1_high_price,
+        #     t1.low_price   AS s_1_low_price,
+        #     t1.close_price AS s_1_close_price,
+        #     t2.open_price  AS s_2_open_price,
+        #     t2.high_price  AS s_2_high_price,
+        #     t2.low_price   AS s_2_low_price,
+        #     t2.close_price AS s_2_close_price
+        # FROM
+        #     (SELECT * FROM market_data_kline WHERE symbol_id = 'BTCUSDT' AND open_time >= '') t1
+        # FULL JOIN
+        #     (SELECT * FROM market_data_kline WHERE symbol_id = 'ETHUSDT') t2
+        # ON t1.open_time = t2.open_time
+        # ORDER BY t1.open_time;
+        # """
+        #
+        # df = pd.read_sql(query, conn)
+        # logger.info('Got df')
+        #
+        # conn.close()
+        #
+        # return df
+
+
+
+
+    # def get_source_dfs(self) -> tuple:
+    #     """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
+    #
+    #     logger.info('Started')
+    #     prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
+    #
+    #     df_1 = self.get_symbol_df(
+    #         symbol_pk=self.symbol_1_id,
+    #         qs_start_time=prepared_start_time,
+    #         qs_end_time=self.end_time,
+    #     )
+    #     logger.info('Got df_1')
+    #
+    #     resample_df_1 = df_1.resample(self.interval).agg({
+    #         'open_price': 'first',
+    #         'high_price': 'max',
+    #         'low_price': 'min',
+    #         'close_price': 'last',
+    #         'volume': 'sum',
+    #     })
+    #     logger.info('Resampled df_1')
+    #
+    #     df_2 = self.get_symbol_df(
+    #         symbol_pk=self.symbol_2_id,
+    #         qs_start_time=prepared_start_time,
+    #         qs_end_time=self.end_time,
+    #     )
+    #     logger.info('Got df_2')
+    #
+    #     resample_df_2 = df_2.resample(self.interval).agg({
+    #         'open_price': 'first',
+    #         'high_price': 'max',
+    #         'low_price': 'min',
+    #         'close_price': 'last',
+    #         'volume': 'sum',
+    #     })
+    #     logger.info('Resampled df_2')
+    #
+    #     source_df = pd.DataFrame(columns=[
+    #         'df_1',
+    #         'df_2',
+    #         'cross_course',
+    #     ], dtype=float)
+    #
+    #     source_df['df_1'] = resample_df_1[self.price_comparison]
+    #     source_df['df_2'] = resample_df_2[self.price_comparison]
+    #     # source_df.to_csv('out.csv')
+    #     source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
+    #     logger.info('Got source_df')
+    #
+    #     return resample_df_1, resample_df_2, source_df
 
 
 

@@ -532,7 +532,7 @@ class BetaFactor(BaseModel):
     class Type(models.TextChoices):
         MANUAL = 'manual', 'Manual'
         OLS = 'ols', 'OLS'
-        EMA = 'ema', 'EMA'
+        OLS_EMA = 'ols_ema', 'OLS-EMA'
         BUTTERWORTH_FILTER = 'bw', 'Butterworth'
 
     codename = models.CharField(
@@ -663,12 +663,12 @@ class BetaFactor(BaseModel):
         :param source_df: DataFrame
         :param interval: Interval базовой стратегии
         """
-        if self.interval != interval:
-            source_df = source_df.resample(
-                self.interval,
-                label='left',
-                closed='left',
-            ).agg('last')
+        # if self.interval != interval:
+        #     source_df = source_df.resample(
+        #         self.interval,
+        #         label='right',
+        #         closed='right',
+        #     ).agg('last')
 
         def _type_ols() -> pd.Series:
             betas = []  # Список для хранения значений беты
@@ -683,11 +683,16 @@ class BetaFactor(BaseModel):
 
                 # Извлекаем очищенные данные
                 if self.market_symbol == self.MarketSymbol.SYMBOL_1:
-                    x_clean = window_data.iloc[:, 0].values.astype(np.float64)  # Независимая переменная
-                    y_clean = window_data.iloc[:, 1].values.astype(np.float64)  # Зависимая переменная
+                    x_clean = window_data[f'df_1_{self.price_comparison}'].values.astype(np.float64)  # Независимая переменная
+                    y_clean = window_data[f'df_2_{self.price_comparison}'].values.astype(np.float64)  # Зависимая переменная
+
+                    # x_clean = window_data.iloc[:, 0].values.astype(np.float64)  # Независимая переменная
+                    # y_clean = window_data.iloc[:, 1].values.astype(np.float64)  # Зависимая переменная
                 elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
-                    x_clean = window_data.iloc[:, 1].values.astype(np.float64)
-                    y_clean = window_data.iloc[:, 0].values.astype(np.float64)
+                    x_clean = window_data[f'df_2_{self.price_comparison}'].values.astype(np.float64)
+                    y_clean = window_data[f'df_1_{self.price_comparison}'].values.astype(np.float64)
+                    # x_clean = window_data.iloc[:, 1].values.astype(np.float64)
+                    # y_clean = window_data.iloc[:, 0].values.astype(np.float64)
                 else:
                     raise ValueError('Market symbol not supported')
 
@@ -702,15 +707,15 @@ class BetaFactor(BaseModel):
 
         def _type_manual() -> pd.Series:
             if self.market_symbol == self.MarketSymbol.SYMBOL_1:
-                source_df['variance'] = source_df['df_1'].rolling(window=self.window_size).var()
+                source_df['variance'] = source_df['df_1_close_price'].rolling(window=self.window_size).var()
             elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
-                source_df['variance'] = source_df['df_2'].rolling(window=self.window_size).var()
+                source_df['variance'] = source_df['df_2_close_price'].rolling(window=self.window_size).var()
             else:
                 raise ValueError('Market symbol not supported')
 
             df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
-            df_covariance['col_1'] = source_df['df_1']
-            df_covariance['col_2'] = source_df['df_2']
+            df_covariance['col_1'] = source_df['df_1_close_price']
+            df_covariance['col_2'] = source_df['df_2_close_price']
 
             df_covariance_matrix = df_covariance.rolling(
                 window=self.window_size,
@@ -720,29 +725,28 @@ class BetaFactor(BaseModel):
 
             return source_df['covariance'] / source_df['variance']
 
-        def _type_ema() -> pd.Series:
+        def _type_ols_ema() -> pd.Series:
             betas = _type_ols()
             return betas.ewm(span=self.ema_span, adjust=False).mean()
 
-        def _type_butterworth() -> pd.Series:
-            betas = _type_ols()
-            b, a = butter(
-                N=self.butterworth_order,
-                Wn=self.butterworth_cutoff,
-                btype='low',
-                analog=False,
-            )
-            result = filtfilt(b, a, betas)
-
-            index_series = pd.Series(source_df.index)
-            return pd.Series(result, index=index_series)
-
+        # def _type_butterworth() -> pd.Series:
+        #     betas = _type_ols()
+        #     b, a = butter(
+        #         N=self.butterworth_order,
+        #         Wn=self.butterworth_cutoff,
+        #         btype='low',
+        #         analog=False,
+        #     )
+        #     result = filtfilt(b, a, betas)
+        #
+        #     index_series = pd.Series(source_df.index)
+        #     return pd.Series(result, index=index_series)
 
         if self.type == self.Type.OLS:
             return _type_ols()
         elif self.type == self.Type.MANUAL:
             return _type_manual()
-        elif self.type == self.Type.EMA:
-            return _type_ema()
-        elif self.type == self.Type.BUTTERWORTH_FILTER:
-            return _type_butterworth()
+        elif self.type == self.Type.OLS_EMA:
+            return _type_ols_ema()
+        # elif self.type == self.Type.BUTTERWORTH_FILTER:
+        #     return _type_butterworth()

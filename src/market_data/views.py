@@ -433,13 +433,13 @@ class ChartView(View):
 class BaseChartView(View):
     template_name = 'market_data/chart.html'
 
-    def _get_candlestick_trace(self, df: pd.DataFrame, name: str):
+    def _get_candlestick_trace(self, df: pd.DataFrame, prefix: str, name: str):
         return go.Candlestick(
             x=df.index,
-            open=df['open_price'],
-            high=df['high_price'],
-            low=df['low_price'],
-            close=df['close_price'],
+            open=df[f'{prefix}_open_price'],
+            high=df[f'{prefix}_high_price'],
+            low=df[f'{prefix}_low_price'],
+            close=df[f'{prefix}_close_price'],
             name=name,
         )
 
@@ -584,23 +584,20 @@ class ArbitrationChartView(BaseChartView):
         if form.is_valid():
             cleaned_data = form.cleaned_data
             arbitration = cleaned_data.get('arbitration')
-            start_time = cleaned_data.get('start_time') or self.arbitration.start_time
-            end_time = cleaned_data.get('end_time') or self.arbitration.end_time
-            interval = cleaned_data.get('interval') or self.arbitration.interval
+            start_time = cleaned_data.get('start_time')
+            end_time = cleaned_data.get('end_time')
+            # interval = cleaned_data.get('interval')
             is_show_result = cleaned_data.get('is_show_result')
 
-            df_1, df_2, source_df = self.arbitration.get_source_dfs()
-
-            # chart_df_1, chart_df_2, chart_source_df = self._resampled_dfs(
-            #     df_1, df_2, source_df, start_time, end_time, interval,
-            # )
+            source_df = self.arbitration.get_source_df(
+                start_time=start_time,
+                end_time=end_time,
+            )
 
             context['title'] = self.arbitration.codename
             context['chart'] = self._get_arbitration_chart(
                 arbitration=arbitration,
-                chart_df_1=df_1,
-                chart_df_2=df_2,
-                chart_source_df=source_df,
+                source_df=source_df,
                 is_show_result=is_show_result,
             )
             # context['info'] = self._get_info_context(
@@ -644,9 +641,7 @@ class ArbitrationChartView(BaseChartView):
 
     def _get_arbitration_chart(self,
                                arbitration: Arbitration,
-                               chart_df_1: pd.DataFrame,
-                               chart_df_2: pd.DataFrame,
-                               chart_source_df: pd.DataFrame,
+                               source_df: pd.DataFrame,
                                is_show_result: bool = False):
 
         # moving_average_cross_course = arbitration.movingaverage_set.get(codename=arbitration.ma_cross_course_codename)
@@ -659,7 +654,7 @@ class ArbitrationChartView(BaseChartView):
         #     codename=arbitration.sd_beta_spread_codename,
         # )
 
-        row_count = 3
+        row_count = 4
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -668,11 +663,20 @@ class ArbitrationChartView(BaseChartView):
         )
         fig.add_trace(
             row=1, col=1,
-            trace=self._get_candlestick_trace(chart_df_1, arbitration.symbol_1.symbol),
+            trace=self._get_candlestick_trace(source_df, 'df_1', arbitration.symbol_1.symbol),
         )
         fig.add_trace(
             row=2, col=1,
-            trace=self._get_candlestick_trace(chart_df_2, arbitration.symbol_2.symbol),
+            trace=self._get_candlestick_trace(source_df, 'df_2', arbitration.symbol_2.symbol),
+        )
+
+        fig.add_trace(
+            row=3, col=1,
+            trace=self._get_line_trace(source_df, 'cross_course'),
+        )
+        fig.add_trace(
+            row=4, col=1,
+            trace=self._get_line_trace(source_df, 'beta'),
         )
 
         # fig.add_trace(
@@ -685,10 +689,7 @@ class ArbitrationChartView(BaseChartView):
         # )
 
 
-        fig.add_trace(
-            row=3, col=1,
-            trace=self._get_line_trace(chart_source_df, 'cross_course'),
-        )
+
         # fig.add_trace(
         #     row=5, col=1,
         #     trace=self._get_moving_average_trace(chart_source_df, moving_average_cross_course.codename),
@@ -706,10 +707,7 @@ class ArbitrationChartView(BaseChartView):
         #     trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_cross_course'),
         # )
         #
-        # fig.add_trace(
-        #     row=9, col=1,
-        #     trace=self._get_beta_trace(chart_source_df, 'beta'),
-        # )
+
         # fig.add_trace(
         #     row=10, col=1,
         #     trace=self._get_line_trace(chart_source_df, 'beta_spread'),
