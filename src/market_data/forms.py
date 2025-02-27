@@ -151,3 +151,7 @@ class ArbitrationChartForm(forms.Form):
         required=False,
         label='Show Result',
     )
+    is_show_analytics = forms.BooleanField(
+        required=False,
+        label='Show Analytics',
+    )

@@ -588,10 +588,12 @@ class ArbitrationChartView(BaseChartView):
             end_time = cleaned_data.get('end_time')
             # interval = cleaned_data.get('interval')
             is_show_result = cleaned_data.get('is_show_result')
+            is_show_analytics = cleaned_data.get('is_show_analytics')
 
             source_df = self.arbitration.get_source_df(
                 start_time=start_time,
                 end_time=end_time,
+                is_show_analytics=is_show_analytics,
             )
 
             context['title'] = self.arbitration.codename
@@ -599,6 +601,7 @@ class ArbitrationChartView(BaseChartView):
                 arbitration=arbitration,
                 source_df=source_df,
                 is_show_result=is_show_result,
+                is_show_analytics=is_show_analytics,
             )
             # context['info'] = self._get_info_context(
             #     arbitration=arbitration,
@@ -642,19 +645,12 @@ class ArbitrationChartView(BaseChartView):
     def _get_arbitration_chart(self,
                                arbitration: Arbitration,
                                source_df: pd.DataFrame,
-                               is_show_result: bool = False):
+                               is_show_result: bool = False,
+                               is_show_analytics: bool = False):
 
-        # moving_average_cross_course = arbitration.movingaverage_set.get(codename=arbitration.ma_cross_course_codename)
-        # moving_average_beta_spread = arbitration.movingaverage_set.get(codename=arbitration.ma_beta_spread_codename)
-        #
-        # standard_deviation_cross_course = arbitration.standarddeviation_set.get(
-        #     codename=arbitration.sd_cross_course_codename,
-        # )
-        # standard_deviation_beta_spread = arbitration.standarddeviation_set.get(
-        #     codename=arbitration.sd_beta_spread_codename,
-        # )
-
-        row_count = 4
+        row_count = 7
+        if is_show_analytics:
+            row_count += 1
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -678,6 +674,39 @@ class ArbitrationChartView(BaseChartView):
             row=4, col=1,
             trace=self._get_line_trace(source_df, 'beta'),
         )
+
+        moving_average = arbitration.movingaverage_set.first()
+        if moving_average.data_source == MovingAverage.DataSource.CROSS_COURSE:
+            moving_average_row = 3
+        elif moving_average.data_source == MovingAverage.DataSource.BETA:
+            moving_average_row = 4  # ?????????
+        else:
+            raise ValueError('Unknown moving average source')
+        fig.add_trace(
+            row=moving_average_row, col=1,
+            trace=self._get_moving_average_trace(source_df, 'moving_average'),
+        )
+
+        fig.add_trace(
+            row=5, col=1,
+            trace=self._get_line_trace(source_df, 'standard_deviation'),
+        )
+
+        fig.add_trace(
+            row=6, col=1,
+            trace=self._get_deviation_trace(df=source_df, column_name='absolute_spread'),
+        )
+        fig.add_trace(
+            row=7, col=1,
+            trace=self._get_deviation_trace(df=source_df, column_name='relative_spread'),
+        )
+
+        if is_show_analytics:
+            fig.add_trace(
+                row=8, col=1,
+                trace=self._get_line_trace(source_df, 'corr_pearson'),
+            )
+
 
         # fig.add_trace(
         #     row=3, col=1,

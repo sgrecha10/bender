@@ -85,7 +85,7 @@ class Arbitration(BaseModel):
         choices=PriceComparison.choices,
         default=PriceComparison.CLOSE,
         verbose_name='Price comparison',
-        help_text='Задает базовую цену для расчета beta, cross course.'
+        help_text='Задает базовую цену для расчета beta, cross course, corr (analytics).'
     )
     open_deal_sd = models.DecimalField(
         max_digits=20,
@@ -163,8 +163,9 @@ class Arbitration(BaseModel):
         standard_deviation_converted_to_minutes = (
             standard_deviation.window_size * MAP_MINUTE_COUNT[self.interval]
         )
+        # прибавляем moving_average_converted_to_minutes, т.к если ma применяется к beta то у беты должен быть еще более ранний запас
         beta_factor_converted_to_minutes = (
-            beta_factor.window_size * MAP_MINUTE_COUNT[self.interval]
+            beta_factor.window_size * MAP_MINUTE_COUNT[self.interval] + moving_average_converted_to_minutes + standard_deviation_converted_to_minutes
         )
 
         max_minutes = max(
@@ -255,7 +256,7 @@ class Arbitration(BaseModel):
         return resample_df
 
     def _get_cross_course_df(self, df: pd.DataFrame) -> pd.Series:
-        return df[f'df_1_{self.price_comparison}'] / df[f'df_2_{self.price_comparison}']
+        return (df[f'df_1_{self.price_comparison}'] / df[f'df_2_{self.price_comparison}']).astype(float)
 
     def _get_beta_factor_df(self, df: pd.DataFrame) -> pd.Series:
         beta_factor = self.betafactor_set.first()
@@ -264,11 +265,42 @@ class Arbitration(BaseModel):
             interval=self.interval,
         ).reindex(df.index, method='ffill')
 
-    def get_source_df(self, start_time: datetime = None, end_time: datetime = None) -> pd.DataFrame:
+    def _get_moving_average(self, df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+        moving_average = self.movingaverage_set.first()
+        moving_average_series = moving_average.get_data(
+                source_df=df,
+                interval=self.interval,
+        ).reindex(df.index, method='ffill')
+        absolute_spread_series = df[moving_average.data_source] - moving_average_series
+        return moving_average_series, absolute_spread_series
+
+    def _get_standard_deviation(self, df: pd.DataFrame) -> pd.Series:
+        standard_deviation = self.standarddeviation_set.first()
+        return standard_deviation.get_data(
+            source_df=df,
+            interval=self.interval,
+        ).reindex(df.index, method='ffill')
+
+    def _get_corr_pearson(self, df: pd.DataFrame) -> pd.Series:
+        return df[f'df_1_{self.price_comparison}'].rolling(
+            window=self.correlation_window,
+        ).corr(df[f'df_2_{self.price_comparison}'])
+
+    def get_source_df(self,
+                      start_time: datetime = None,
+                      end_time: datetime = None,
+                      is_show_analytics: bool = False) -> pd.DataFrame:
+
         prepared_start_time = self.get_qs_start_time(start_time=start_time)
         df = self._get_symbols_df(prepared_start_time, end_time)
         df['cross_course'] = self._get_cross_course_df(df)
         df['beta'] = self._get_beta_factor_df(df)
+        df['moving_average'], df['absolute_spread'] = self._get_moving_average(df)
+        df['standard_deviation'] = self._get_standard_deviation(df)
+        df['relative_spread'] = df['absolute_spread'] / df['standard_deviation']
+
+        if is_show_analytics:
+            df['corr_pearson'] = self._get_corr_pearson(df)
 
         return df.loc[start_time:end_time]
 

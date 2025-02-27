@@ -39,7 +39,7 @@ class MovingAverage(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
-        BETA_SPREAD = 'beta_spread', 'Beta spread'
+        BETA = 'beta', 'Beta'
 
     class PriceComparison(models.TextChoices):
         OPEN = 'open_price', 'Open price'
@@ -278,7 +278,7 @@ class StandardDeviation(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
-        BETA_SPREAD = 'beta_spread', 'Beta spread'
+        BETA = 'beta', 'Beta'
 
     class PriceComparison(models.TextChoices):
         OPEN = 'open_price', 'Open price'
