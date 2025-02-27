@@ -1,8 +1,8 @@
+from django.db import connection
+
 from arbitrations.backends import ArbitrationBackend
 from bender.celery_entry import app
-from market_data.models import Kline
 from .models import Arbitration, ArbitrationDeal
-from django.db import connection
 
 
 @app.task(bind=True)
@@ -46,8 +46,8 @@ def run_arbitration_test_mode(self, arbitration_id: int):
                 ],
             )
             columns = [col[0] for col in cursor.description]  # Получаем имена колонок
-            for row in cursor:  # Генераторная итерация
-                yield dict(zip(columns, row))  # Возвращаем по одной строке как dict
+            for item in cursor:  # Генераторная итерация
+                yield dict(zip(columns, item))  # Возвращаем по одной строке как dict
 
 
     # получаем backend
