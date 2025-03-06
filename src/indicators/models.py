@@ -39,7 +39,7 @@ class MovingAverage(BaseModel):
         HIGH_LOW = 'high_low', 'High-Low average'
         OPEN_CLOSE = 'open_close', 'Open-Close average'
         CROSS_COURSE = 'cross_course', 'Cross course'
-        BETA = 'beta', 'Beta'
+        BETA_ = 'beta', 'Beta'
 
     class PriceComparison(models.TextChoices):
         OPEN = 'open_price', 'Open price'

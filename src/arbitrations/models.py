@@ -9,7 +9,6 @@ import pandas as pd
 from typing import Optional, Type
 import statsmodels.api as sm
 import numpy as np
-# from indicators.models import BetaFactor
 from decimal import Decimal
 import logging
 import pandas as pd
@@ -46,7 +45,6 @@ class Arbitration(BaseModel):
 
     class DataSource(models.TextChoices):
         CROSS_COURSE = 'cross_course', 'Cross course'
-        BETA = 'beta', 'Beta'
         BETA_SPREAD = 'beta_spread', 'Beta spread'
         BETA_SPREAD_LOG = 'beta_spread_log', 'Beta spread log'
 
@@ -294,6 +292,19 @@ class Arbitration(BaseModel):
             window=self.correlation_window,
         ).corr(df[f'df_2_{self.price_comparison}'])
 
+    def _get_beta_spread_df(self, df: pd.DataFrame) -> pd.Series:
+        beta_factor = self.betafactor_set.first()
+        if beta_factor.market_symbol == beta_factor.MarketSymbol.SYMBOL_2:
+            return (
+                    df[f'df_1_{self.price_comparison}'].astype(np.float64)
+                    - df[f'df_2_{self.price_comparison}'].astype(np.float64) * df['beta']
+            )
+        else:
+            return (
+                    df[f'df_2_{self.price_comparison}'].astype(np.float64)
+                    - df[f'df_1_{self.price_comparison}'].astype(np.float64) * df['beta']
+            )
+
     def get_source_df(self,
                       start_time: datetime = None,
                       end_time: datetime = None,
@@ -303,6 +314,7 @@ class Arbitration(BaseModel):
         df = self._get_symbols_df(prepared_start_time, end_time)
         df['cross_course'] = self._get_cross_course_df(df)
         df['beta'] = self._get_beta_factor_df(df)
+        df['beta_spread'] = self._get_beta_spread_df(df)
         df['moving_average'] = self._get_moving_average(df)
         df['absolute_spread'] = df[self.data_source] - df['moving_average']
         df['standard_deviation'] = self._get_standard_deviation(df)

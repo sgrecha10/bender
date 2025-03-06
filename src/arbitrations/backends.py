@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from decimal import Decimal, ROUND_05UP
 
@@ -8,30 +9,46 @@ import numpy as np
 from market_data.constants import AllowedInterval
 from django.db.models.enums import IntegerChoices
 from indicators.models import BetaFactor
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ArbitrationBackend:
 
     class DealState(IntegerChoices):
         CLOSED = 10
-        OPENED_SYMBOL_FIRST_SELL = 20
-        OPENED_SYMBOL_FIRST_BUY = 30
+        SELL = 20  # OPENED_SYMBOL_FIRST_SELL
+        BUY = 30  # OPENED_SYMBOL_FIRST_BUY
 
     def __init__(self, arbitration_id: int):
         self.arbitration = Arbitration.objects.get(pk=arbitration_id)
 
         # получаем df с рассчитанными характеристиками стратегии
-        # arbitration_df = self.arbitration.get_df()
         # сдвигаем, что бы не высчитывать каждую итерацию предыдущий индекс
-        # self.arbitration_df = self.arbitration.get_df().shift(1)
-        _, _, cross_course = self.arbitration.get_source_dfs()
-        self.arbitration_df = cross_course.shift(1)
+        self.arbitration_df = self.arbitration.get_source_df(
+            start_time=self.arbitration.start_time,
+            end_time=self.arbitration.end_time,
+        )
+        cols_to_shift = [
+            'beta',
+            'moving_average',
+            'absolute_spread',
+            'standard_deviation',
+            'relative_spread',
+        ]
+        self.arbitration_df[cols_to_shift] = self.arbitration_df[cols_to_shift].shift(1)
 
         # состояние сделки
         self.deal_state = self.DealState.CLOSED
+        self.deal_uid = None
+        self.last_current_standard_deviation = None
+
+        # индикаторы
+        self.beta_factor = self.arbitration.betafactor_set.first()
 
     def _prepare_index(self, deal_time: datetime) -> str:
-        # приводим deal_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
+        """ Приводим deal_time к размерности арбитражной стратегии (если arbitration.interval != 1m) """
         if self.arbitration.interval == AllowedInterval.MINUTE_1:
             return str(deal_time)
         elif self.arbitration.interval == AllowedInterval.HOUR_1:
@@ -41,6 +58,152 @@ class ArbitrationBackend:
         else:
             raise ValueError('Disallowed interval of arbitration')
 
+    def _get_current_spread(self):
+        """  """
+
+
+
+    def _get_current_standard_deviation(self, price_1, price_2, deal_time: datetime) -> float:
+        """ Возвращает current_standard_deviation """
+        index = self._prepare_index(deal_time=deal_time)
+
+        moving_average = self.arbitration_df.loc[index, 'moving_average']
+        standard_deviation = self.arbitration_df.loc[index, 'standard_deviation']
+
+        current_cross_curs = float(price_1 / price_2)
+        return (current_cross_curs - moving_average) / standard_deviation
+
+    def _get_quantity(self, price_1, price_2, deal_time, standard_deviation) -> tuple:
+        """Возвращает соотношение инструментов.
+
+        Используется при открытии сделки и при коррекции по бета.
+        """
+
+        if standard_deviation > 0:
+            symbol_1_quantity, symbol_2_quantity = -1, 1
+        else:
+            symbol_1_quantity, symbol_2_quantity = 1, -1
+
+        ratio_type = self.arbitration.ratio_type
+        if ratio_type == self.arbitration.SymbolsRatioType.PRICE:
+            quantity_1 = 1
+            quantity_2 = price_1 / price_2
+        elif ratio_type == self.arbitration.SymbolsRatioType.B_FACTOR:
+            index = self._prepare_index(deal_time=deal_time)
+            beta = self.arbitration_df.loc[index, 'beta']
+
+            if self.beta_factor.market_symbol == BetaFactor.MarketSymbol.SYMBOL_1:
+                quantity_2 = 1 / (beta + 1)
+                quantity_1 = 1 - quantity_2
+            elif self.beta_factor.market_symbol == BetaFactor.MarketSymbol.SYMBOL_2:
+                quantity_1 = 1 / (beta + 1)
+                quantity_2 = 1 - quantity_1
+            else:
+                raise ValueError('BetaFactor.MarketSymbol не найден')
+
+        return (
+            Decimal(quantity_1 * symbol_1_quantity).quantize(Decimal("1.0000000000"), ROUND_05UP),
+            Decimal(quantity_2 * symbol_2_quantity).quantize(Decimal("1.0000000000"), ROUND_05UP),
+        )
+
+    def _open_deal(self, price_1, price_2, deal_time: datetime, standard_deviation: float):
+        """ Открываем сделку """
+        logger.info(f'Opened deal, deal_time: {deal_time}')
+
+        self.deal_uid = uuid.uuid4().hex
+        symbol_1_quantity, symbol_2_quantity = self._get_quantity(
+            price_1=price_1,
+            price_2=price_2,
+            deal_time=deal_time,
+            standard_deviation=standard_deviation,
+        )
+        data = {
+            'arbitration': self.arbitration,
+            'deal_time': deal_time,
+            'deal_uid': self.deal_uid,
+            'state': ArbitrationDeal.State.OPEN,
+        }
+        ArbitrationDeal.objects.create(
+            symbol=self.arbitration.symbol_1,
+            price=price_1,
+            quantity=symbol_1_quantity,
+            **data,
+        )
+        ArbitrationDeal.objects.create(
+            symbol=self.arbitration.symbol_2,
+            price=price_2,
+            quantity=symbol_2_quantity,
+            **data,
+        )
+
+    def _check_open_deal(self, price_1, price_2, deal_time: datetime):
+        """ Проверяем, открывать ли сделку по условию """
+        if self.deal_uid:
+            return
+
+        current_standard_deviation = self._get_current_standard_deviation(price_1, price_2, deal_time)
+        if abs(current_standard_deviation) >= float(self.arbitration.open_deal_sd):
+            self._open_deal(
+                price_1=price_1,
+                price_2=price_2,
+                deal_time=deal_time,
+                standard_deviation=current_standard_deviation,
+            )
+
+    def _get_quantity_from_db(self) -> tuple:
+        """ Возвращает количество инструментов в открытой сделке """
+
+        symbol_1_quantity = ArbitrationDeal.objects.filter(
+            arbitration=self.arbitration,
+            symbol=self.arbitration.symbol_1,
+            deal_uid=self.deal_uid,
+        ).aggregate(sum=Sum('quantity'))['sum']
+
+        symbol_2_quantity = ArbitrationDeal.objects.filter(
+            arbitration=self.arbitration,
+            symbol=self.arbitration.symbol_2,
+            deal_uid=self.deal_uid,
+        ).aggregate(sum=Sum('quantity'))['sum']
+
+        return symbol_1_quantity, symbol_2_quantity
+
+    def _close_deal(self, price_1, price_2, deal_time: datetime):
+        """ Закрываем все открытые позиции """
+        logger.info(f'Closed deal, deal_time: {deal_time}')
+
+        # получаем суммарное количество открытых позиций в сделке по каждому инструменту
+        symbol_1_quantity, symbol_2_quantity = self._get_quantity_from_db()
+
+        data = {
+            'arbitration': self.arbitration,
+            'deal_time': deal_time,
+            'deal_uid': self.deal_uid,
+            'state': ArbitrationDeal.State.CLOSE,
+        }
+
+        ArbitrationDeal.objects.create(
+            symbol=self.arbitration.symbol_1,
+            price=price_1,
+            quantity=-symbol_1_quantity,
+            **data,
+        )
+        ArbitrationDeal.objects.create(
+            symbol=self.arbitration.symbol_2,
+            price=price_2,
+            quantity=-symbol_2_quantity,
+            **data,
+        )
+        self.deal_uid = None
+
+    def _check_close_deal_by_zero_crossing(self, price_1, price_2, deal_time: datetime):
+        """ Проверяем, закрывать ли сделку по переходу через 0 """
+        if not self.deal_uid:
+            return
+
+        current_standard_deviation = self._get_current_standard_deviation(price_1, price_2, deal_time)
+        if np.sign(current_standard_deviation) != np.sign(self.last_current_standard_deviation):
+            self._close_deal(price_1, price_2, deal_time)
+
     def run_step(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
         """ Получает цену 1 и 2 и timestamp, открывает/закрывает позицию
         :param price_1:
@@ -48,12 +211,11 @@ class ArbitrationBackend:
         :param deal_time:
         """
 
-        # Приводим open_time к размерности арбитражной стратегии (если arbitration.interval != 1m)
-        index = self._prepare_index(deal_time=deal_time)
+        self._check_open_deal(price_1, price_2, deal_time)
+        self._check_close_deal_by_zero_crossing(price_1, price_2, deal_time)
 
-        # Проверяем, открывать ли сделку по условию
-        # if self.deal_state == self.DealState.CLOSED:
-            # self._check_open_deal(price_1, price_2, index)
+        # Устанавливаем последнее значение для определения перехода через 0
+        self.last_current_standard_deviation = self._get_current_standard_deviation(price_1, price_2, deal_time)
 
         # Проверяем, закрывать ли сделку по условию
 

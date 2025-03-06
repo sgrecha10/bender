@@ -648,7 +648,7 @@ class ArbitrationChartView(BaseChartView):
                                is_show_result: bool = False,
                                is_show_analytics: bool = False):
 
-        row_count = 7
+        row_count = 8
         if is_show_analytics:
             row_count += 1
 
@@ -668,17 +668,22 @@ class ArbitrationChartView(BaseChartView):
 
         fig.add_trace(
             row=3, col=1,
-            trace=self._get_line_trace(source_df, 'cross_course'),
-        )
-        fig.add_trace(
-            row=4, col=1,
             trace=self._get_line_trace(source_df, 'beta'),
         )
 
-        if arbitration.data_source == MovingAverage.DataSource.CROSS_COURSE:
-            moving_average_row = 3
-        elif arbitration.data_source == MovingAverage.DataSource.BETA:
+        fig.add_trace(
+            row=4, col=1,
+            trace=self._get_line_trace(source_df, 'cross_course'),
+        )
+        fig.add_trace(
+            row=5, col=1,
+            trace=self._get_line_trace(df=source_df, column_name='beta_spread'),
+        )
+
+        if arbitration.data_source == arbitration.DataSource.CROSS_COURSE:
             moving_average_row = 4
+        elif arbitration.data_source == arbitration.DataSource.BETA_SPREAD:
+            moving_average_row = 5
         else:
             raise ValueError('Unknown data_source')
         fig.add_trace(
@@ -687,22 +692,22 @@ class ArbitrationChartView(BaseChartView):
         )
 
         fig.add_trace(
-            row=5, col=1,
+            row=6, col=1,
             trace=self._get_line_trace(source_df, 'standard_deviation'),
         )
 
         fig.add_trace(
-            row=6, col=1,
+            row=7, col=1,
             trace=self._get_deviation_trace(df=source_df, column_name='absolute_spread'),
         )
         fig.add_trace(
-            row=7, col=1,
+            row=8, col=1,
             trace=self._get_deviation_trace(df=source_df, column_name='relative_spread'),
         )
 
         if is_show_analytics:
             fig.add_trace(
-                row=8, col=1,
+                row=9, col=1,
                 trace=self._get_line_trace(source_df, 'corr_pearson'),
             )
 
