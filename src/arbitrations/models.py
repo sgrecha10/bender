@@ -20,11 +20,6 @@ logger = logging.getLogger(__name__)
 
 
 class Arbitration(BaseModel):
-    # ma_cross_course_codename = 'AR_MA_1'
-    # ma_beta_spread_codename = 'AR_MA_2'
-    #
-    # sd_cross_course_codename = 'AR_SD_1'
-    # sd_beta_spread_codename = 'AR_SD_2'
 
     class EntryPriceOrder(models.TextChoices):
         OPEN = 'OPEN', 'Open price'
@@ -48,6 +43,12 @@ class Arbitration(BaseModel):
     class CorrectionType(models.TextChoices):
         NONE = 'none', 'None'
         EVERY_TIME = 'every_time', 'Every time'
+
+    class DataSource(models.TextChoices):
+        CROSS_COURSE = 'cross_course', 'Cross course'
+        BETA = 'beta', 'Beta'
+        BETA_SPREAD = 'beta_spread', 'Beta spread'
+        BETA_SPREAD_LOG = 'beta_spread_log', 'Beta spread log'
 
     codename = models.CharField(
         max_length=100,
@@ -86,6 +87,13 @@ class Arbitration(BaseModel):
         default=PriceComparison.CLOSE,
         verbose_name='Price comparison',
         help_text='Задает базовую цену для расчета beta, cross course, corr (analytics).'
+    )
+    data_source = models.CharField(
+        max_length=20,
+        choices=DataSource.choices,
+        default=DataSource.CROSS_COURSE,
+        verbose_name='Data source',
+        help_text='Выбор данных для работы стратегии',
     )
     open_deal_sd = models.DecimalField(
         max_digits=20,
@@ -165,7 +173,9 @@ class Arbitration(BaseModel):
         )
         # прибавляем moving_average_converted_to_minutes, т.к если ma применяется к beta то у беты должен быть еще более ранний запас
         beta_factor_converted_to_minutes = (
-            beta_factor.window_size * MAP_MINUTE_COUNT[self.interval] + moving_average_converted_to_minutes + standard_deviation_converted_to_minutes
+            beta_factor.window_size * MAP_MINUTE_COUNT[self.interval]
+            + moving_average_converted_to_minutes
+            + standard_deviation_converted_to_minutes
         )
 
         max_minutes = max(
@@ -236,7 +246,7 @@ class Arbitration(BaseModel):
             logger.info('Got source_qs')
 
             df = pd.DataFrame(cursor.fetchall(), columns=[col[0] for col in cursor.description])
-            logger.info('Got source_df')
+            logger.info('Got source_df cursor.fetchall()')
 
         df.set_index("open_time", inplace=True)
         logger.info('Set index')
@@ -252,7 +262,7 @@ class Arbitration(BaseModel):
             'df_2_close_price': 'last',
         })
         logger.info('Resampled df')
-
+        logger.info('Source_df ready')
         return resample_df
 
     def _get_cross_course_df(self, df: pd.DataFrame) -> pd.Series:
@@ -262,23 +272,21 @@ class Arbitration(BaseModel):
         beta_factor = self.betafactor_set.first()
         return beta_factor.get_data(
             source_df=df,
-            interval=self.interval,
+            price_comparison=self.price_comparison,
         ).reindex(df.index, method='ffill')
 
-    def _get_moving_average(self, df: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    def _get_moving_average(self, df: pd.DataFrame) -> pd.Series:
         moving_average = self.movingaverage_set.first()
-        moving_average_series = moving_average.get_data(
+        return moving_average.get_data(
                 source_df=df,
-                interval=self.interval,
+                data_source=self.data_source,
         ).reindex(df.index, method='ffill')
-        absolute_spread_series = df[moving_average.data_source] - moving_average_series
-        return moving_average_series, absolute_spread_series
 
     def _get_standard_deviation(self, df: pd.DataFrame) -> pd.Series:
         standard_deviation = self.standarddeviation_set.first()
         return standard_deviation.get_data(
             source_df=df,
-            interval=self.interval,
+            data_source=self.data_source,
         ).reindex(df.index, method='ffill')
 
     def _get_corr_pearson(self, df: pd.DataFrame) -> pd.Series:
@@ -295,7 +303,8 @@ class Arbitration(BaseModel):
         df = self._get_symbols_df(prepared_start_time, end_time)
         df['cross_course'] = self._get_cross_course_df(df)
         df['beta'] = self._get_beta_factor_df(df)
-        df['moving_average'], df['absolute_spread'] = self._get_moving_average(df)
+        df['moving_average'] = self._get_moving_average(df)
+        df['absolute_spread'] = df[self.data_source] - df['moving_average']
         df['standard_deviation'] = self._get_standard_deviation(df)
         df['relative_spread'] = df['absolute_spread'] / df['standard_deviation']
 
@@ -632,6 +641,10 @@ class ArbitrationDeal(BaseModel):
     )
     deal_time = models.DateTimeField(
         verbose_name='Deal time',
+    )
+    deal_uid = models.UUIDField(
+        verbose_name='Deal UID',
+        null=True,
     )
     price = models.DecimalField(
         max_digits=20,

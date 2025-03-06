@@ -253,19 +253,20 @@ class MovingAverage(BaseModel):
 
         return df_cross_course[self.data_source].rolling(window=self.window_size).mean()
 
-    def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
+    def get_data(self, source_df: pd.DataFrame, data_source: str) -> pd.Series:
         """ Возвращает Series
         :param source_df: DataFrame
+        :param data_source:
         :param interval: Interval базовой стратегии
         """
-        if self.interval != interval:
-            source_df = source_df.resample(
-                self.interval,
-                label='left',
-                closed='left',
-            ).agg('last')
+        # if self.interval != interval:
+        #     source_df = source_df.resample(
+        #         self.interval,
+        #         label='left',
+        #         closed='left',
+        #     ).agg('last')
 
-        return source_df[self.data_source].rolling(window=self.window_size).mean()
+        return source_df[data_source].rolling(window=self.window_size).mean()
 
 
 class StandardDeviation(BaseModel):
@@ -443,19 +444,20 @@ class StandardDeviation(BaseModel):
 
         return df_cross_course[self.data_source].rolling(window=self.window_size).std()
 
-    def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
+    def get_data(self, source_df: pd.DataFrame, data_source: str) -> pd.Series:
         """ Возвращает Series
         :param source_df: DataFrame
+        :param data_source:
         :param interval: Interval базовой стратегии
         """
-        if self.interval != interval:
-            source_df = source_df.resample(
-                self.interval,
-                label='left',
-                closed='left',
-            ).agg('last')
+        # if self.interval != interval:
+        #     source_df = source_df.resample(
+        #         self.interval,
+        #         label='left',
+        #         closed='left',
+        #     ).agg('last')
 
-        return source_df[self.data_source].rolling(window=self.window_size).std()
+        return source_df[data_source].rolling(window=self.window_size).std()
 
 
 class BollingerBands(BaseModel):
@@ -614,53 +616,10 @@ class BetaFactor(BaseModel):
     def __str__(self):
         return f'{self.id} - {self.codename}'
 
-    def get_series(self, df_1: pd.DataFrame, df_2: pd.DataFrame) -> pd.Series:
-        """ Арбитраж. Возвращает данные для арбитражных стратегий. """
-
-        resample_df_1 = df_1.resample(self.interval).agg({
-            'open_price': 'first',
-            'high_price': 'max',
-            'low_price': 'min',
-            'close_price': 'last',
-            'volume': 'sum',
-        })
-        resample_df_2 = df_2.resample(self.interval).agg({
-            'open_price': 'first',
-            'high_price': 'max',
-            'low_price': 'min',
-            'close_price': 'last',
-            'volume': 'sum',
-        })
-
-        df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
-        df_cross_course['cross_course'] = (
-                resample_df_1[self.price_comparison] / resample_df_2[self.price_comparison]
-        )
-        df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
-
-        if self.market_symbol == self.MarketSymbol.SYMBOL_1:
-            df_cross_course['variance'] = (
-                df_1[self.price_comparison].rolling(window=self.window_size).var()
-            )
-        else:
-            df_cross_course['variance'] = (
-                df_2[self.price_comparison].rolling(window=self.window_size).var()
-            )
-
-        df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
-        df_covariance['col_1'] = df_1[self.covariance_price_comparison]
-        df_covariance['col_2'] = df_2[self.covariance_price_comparison]
-
-        df_covariance_matrix = df_covariance.rolling(
-            window=self.window_size,
-        ).cov().dropna().unstack()['col_1']['col_2']
-        df_cross_course['covariance'] = df_covariance_matrix
-
-        return df_cross_course['covariance'] / df_cross_course['variance']
-
-    def get_data(self, source_df: pd.DataFrame, interval: str) -> pd.Series:
+    def get_data(self, source_df: pd.DataFrame, price_comparison: str) -> pd.Series:
         """ Возвращает Series
         :param source_df: DataFrame
+        :param price_comparison:
         :param interval: Interval базовой стратегии
         """
         # if self.interval != interval:
@@ -683,16 +642,11 @@ class BetaFactor(BaseModel):
 
                 # Извлекаем очищенные данные
                 if self.market_symbol == self.MarketSymbol.SYMBOL_1:
-                    x_clean = window_data[f'df_1_{self.price_comparison}'].values.astype(np.float64)  # Независимая переменная
-                    y_clean = window_data[f'df_2_{self.price_comparison}'].values.astype(np.float64)  # Зависимая переменная
-
-                    # x_clean = window_data.iloc[:, 0].values.astype(np.float64)  # Независимая переменная
-                    # y_clean = window_data.iloc[:, 1].values.astype(np.float64)  # Зависимая переменная
+                    x_clean = window_data[f'df_1_{price_comparison}'].values.astype(np.float64)  # Независимая переменная
+                    y_clean = window_data[f'df_2_{price_comparison}'].values.astype(np.float64)  # Зависимая переменная
                 elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
-                    x_clean = window_data[f'df_2_{self.price_comparison}'].values.astype(np.float64)
-                    y_clean = window_data[f'df_1_{self.price_comparison}'].values.astype(np.float64)
-                    # x_clean = window_data.iloc[:, 1].values.astype(np.float64)
-                    # y_clean = window_data.iloc[:, 0].values.astype(np.float64)
+                    x_clean = window_data[f'df_2_{price_comparison}'].values.astype(np.float64)
+                    y_clean = window_data[f'df_1_{price_comparison}'].values.astype(np.float64)
                 else:
                     raise ValueError('Market symbol not supported')
 
@@ -707,15 +661,15 @@ class BetaFactor(BaseModel):
 
         def _type_manual() -> pd.Series:
             if self.market_symbol == self.MarketSymbol.SYMBOL_1:
-                source_df['variance'] = source_df['df_1_close_price'].rolling(window=self.window_size).var()
+                source_df['variance'] = source_df[f'df_1_{price_comparison}'].rolling(window=self.window_size).var()
             elif self.market_symbol == self.MarketSymbol.SYMBOL_2:
-                source_df['variance'] = source_df['df_2_close_price'].rolling(window=self.window_size).var()
+                source_df['variance'] = source_df[f'df_2_{price_comparison}'].rolling(window=self.window_size).var()
             else:
                 raise ValueError('Market symbol not supported')
 
             df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
-            df_covariance['col_1'] = source_df['df_1_close_price']
-            df_covariance['col_2'] = source_df['df_2_close_price']
+            df_covariance['col_1'] = source_df[f'df_1_{price_comparison}']
+            df_covariance['col_2'] = source_df[f'df_2_{price_comparison}']
 
             df_covariance_matrix = df_covariance.rolling(
                 window=self.window_size,

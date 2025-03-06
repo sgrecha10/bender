@@ -675,13 +675,12 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_line_trace(source_df, 'beta'),
         )
 
-        moving_average = arbitration.movingaverage_set.first()
-        if moving_average.data_source == MovingAverage.DataSource.CROSS_COURSE:
+        if arbitration.data_source == MovingAverage.DataSource.CROSS_COURSE:
             moving_average_row = 3
-        elif moving_average.data_source == MovingAverage.DataSource.BETA:
-            moving_average_row = 4  # ?????????
+        elif arbitration.data_source == MovingAverage.DataSource.BETA:
+            moving_average_row = 4
         else:
-            raise ValueError('Unknown moving average source')
+            raise ValueError('Unknown data_source')
         fig.add_trace(
             row=moving_average_row, col=1,
             trace=self._get_moving_average_trace(source_df, 'moving_average'),
@@ -758,24 +757,24 @@ class ArbitrationChartView(BaseChartView):
         #     trace=self._get_deviation_trace(df=chart_source_df, column_name='sd_beta_spread'),
         # )
 
-        # if is_show_result:
-        #     symbol_1_deal_tuple = self._get_arbitration_deal_trace(
-        #         arbitration=arbitration,
-        #         symbol=arbitration.symbol_1,
-        #         start_time=arbitration.start_time,
-        #         end_time=arbitration.end_time,
-        #     )
-        #     fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
-        #     fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
-        #
-        #     symbol_2_deal_tuple = self._get_arbitration_deal_trace(
-        #         arbitration=arbitration,
-        #         symbol=arbitration.symbol_2,
-        #         start_time=arbitration.start_time,
-        #         end_time=arbitration.end_time,
-        #     )
-        #     fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
-        #     fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
+        if is_show_result:
+            symbol_1_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_1,
+                start_time=arbitration.start_time,
+                end_time=arbitration.end_time,
+            )
+            fig.add_trace(symbol_1_deal_tuple[0], row=1, col=1)
+            fig.add_trace(symbol_1_deal_tuple[1], row=1, col=1)
+
+            symbol_2_deal_tuple = self._get_arbitration_deal_trace(
+                arbitration=arbitration,
+                symbol=arbitration.symbol_2,
+                start_time=arbitration.start_time,
+                end_time=arbitration.end_time,
+            )
+            fig.add_trace(symbol_2_deal_tuple[0], row=2, col=1)
+            fig.add_trace(symbol_2_deal_tuple[1], row=2, col=1)
 
         fig.update_layout(
             # autosize=False,

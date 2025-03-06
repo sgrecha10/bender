@@ -19,7 +19,7 @@ class MovingAverageInlineAdmin(admin.TabularInline):
         'window_size',
         # 'interval',
         # 'price_comparison',
-        'data_source',
+        # 'data_source',
         'type',
         # 'factor_alfa',
         # 'factor_alfa_auto',
@@ -47,7 +47,7 @@ class StandardDeviationInlineAdmin(admin.TabularInline):
         # 'interval',
         # 'price_comparison',
         # 'moving_average',
-        'data_source',
+        # 'data_source',
     )
     show_change_link = True
     readonly_fields = (
@@ -74,8 +74,8 @@ class BetaFactorInlineAdmin(admin.TabularInline):
         'ema_span',
         # 'variance_price_comparison',
         # 'covariance_price_comparison',
-        'butterworth_order',
-        'butterworth_cutoff',
+        # 'butterworth_order',
+        # 'butterworth_cutoff',
     )
     show_change_link = True
     readonly_fields = (
@@ -119,6 +119,7 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 'symbol_2',
                 'interval',
                 'price_comparison',
+                'data_source',
                 'start_time',
                 'end_time',
 
@@ -196,6 +197,7 @@ class ArbitrationDealAdmin(admin.ModelAdmin):
         'id',
         'arbitration',
         'symbol',
+        'deal_uid',
         'deal_time',
         'price',
         'quantity',

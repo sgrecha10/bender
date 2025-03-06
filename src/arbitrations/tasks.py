@@ -30,8 +30,7 @@ def run_arbitration_test_mode(self, arbitration_id: int):
         (SELECT * FROM market_data_kline WHERE symbol_id = %s) t2
     ON t1.open_time = t2.open_time
     WHERE t1.open_time BETWEEN %s AND %s
-    ORDER BY t1.open_time
-    LIMIT 10;
+    ORDER BY t1.open_time;
     """
 
     def _fetch_large_data():
