@@ -173,6 +173,11 @@ class ArbitrationAdmin(admin.ModelAdmin):
                 self.test_run,
                 name='arbitration-test-run',
             ),
+            path(
+                '<int:id>/deals_information/',
+                self.deals_information,
+                name='arbitration-deals-information',
+            ),
         ]
         return added_urls + urls
 
@@ -189,6 +194,14 @@ class ArbitrationAdmin(admin.ModelAdmin):
         run_arbitration_test_mode(arbitration_id=kwargs['id'])
         message = 'Run arbitration test mode started..'
         return redirect_to_change_form(request, self.model, kwargs['id'], message)
+
+    def deals_information(self, request, *args, **kwargs):
+        instance = self.model.objects.get(pk=kwargs['id'])
+        data = {
+            'arbitration_id': instance.id,
+        }
+        url = reverse('arbitration-results') + '?' + urlencode(data)
+        return redirect(url)
 
 
 @admin.register(ArbitrationDeal)

@@ -4,8 +4,12 @@
 {% block after_related_objects %}
     {{ block.super }}
     {% if original.pk %}
+{#        <li id="show-info-button" class="grp-float-left">#}
+{#            <a href="{% url 'arbitration-results' %}?arbitration_id={{ original.pk }}" target="_blank" class="grp-button grp-default">Information 📋</a>#}
+{#        </li>#}
+        
         <li id="show-info-button" class="grp-float-left">
-            <a href="{% url 'arbitration_results' %}?arbitration_id={{ original.pk }}" target="_blank" class="grp-button grp-default">Information 📋</a>
+            <a href="{% url 'admin:arbitration-deals-information' original.pk %}" target="_blank" class="grp-button grp-default">Information 📋</a>
         </li>
         
         <li id="show-chart-button" class="grp-float-left">
