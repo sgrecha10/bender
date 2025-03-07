@@ -58,10 +58,19 @@ class ArbitrationBackend:
         else:
             raise ValueError('Disallowed interval of arbitration')
 
-    def _get_current_spread(self):
-        """  """
-
-
+    def _get_current_source_value(self, price_1, price_2, deal_time: datetime) -> float:
+        """ Возвращает значение рассчитанное из текущих цен """
+        if self.arbitration.data_source == self.arbitration.DataSource.CROSS_COURSE:
+            return float(price_1 / price_2)
+        elif self.arbitration.data_source == self.arbitration.DataSource.BETA_SPREAD:
+            index = self._prepare_index(deal_time=deal_time)
+            beta = self.arbitration_df.loc[index, 'beta']
+            if self.beta_factor.market_symbol == self.beta_factor.MarketSymbol.SYMBOL_2:
+                return float(price_1) - float(price_2) * beta
+            else:
+                return float(price_2) - float(price_1) * beta
+        else:
+            raise ValueError('Unknown arbitration data source')
 
     def _get_current_standard_deviation(self, price_1, price_2, deal_time: datetime) -> float:
         """ Возвращает current_standard_deviation """
@@ -70,8 +79,8 @@ class ArbitrationBackend:
         moving_average = self.arbitration_df.loc[index, 'moving_average']
         standard_deviation = self.arbitration_df.loc[index, 'standard_deviation']
 
-        current_cross_curs = float(price_1 / price_2)
-        return (current_cross_curs - moving_average) / standard_deviation
+        current_source_value = self._get_current_source_value(price_1, price_2, deal_time)
+        return (current_source_value - moving_average) / standard_deviation
 
     def _get_quantity(self, price_1, price_2, deal_time, standard_deviation) -> tuple:
         """Возвращает соотношение инструментов.

@@ -264,7 +264,7 @@ class Arbitration(BaseModel):
         return resample_df
 
     def _get_cross_course_df(self, df: pd.DataFrame) -> pd.Series:
-        return (df[f'df_1_{self.price_comparison}'] / df[f'df_2_{self.price_comparison}']).astype(float)
+        return (df[f'df_1_{self.price_comparison}'] / df[f'df_2_{self.price_comparison}']).astype(np.float64)
 
     def _get_beta_factor_df(self, df: pd.DataFrame) -> pd.Series:
         beta_factor = self.betafactor_set.first()
