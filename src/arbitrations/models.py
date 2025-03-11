@@ -48,6 +48,9 @@ class Arbitration(BaseModel):
         BETA_SPREAD = 'beta_spread', 'Beta spread'
         BETA_SPREAD_LOG = 'beta_spread_log', 'Beta spread log'
 
+    class CorrType(models.TextChoices):
+        PEARSON = 'pearson', 'Pearson'
+
     codename = models.CharField(
         max_length=100,
         verbose_name='Codename',
@@ -143,10 +146,26 @@ class Arbitration(BaseModel):
         default=0,
         verbose_name='Taker commission',
     )
-    correlation_window = models.PositiveSmallIntegerField(
+
+    corr_window = models.PositiveSmallIntegerField(
         default=30,
-        verbose_name='Correlation window',
-        help_text='Аналитический параметр. Окно для расчета корреляции.'
+        verbose_name='Corr window',
+        help_text='Окно для расчета корреляции.'
+    )
+    corr_type = models.CharField(
+        choices=CorrType.choices,
+        default=CorrType.PEARSON,
+        verbose_name='Corr type',
+    )
+    corr_open_deal_value = models.FloatField(
+        default=0.85,
+        verbose_name='Corr open deal value',
+        help_text='Значение корреляции для открытия сделки, не менее. Если 0 - не используется.',
+    )
+    corr_stop_loss_value = models.FloatField(
+        default=0.85,
+        verbose_name='Corr stop loss value',
+        help_text='Значение корреляции для срабатывания stop loss, менее. Если 0 - не используется.',
     )
 
     class Meta:
@@ -287,10 +306,11 @@ class Arbitration(BaseModel):
             data_source=self.data_source,
         ).reindex(df.index, method='ffill')
 
-    def _get_corr_pearson(self, df: pd.DataFrame) -> pd.Series:
-        return df[f'df_1_{self.price_comparison}'].rolling(
-            window=self.correlation_window,
-        ).corr(df[f'df_2_{self.price_comparison}'])
+    def _get_corr(self, df: pd.DataFrame) -> pd.Series:
+        if self.corr_type == self.CorrType.PEARSON:
+            return df[f'df_1_{self.price_comparison}'].rolling(
+                window=self.corr_window,
+            ).corr(df[f'df_2_{self.price_comparison}'])
 
     def _get_beta_spread_df(self, df: pd.DataFrame) -> pd.Series:
         beta_factor = self.betafactor_set.first()
@@ -307,8 +327,7 @@ class Arbitration(BaseModel):
 
     def get_source_df(self,
                       start_time: datetime = None,
-                      end_time: datetime = None,
-                      is_show_analytics: bool = False) -> pd.DataFrame:
+                      end_time: datetime = None) -> pd.DataFrame:
 
         prepared_start_time = self.get_qs_start_time(start_time=start_time)
         df = self._get_symbols_df(prepared_start_time, end_time)
@@ -319,315 +338,9 @@ class Arbitration(BaseModel):
         df['absolute_spread'] = df[self.data_source] - df['moving_average']
         df['standard_deviation'] = self._get_standard_deviation(df)
         df['relative_spread'] = df['absolute_spread'] / df['standard_deviation']
-
-        if is_show_analytics:
-            df['corr_pearson'] = self._get_corr_pearson(df)
+        df['corr'] = self._get_corr(df)
 
         return df.loc[start_time:end_time]
-
-
-
-        # logger.info('Started')
-        # # prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
-        #
-        # conn = psycopg2.connect("dbname=bender user=bender password=bender host=postgres")
-        # query = """
-        # SELECT
-        #     t1.open_time,
-        #     t1.open_price  AS s_1_open_price,
-        #     t1.high_price  AS s_1_high_price,
-        #     t1.low_price   AS s_1_low_price,
-        #     t1.close_price AS s_1_close_price,
-        #     t2.open_price  AS s_2_open_price,
-        #     t2.high_price  AS s_2_high_price,
-        #     t2.low_price   AS s_2_low_price,
-        #     t2.close_price AS s_2_close_price
-        # FROM
-        #     (SELECT * FROM market_data_kline WHERE symbol_id = 'BTCUSDT' AND open_time >= '') t1
-        # FULL JOIN
-        #     (SELECT * FROM market_data_kline WHERE symbol_id = 'ETHUSDT') t2
-        # ON t1.open_time = t2.open_time
-        # ORDER BY t1.open_time;
-        # """
-        #
-        # df = pd.read_sql(query, conn)
-        # logger.info('Got df')
-        #
-        # conn.close()
-        #
-        # return df
-
-
-
-
-    # def get_source_dfs(self) -> tuple:
-    #     """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
-    #
-    #     logger.info('Started')
-    #     prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
-    #
-    #     df_1 = self.get_symbol_df(
-    #         symbol_pk=self.symbol_1_id,
-    #         qs_start_time=prepared_start_time,
-    #         qs_end_time=self.end_time,
-    #     )
-    #     logger.info('Got df_1')
-    #
-    #     resample_df_1 = df_1.resample(self.interval).agg({
-    #         'open_price': 'first',
-    #         'high_price': 'max',
-    #         'low_price': 'min',
-    #         'close_price': 'last',
-    #         'volume': 'sum',
-    #     })
-    #     logger.info('Resampled df_1')
-    #
-    #     df_2 = self.get_symbol_df(
-    #         symbol_pk=self.symbol_2_id,
-    #         qs_start_time=prepared_start_time,
-    #         qs_end_time=self.end_time,
-    #     )
-    #     logger.info('Got df_2')
-    #
-    #     resample_df_2 = df_2.resample(self.interval).agg({
-    #         'open_price': 'first',
-    #         'high_price': 'max',
-    #         'low_price': 'min',
-    #         'close_price': 'last',
-    #         'volume': 'sum',
-    #     })
-    #     logger.info('Resampled df_2')
-    #
-    #     source_df = pd.DataFrame(columns=[
-    #         'df_1',
-    #         'df_2',
-    #         'cross_course',
-    #     ], dtype=float)
-    #
-    #     source_df['df_1'] = resample_df_1[self.price_comparison]
-    #     source_df['df_2'] = resample_df_2[self.price_comparison]
-    #     # source_df.to_csv('out.csv')
-    #     source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
-    #     logger.info('Got source_df')
-    #
-    #     return resample_df_1, resample_df_2, source_df
-
-
-
-    # И тут ниже надо выпилить
-    # def get_source_dfs(self) -> tuple:
-    #     """ Возвращает 3 датафрейма со сдвигом start_time для всех индикаторов """
-    #
-    #     prepared_start_time = self.get_qs_start_time(start_time=self.start_time)
-    #
-    #     df_1 = self.get_symbol_df(
-    #         symbol_pk=self.symbol_1_id,
-    #         qs_start_time=prepared_start_time,
-    #         qs_end_time=self.end_time,
-    #     )
-    #     df_2 = self.get_symbol_df(
-    #         symbol_pk=self.symbol_2_id,
-    #         qs_start_time=prepared_start_time,
-    #         qs_end_time=self.end_time,
-    #     )
-    #     source_df = pd.DataFrame(columns=[
-    #         'df_1',
-    #         'df_2',
-    #         'cross_course',
-    #     ], dtype=float)
-    #
-    #     source_df['df_1'] = df_1[self.price_comparison]
-    #     source_df['df_2'] = df_2[self.price_comparison]
-    #     # source_df.to_csv('out.csv')
-    #     source_df['cross_course'] = source_df['df_1'] / source_df['df_2']
-    #
-    #     source_df = source_df.resample(self.interval).agg({
-    #         'df_1': 'last',
-    #         'df_2': 'last',
-    #         'cross_course': 'last',
-    #     })
-    #
-    #     #  Cross course
-    #     moving_average_cross_course = self.movingaverage_set.get(codename=self.ma_cross_course_codename)
-    #     source_df[moving_average_cross_course.codename] = moving_average_cross_course.get_data(
-    #         source_df=source_df,
-    #         interval=self.interval,
-    #     ).reindex(source_df.index, method='ffill')
-    #
-    #     standard_deviation_cross_course = self.standarddeviation_set.get(codename=self.sd_cross_course_codename)
-    #     source_df[standard_deviation_cross_course.codename] = standard_deviation_cross_course.get_data(
-    #         source_df=source_df,
-    #         interval=self.interval,
-    #     ).reindex(source_df.index, method='ffill')
-    #
-    #     source_df['ad_cross_course'] = (
-    #             source_df['cross_course'] - source_df[moving_average_cross_course.codename].apply(Decimal)
-    #     )
-    #     source_df['sd_cross_course'] = (
-    #             source_df['ad_cross_course'] / source_df[standard_deviation_cross_course.codename].apply(Decimal)
-    #     )
-    #
-    #     # Beta spread
-    #     beta_factor = self.betafactor_set.first()
-    #     source_df['beta'] = beta_factor.get_data(
-    #         source_df=source_df,
-    #         interval=self.interval,
-    #     ).reindex(source_df.index, method='ffill')
-    #
-    #     source_df['beta_spread'] = (
-    #             source_df['df_1'] - source_df['df_2'] * source_df['beta'].apply(Decimal)
-    #             if beta_factor.market_symbol == 'symbol_2' else
-    #             source_df['df_2'] - source_df['df_1'] * source_df['beta'].apply(Decimal)
-    #     )
-    #
-    #     moving_average_beta_spread = self.movingaverage_set.get(codename=self.ma_beta_spread_codename)
-    #     source_df[moving_average_beta_spread.codename] = moving_average_beta_spread.get_data(
-    #         source_df=source_df,
-    #         interval=self.interval,
-    #     ).reindex(source_df.index, method='ffill')
-    #
-    #     standard_deviation_beta_spread = self.standarddeviation_set.get(codename=self.sd_beta_spread_codename)
-    #     source_df[standard_deviation_beta_spread.codename] = standard_deviation_beta_spread.get_data(
-    #         source_df=source_df,
-    #         interval=self.interval,
-    #     ).reindex(source_df.index, method='ffill')
-    #
-    #     source_df['ad_beta_spread'] = (
-    #             source_df['beta_spread'] - source_df[moving_average_beta_spread.codename].apply(Decimal)
-    #     )
-    #     source_df['sd_beta_spread'] = (
-    #             source_df['ad_beta_spread'] / source_df[standard_deviation_beta_spread.codename].apply(Decimal)
-    #     )
-    #
-    #     source_df['pearson'] = source_df['df_1'].rolling(
-    #         window=self.correlation_window,
-    #     ).corr(source_df['df_2'])
-    #     # source_df['spearman'] = source_df['df_1'].rolling(
-    #     #     window=self.correlation_window,
-    #     # ).corr(
-    #     #     source_df['df_2'],
-    #     #     method='spearman',
-    #     # )
-    #
-    #     return df_1, df_2, source_df
-
-
-
-
-    #  Ниже надо выпилить методы
-    # def _get_df(self,
-    #             df_1: pd.DataFrame,
-    #             df_2: pd.DataFrame,
-    #             start_time: datetime,
-    #             end_time: datetime) -> pd.DataFrame:
-    #     """Returned DataFrame"""
-    #     standard_deviation = self.standarddeviation_set.first()
-    #     moving_average = self.movingaverage_set.first()
-    #
-    #     df_cross_course = pd.DataFrame(columns=['cross_course'], dtype=float)
-    #     df_cross_course['cross_course'] = df_1[self.price_comparison] / df_2[self.price_comparison]
-    #
-    #     df_cross_course = df_cross_course.apply(pd.to_numeric, downcast='float')
-    #
-    #     if moving_average:
-    #         moving_average.calculate_values(df_cross_course, moving_average.codename)
-    #         df_cross_course['absolute_deviation'] = (
-    #                 df_cross_course['cross_course'] - df_cross_course[moving_average.codename]
-    #         )
-    #
-    #     if standard_deviation:
-    #         standard_deviation.calculate_values(df_cross_course, standard_deviation.codename)
-    #         df_cross_course['standard_deviation'] = (
-    #             df_cross_course['absolute_deviation'] / df_cross_course[standard_deviation.codename]
-    #         )
-    #
-    #     df_cross_course = df_cross_course.loc[start_time:end_time]
-    #
-    #     # все что ниже вывести в чарт, это исходники для расчета беты
-    #     df_cross_course['variance_2'] = df_2[self.price_comparison].rolling(window=self.b_factor_window).var()
-    #
-    #     df_covariance = pd.DataFrame(columns=['col_1', 'col_2'], dtype=float)
-    #     df_covariance['col_1'] = df_1[self.b_factor_price_comparison]
-    #     df_covariance['col_2'] = df_2[self.b_factor_price_comparison]
-    #
-    #     df_covariance_matrix = df_covariance.rolling(
-    #         window=self.b_factor_window,
-    #     ).cov().dropna().unstack()['col_1']['col_2']
-    #
-    #     df_cross_course['covariance'] = df_covariance_matrix
-    #
-    #     df_cross_course['beta'] = df_cross_course['covariance'] / df_cross_course['variance_2']
-    #
-    #     # df_cross_course['beta_sm'] = self.rolling_beta(
-    #     #     df_covariance['col_1'],
-    #     #     df_covariance['col_2'],
-    #     #     self.b_factor_window,
-    #     # )
-    #
-    #     return df_cross_course
-    #
-    # # --- Функция для расчёта OLS ---
-    # def rolling_beta(self, y, x, window):
-    #     """
-    #     Рассчитывает коэффициент бета для скользящего окна.
-    #     """
-    #     n = len(y)  # Длина исходного ряда
-    #     betas = []  # Список для сохранения бета-коэффициентов
-    #
-    #     for start in range(n - window + 1):
-    #         # Извлекаем окно данных
-    #         y_window = y[start:start + window]
-    #         x_window = x[start:start + window]
-    #
-    #         # Удаляем NaN перед созданием модели
-    #         valid_data = pd.concat([y_window, x_window], axis=1).dropna()
-    #
-    #         # Если в окне нет данных, пропускаем
-    #         if len(valid_data) == 0:
-    #             betas.append(np.nan)
-    #             continue
-    #
-    #         # Извлекаем очищенные данные
-    #         y_clean = valid_data.iloc[:, 0].values.astype(np.float64)  # Зависимая переменная
-    #         x_clean = valid_data.iloc[:, 1].values.astype(np.float64)  # Независимая переменная
-    #
-    #         # Добавляем константу для независимой переменной
-    #         X = sm.add_constant(x_clean)
-    #
-    #         # Строим модель
-    #         model = sm.OLS(y_clean, X).fit()
-    #
-    #         # Сохраняем коэффициент для X
-    #         betas.append(model.params[1])
-    #
-    #     # Добавляем NaN в начало (до первого окна) и в конец (до конца ряда)
-    #     return betas[1:]
-    #     # result = [np.nan] * (window - 1) + betas
-    #     # result = result[:n]  # Обрезаем до длины DataFrame
-    #     # return result
-    #
-    # def get_df(self, start_time: datetime = None, end_time: datetime = None) -> pd.DataFrame:
-    #     start_time = start_time or self.start_time
-    #     end_time = end_time or self.end_time
-    #
-    #     qs_start_time = self.get_qs_start_time(start_time=start_time)
-    #
-    #     df_1 = self.get_symbol_df(
-    #         symbol_pk=self.symbol_1_id,
-    #         qs_start_time=qs_start_time,
-    #         qs_end_time=end_time,
-    #     )
-    #     df_2 = self.get_symbol_df(
-    #         symbol_pk=self.symbol_2_id,
-    #         qs_start_time=qs_start_time,
-    #         qs_end_time=end_time,
-    #     )
-    #     return self._get_df(
-    #         df_1=df_1,
-    #         df_2=df_2,
-    #         start_time=start_time,
-    #         end_time=end_time,
-    #     )
 
 
 class ArbitrationDeal(BaseModel):
@@ -636,10 +349,8 @@ class ArbitrationDeal(BaseModel):
     class State(models.TextChoices):
         OPEN = 'open', 'Open'
         CLOSE = 'close', 'Close'
-        PROFIT = 'profit', 'Profit'
-        LOSS = 'loss', 'Loss'
-        UNKNOWN = 'unknown', 'Unknown'
         CORRECTION = 'correction', 'Correction'
+        STOP_LOSS_CORR = 'stop_loss_corr', 'Stop-loss by correlation'
 
     arbitration = models.ForeignKey(
         Arbitration,

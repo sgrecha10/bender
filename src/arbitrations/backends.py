@@ -36,6 +36,7 @@ class ArbitrationBackend:
             'absolute_spread',
             'standard_deviation',
             'relative_spread',
+            'corr',
         ]
         self.arbitration_df[cols_to_shift] = self.arbitration_df[cols_to_shift].shift(1)
 
@@ -145,9 +146,18 @@ class ArbitrationBackend:
             **data,
         )
 
+    def _current_corr(self, deal_time: datetime):
+        """ Возвращает текущее значение корреляции """
+        index = self._prepare_index(deal_time=deal_time)
+        return self.arbitration_df.loc[index, 'corr']
+
     def _check_open_deal(self, price_1, price_2, deal_time: datetime):
         """ Проверяем, открывать ли сделку по условию """
         if self.deal_uid:
+            return
+
+        if (self.arbitration.corr_open_deal_value
+                and self._current_corr(deal_time) < self.arbitration.corr_open_deal_value):
             return
 
         current_standard_deviation = self._get_current_standard_deviation(price_1, price_2, deal_time)
@@ -176,7 +186,7 @@ class ArbitrationBackend:
 
         return symbol_1_quantity, symbol_2_quantity
 
-    def _close_deal(self, price_1, price_2, deal_time: datetime):
+    def _close_deal(self, price_1, price_2, deal_time: datetime, state: str = ArbitrationDeal.State.CLOSE):
         """ Закрываем все открытые позиции """
         logger.info(f'Closed deal, deal_time: {deal_time}')
 
@@ -187,7 +197,7 @@ class ArbitrationBackend:
             'arbitration': self.arbitration,
             'deal_time': deal_time,
             'deal_uid': self.deal_uid,
-            'state': ArbitrationDeal.State.CLOSE,
+            'state': state,
         }
 
         ArbitrationDeal.objects.create(
@@ -213,6 +223,19 @@ class ArbitrationBackend:
         if np.sign(current_standard_deviation) != np.sign(self.last_current_standard_deviation):
             self._close_deal(price_1, price_2, deal_time)
 
+    def _check_close_deal_by_corr_stop_loss(self, price_1, price_2, deal_time):
+        """ Проверяем, закрывать ли сделку по стоп лоссу если уменьшилась корреляция """
+        if not self.deal_uid:
+            return
+
+        if not self.arbitration.corr_stop_loss_value:
+            return
+
+        index = self._prepare_index(deal_time=deal_time)
+        corr_value = self.arbitration_df.loc[index, 'corr']
+        if corr_value <= self.arbitration.corr_stop_loss_value:
+            self._close_deal(price_1, price_2, deal_time, ArbitrationDeal.State.STOP_LOSS_CORR)
+
     def run_step(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
         """ Получает цену 1 и 2 и timestamp, открывает/закрывает позицию
         :param price_1:
@@ -222,6 +245,8 @@ class ArbitrationBackend:
 
         self._check_open_deal(price_1, price_2, deal_time)
         self._check_close_deal_by_zero_crossing(price_1, price_2, deal_time)
+
+        self._check_close_deal_by_corr_stop_loss(price_1, price_2, deal_time)
 
         # Устанавливаем последнее значение для определения перехода через 0
         self.last_current_standard_deviation = self._get_current_standard_deviation(price_1, price_2, deal_time)

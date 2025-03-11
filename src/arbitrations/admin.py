@@ -127,9 +127,12 @@ class ArbitrationAdmin(admin.ModelAdmin):
             'classes': ('grp-collapse', 'grp-open'),
         }),
 
-        ('Аналитика', {
+        ('Корреляция', {
             'fields': [
-                'correlation_window',
+                'corr_window',
+                'corr_type',
+                'corr_open_deal_value',
+                'corr_stop_loss_value',
             ],
             'classes': ('grp-collapse', 'grp-open'),
         }),

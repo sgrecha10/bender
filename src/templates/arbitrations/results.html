@@ -72,13 +72,7 @@
                 <div>
                     <div>
                         <dit class="sr-title">Сделок закрытых:</dit>
-                        <dit class="sr-value">{{ info.closed_deals|floatformat:0 }}</dit>
-                    </div>
-                </div>
-                <div>
-                    <div>
-                        <dit class="sr-title">Корреляция инструментов:</dit>
-                        <dit class="sr-value">{{ info.correlation|floatformat:3 }}</dit>
+                        <dit class="sr-value">{{ info.closed_deals_quantity|floatformat:0 }}</dit>
                     </div>
                 </div>
                 <div>
@@ -93,7 +87,7 @@
         <table>
             <thead>
                 <tr>
-                    <td>№</td>
+                    <td>deal_uid</td>
                     <td>symbol</td>
                     <td>open_deal_time</td>
                     <td>close_deal_time</td>                    
@@ -103,6 +97,7 @@
                     <td>close_deal_quantity</td>
                     <td>symbol_profit_pt</td>
                     <td>deal_profit_pt</td>
+                    <td>cause</td>
                 </tr>
             </thead>
             {% for item in statistics %}
@@ -116,7 +111,8 @@
                     <td>{{ item.open_deal_quantity }}</td>
                     <td>{{ item.close_deal_quantity }}</td>
                     <td>{{ item.symbol_profit_pt|floatformat:2 }}</td>
-                    <td>{{ item.deal_profit_pt|floatformat:2 }}</td>  
+                    <td>{{ item.deal_profit_pt|floatformat:2 }}</td>
+                    <td>{{ item.cause }}</td>  
                 </tr>
             {% endfor %}
 

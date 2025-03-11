@@ -3,12 +3,15 @@ from django.shortcuts import render
 from django.views.generic import View
 
 from arbitrations.models import Arbitration, ArbitrationDeal
-from django.db.models import Sum, F, Q
+from django.db.models import Sum, F, Q, Window
+from django.db.models.functions.window import FirstValue, LastValue
 
 
 class ResultsView(View):
     template_name = 'arbitrations/results.html'
     arbitration = None
+    deal_uid_last = None
+    symbol_profit_pt_last = None
 
     def get(self, request, *args, **kwargs):
         self.arbitration = Arbitration.objects.get(
@@ -17,35 +20,117 @@ class ResultsView(View):
 
         arbitration_deal_qs = ArbitrationDeal.objects.filter(
             arbitration=self.arbitration,
-        ).values('deal_uid', 'symbol').annotate(
-            symbol_profit_pt=Sum(F('price') * F('quantity')),
-            # deal_date=F('created'),
-        ).order_by('deal_uid')
+        ).annotate(
+            symbol_profit_pt=Window(
+                expression=Sum(F('price') * F('quantity')),
+                partition_by=[F('deal_uid'), F('symbol')],
+            ),
+            open_deal_time=Window(
+                expression=FirstValue('deal_time'),
+                partition_by=[F('deal_uid'), F('symbol')],
+                order_by='id',
+            ),
+            close_deal_time=Window(
+                expression=LastValue('deal_time'),
+                partition_by=[F('deal_uid'), F('symbol')],
+                order_by='id',
+            ),
+            open_deal_price=Window(
+                expression=FirstValue('price'),
+                partition_by=[F('deal_uid'), F('symbol')],
+                order_by='id',
+            ),
+            close_deal_price=Window(
+                expression=LastValue('price'),
+                partition_by=[F('deal_uid'), F('symbol')],
+                order_by='id',
+            ),
+            open_deal_quantity=Window(
+                expression=FirstValue('quantity'),
+                partition_by=[F('deal_uid'), F('symbol')],
+                order_by='id',
+            ),
+            close_deal_quantity=Window(
+                expression=LastValue('quantity'),
+                partition_by=[F('deal_uid'), F('symbol')],
+                order_by='id',
+            ),
+            cause=Window(
+                expression=LastValue('state'),
+                partition_by=[F('deal_uid')],
+                order_by='id',
+            ),
+        ).values(
+            'deal_uid',
+            'symbol',
+            'symbol_profit_pt',
+            'open_deal_time',
+            'close_deal_time',
+            'open_deal_price',
+            'close_deal_price',
+            'open_deal_quantity',
+            'close_deal_quantity',
+            'cause',
+        ).distinct().exclude(
+            open_deal_time=F('close_deal_time'),
+        ).order_by('open_deal_time')
 
-        print('grecha')
-
+        closed_deals_quantity = 0
+        deals_total_profit_pt = 0
         statistics = []
         for item in arbitration_deal_qs:
-
             statistics.append({
                 'deal_number': item['deal_uid'],
                 'symbol': item['symbol'],
-                'open_deal_time': '',
-                'close_deal_time': '',
-                'open_deal_price': '',
-                'close_deal_price': '',
-                'open_deal_quantity': '',
-                'close_deal_quantity': '',
+                'open_deal_time': item['open_deal_time'],
+                'close_deal_time': item['close_deal_time'],
+                'open_deal_price': item['open_deal_price'],
+                'close_deal_price': item['close_deal_price'],
+                'open_deal_quantity': item['open_deal_quantity'],
+                'close_deal_quantity': item['close_deal_quantity'],
                 'symbol_profit_pt': item['symbol_profit_pt'],
             })
+            if self.deal_uid_last == item['deal_uid']:
+                symbol_profit_pt = item['symbol_profit_pt'] + self.symbol_profit_pt_last
+                statistics.append({
+                    'deal_number': item['deal_uid'],
+                    'symbol': item['symbol'],
+                    'open_deal_time': '',
+                    'close_deal_time': '',
+                    'open_deal_price': '',
+                    'close_deal_price': '',
+                    'open_deal_quantity': '',
+                    'close_deal_quantity': '',
+                    'symbol_profit_pt': '',
+                    'deal_profit_pt': symbol_profit_pt,
+                    'cause': item['cause'],
+                })
+                deals_total_profit_pt += symbol_profit_pt
+                closed_deals_quantity += 1
+            self.deal_uid_last = item['deal_uid']
+            self.symbol_profit_pt_last = item['symbol_profit_pt']
 
         context = {
             'title': self.arbitration,
-            # 'info': self._get_information(df_1=df_1, df_2=df_2, deals_total_profit_pt=deals_total_profit_pt),
+            'info': self._get_information(
+                deals_total_profit_pt=deals_total_profit_pt,
+                closed_deals_quantity=closed_deals_quantity,
+            ),
             'statistics': statistics,
         }
 
         return render(request, self.template_name, context=context)
+
+    def _get_information(self, deals_total_profit_pt, closed_deals_quantity):
+        return {
+                'arbitration_codename': self.arbitration.codename,
+                'arbitration_range': f'{self.arbitration.start_time.strftime("%d.%m.%Y %H:%M")} <br> '
+                                     f'{self.arbitration.end_time.strftime("%d.%m.%Y %H:%M")}',
+                'arbitration_interval': self.arbitration.interval,
+                'closed_deals_quantity': closed_deals_quantity,
+                'deals_total_profit_pt': deals_total_profit_pt,
+            }
+
 
 
     # def get(self, request, *args, **kwargs):

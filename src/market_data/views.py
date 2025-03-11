@@ -588,12 +588,12 @@ class ArbitrationChartView(BaseChartView):
             end_time = cleaned_data.get('end_time')
             # interval = cleaned_data.get('interval')
             is_show_result = cleaned_data.get('is_show_result')
-            is_show_analytics = cleaned_data.get('is_show_analytics')
+            # is_show_analytics = cleaned_data.get('is_show_analytics')
 
             source_df = self.arbitration.get_source_df(
                 start_time=start_time,
                 end_time=end_time,
-                is_show_analytics=is_show_analytics,
+                # is_show_analytics=is_show_analytics,
             )
 
             context['title'] = self.arbitration.codename
@@ -601,7 +601,6 @@ class ArbitrationChartView(BaseChartView):
                 arbitration=arbitration,
                 source_df=source_df,
                 is_show_result=is_show_result,
-                is_show_analytics=is_show_analytics,
             )
             # context['info'] = self._get_info_context(
             #     arbitration=arbitration,
@@ -645,12 +644,9 @@ class ArbitrationChartView(BaseChartView):
     def _get_arbitration_chart(self,
                                arbitration: Arbitration,
                                source_df: pd.DataFrame,
-                               is_show_result: bool = False,
-                               is_show_analytics: bool = False):
+                               is_show_result: bool = False):
 
-        row_count = 8
-        if is_show_analytics:
-            row_count += 1
+        row_count = 9
 
         fig = make_subplots(
             rows=row_count, cols=1,
@@ -705,11 +701,10 @@ class ArbitrationChartView(BaseChartView):
             trace=self._get_deviation_trace(df=source_df, column_name='relative_spread'),
         )
 
-        if is_show_analytics:
-            fig.add_trace(
-                row=9, col=1,
-                trace=self._get_line_trace(source_df, 'corr_pearson'),
-            )
+        fig.add_trace(
+            row=9, col=1,
+            trace=self._get_line_trace(source_df, 'corr'),
+        )
 
 
         # fig.add_trace(
