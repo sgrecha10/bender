@@ -150,6 +150,7 @@ class ArbitrationAdmin(admin.ModelAdmin):
         ('Настройки для теста', {
             'fields': [
                 'entry_price_order',
+                'entry_price_interval',
                 'maker_commission',
                 'taker_commission',
             ],

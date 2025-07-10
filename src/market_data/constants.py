@@ -33,20 +33,6 @@ class AllowedInterval(TextChoices):
     MONTH_1 = '1M'
     YEAR_1 = '1A'
 
-# """AllowedInterval"""
-# items_dict = {
-#     item.name: item.value for item in Interval
-#     if item in [
-#         Interval.MINUTE_1,
-#         Interval.HOUR_1,
-#         Interval.DAY_1,
-#         Interval.WEEK_1,
-#         Interval.MONTH_1,
-#         Interval.YEAR_1,
-#     ]
-# }
-# AllowedInterval = TextChoices('AllowedInterval', items_dict)
-
 
 MAP_MINUTE_COUNT = {
     Interval.MINUTE_1: 1,

@@ -245,7 +245,11 @@ class Kline(BaseModel):
     class Meta:
         verbose_name = 'Kline'
         verbose_name_plural = 'Klines'
-        index_together = (
+        # index_together = (
+        #     ('symbol', 'open_time'),
+        #     ('open_time', 'symbol'),
+        # )
+        unique_together = (
             ('symbol', 'open_time'),
             ('open_time', 'symbol'),
         )

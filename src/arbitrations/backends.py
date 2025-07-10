@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal, ROUND_05UP
 
 from django.db.models import Sum
@@ -50,6 +50,9 @@ class ArbitrationBackend:
 
     def _prepare_index(self, deal_time: datetime) -> str:
         """ Приводим deal_time к размерности арбитражной стратегии (если arbitration.interval != 1m) """
+
+        deal_time = datetime.combine(deal_time, datetime.min.time()) if isinstance(deal_time, date) else deal_time
+
         if self.arbitration.interval == AllowedInterval.MINUTE_1:
             return str(deal_time)
         elif self.arbitration.interval == AllowedInterval.HOUR_1:
@@ -58,6 +61,8 @@ class ArbitrationBackend:
             return str(deal_time.replace(hour=0, minute=0))
         else:
             raise ValueError('Disallowed interval of arbitration')
+
+        # return str(deal_time)
 
     def _get_current_source_value(self, price_1, price_2, deal_time: datetime) -> float:
         """ Возвращает значение рассчитанное из текущих цен """
@@ -90,9 +95,9 @@ class ArbitrationBackend:
         """
 
         if standard_deviation > 0:
-            symbol_1_quantity, symbol_2_quantity = -1, 1
-        else:
             symbol_1_quantity, symbol_2_quantity = 1, -1
+        else:
+            symbol_1_quantity, symbol_2_quantity = -1, 1
 
         ratio_type = self.arbitration.ratio_type
         if ratio_type == self.arbitration.SymbolsRatioType.PRICE:
@@ -236,6 +241,10 @@ class ArbitrationBackend:
         if corr_value <= self.arbitration.corr_stop_loss_value:
             self._close_deal(price_1, price_2, deal_time, ArbitrationDeal.State.STOP_LOSS_CORR)
 
+    def _check_correction_deal(self, price_1, price_2, deal_time):
+        """ Проверяем, корректировать ли сделку по бете """
+        pass
+
     def run_step(self, price_1: Decimal, price_2: Decimal, deal_time: datetime):
         """ Получает цену 1 и 2 и timestamp, открывает/закрывает позицию
         :param price_1:
@@ -243,19 +252,24 @@ class ArbitrationBackend:
         :param deal_time:
         """
 
+        # Проверяем, открывать ли сделку по условию
         self._check_open_deal(price_1, price_2, deal_time)
+
+        # Проверяем, закрывать ли сделку по условию
         self._check_close_deal_by_zero_crossing(price_1, price_2, deal_time)
 
+        # Проверяем, закрывать лис делку по стоплосс раскорреляция
         self._check_close_deal_by_corr_stop_loss(price_1, price_2, deal_time)
+
+        # Проверяем, корректировать ли размер  сделки
+        self._check_correction_deal(price_1, price_2, deal_time)
+
+        # Проверяем, закрывать ли сделку по временному stop-loss
+        # pass
 
         # Устанавливаем последнее значение для определения перехода через 0
         self.last_current_standard_deviation = self._get_current_standard_deviation(price_1, price_2, deal_time)
 
-        # Проверяем, закрывать ли сделку по условию
-
-        # Проверяем, закрывать ли сделку по временному stop-loss
-
-        # Проверяем, корректировать ли размер  сделки
 
 
 

@@ -134,6 +134,16 @@ class Arbitration(BaseModel):
         verbose_name='Entry price order',
         help_text='В каком порядке подавать цены свечи при тестировании стратегии',
     )
+    entry_price_interval = models.CharField(
+        choices=[
+            ('1min', 'Minute 1'),
+            ('1D', 'Day 1'),
+        ],
+        default=AllowedInterval.MINUTE_1,
+        max_length=10,
+        verbose_name='Entry price interval',
+        help_text='Интервал входных свечей при тестировании стратегии',
+    )
     maker_commission = models.DecimalField(
         max_digits=4,
         decimal_places=3,
