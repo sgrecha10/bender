@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'strategies',
     'indicators',
     'arbitrations',
+    'defi',
 ]
 
 MIDDLEWARE = [

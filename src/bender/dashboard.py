@@ -71,6 +71,16 @@ class CustomIndexDashboard(Dashboard):
                 ),
             )
         )
+        self.children.append(
+            modules.AppList(
+                'DEFI',
+                column=1,
+                collapsible=True,
+                models=(
+                    'defi.models.UniswapPool',
+                ),
+            )
+        )
 
         self.children.append(
             modules.AppList(
