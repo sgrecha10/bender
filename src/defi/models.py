@@ -9,6 +9,18 @@ class UniswapPool(BaseModel):
         UNISWAP_V3 = 'UNISWAP_V3', ' Uniswap V3'
         UNISWAP_V4 = 'UNISWAP_V4', ' Uniswap V4'
 
+    name = models.CharField(
+        null=True,
+        blank=True,
+        max_length=100,
+        verbose_name='Name',
+    )
+    codename = models.CharField(
+        null=True,
+        blank=True,
+        max_length=100,
+        verbose_name='Codename',
+    )
     pool_type = models.CharField(
         choices=PoolType.choices,
         null=True,
