@@ -7,9 +7,12 @@ COMPOSE_PROJECT_NAME=bender
 ```
 2. Собрать проект
 ```
-docker-compose build
-docker-compose up -d
-docker exec -it bender ./manage.py migrate
+docker compose build
+docker compose up -d
+
+[//]: # (docker exec -it bender ./manage.py migrate)
+docker compose run --rm django ./manage.py migrate
+
 ```
 
 ## PostgresDB
