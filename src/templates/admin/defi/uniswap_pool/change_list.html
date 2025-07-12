@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %} {% load i18n %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    <li>
+        <a href="{% url 'admin:get_uniswap_pools' %}" class="grp-button grp-state-focus">Загрузить данные</a>
+    </li>
+    <li>
+        <a href="{% url 'admin:delete_uniswap_pools' %}" class="grp-button grp-state-focus">Очистить все</a>
+    </li>
+{% endblock %}

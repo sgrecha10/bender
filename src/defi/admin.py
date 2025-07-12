@@ -1,9 +1,13 @@
 from django.contrib import admin
+from django.urls import path
+
+from core.utils.admin_utils import redirect_to_change_list
 from .models import UniswapPool
 
 
 @admin.register(UniswapPool)
 class UniswapPoolAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/defi/uniswap_pool/change_list.html'
     list_display = (
         'id',
         'pool_type',
@@ -67,3 +71,31 @@ class UniswapPoolAdmin(admin.ModelAdmin):
             'classes': ('grp-collapse', 'grp-open'),
         }),
     ]
+
+    def has_add_permission(self, request):
+        return False
+
+    def get_urls(self):
+        urls = super().get_urls()
+        added_urls = [
+            path(
+                'get_uniswap_pools/',
+                self.admin_site.admin_view(self.get_uniswap_pools),
+                name='get_uniswap_pools',
+            ),
+            path(
+                'delete_uniswap_pools/',
+                self.admin_site.admin_view(self.delete_uniswap_pools),
+                name='delete_uniswap_pools',
+            ),
+        ]
+        return added_urls + urls
+
+    def get_uniswap_pools(self, request, *args, **kwargs):
+        message = 'Message 1'
+        return redirect_to_change_list(request, self.model, message)
+
+    def delete_uniswap_pools(self, request, *args, **kwargs):
+        UniswapPool.objects.all().delete()
+        message = 'UniswapPool table is cleared.'
+        return redirect_to_change_list(request, self.model, message)
