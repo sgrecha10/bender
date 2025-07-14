@@ -3,6 +3,7 @@ from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
 from .models import UniswapPool
+from django.utils.safestring import mark_safe
 
 
 @admin.register(UniswapPool)
@@ -92,7 +93,7 @@ class UniswapPoolAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def get_uniswap_pools(self, request, *args, **kwargs):
-        message = 'Message 1'
+        message = mark_safe('Таска запущена. <a href="http://localhost:5555" target="_blank">Flower</a>')
         return redirect_to_change_list(request, self.model, message)
 
     def delete_uniswap_pools(self, request, *args, **kwargs):
