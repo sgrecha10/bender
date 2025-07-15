@@ -182,6 +182,11 @@ PERIODIC_CELERY_TASKS_DEBUG = config(
     'PERIODIC_CELERY_TASKS_DEBUG', default=False, cast=bool
 )
 
+ALCHEMY_CLIENT = {
+    'uri': config('ALCHEMY_CLIENT_URI', default='', cast=str),
+    'token': config('ALCHEMY_CLIENT_TOKEN', default='', cast=str),
+}
+
 LOGGING = {
     'version': 1,
     "disable_existing_loggers": False,

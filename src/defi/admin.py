@@ -4,15 +4,15 @@ from django.urls import path
 from core.utils.admin_utils import redirect_to_change_list
 from .models import UniswapPool
 from django.utils.safestring import mark_safe
+from .tasks import task_get_uniswap_pools
 
 
 @admin.register(UniswapPool)
 class UniswapPoolAdmin(admin.ModelAdmin):
     change_list_template = 'admin/defi/uniswap_pool/change_list.html'
     list_display = (
-        'id',
-        'pool_type',
         'pool_address',
+        'pool_type',
         'token_0_address',
         'token_1_address',
         'fee',
@@ -41,9 +41,8 @@ class UniswapPoolAdmin(admin.ModelAdmin):
     fieldsets = [
         ('Main', {
             'fields': [
-                # 'id',
-                'pool_type',
                 'pool_address',
+                'pool_type',
                 'token_0_address',
                 'token_1_address',
                 'fee',
@@ -93,6 +92,7 @@ class UniswapPoolAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def get_uniswap_pools(self, request, *args, **kwargs):
+        task_get_uniswap_pools.delay()
         message = mark_safe('Таска запущена. <a href="http://localhost:5555" target="_blank">Flower</a>')
         return redirect_to_change_list(request, self.model, message)
 

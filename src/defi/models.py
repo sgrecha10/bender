@@ -9,29 +9,16 @@ class UniswapPool(BaseModel):
         UNISWAP_V3 = 'UNISWAP_V3', ' Uniswap V3'
         UNISWAP_V4 = 'UNISWAP_V4', ' Uniswap V4'
 
-    name = models.CharField(
-        null=True,
-        blank=True,
-        max_length=100,
-        verbose_name='Name',
-    )
-    codename = models.CharField(
-        null=True,
-        blank=True,
-        max_length=100,
-        verbose_name='Codename',
+    pool_address = models.CharField(
+        primary_key=True,
+        max_length=42,
+        verbose_name='Pool Address',
     )
     pool_type = models.CharField(
         choices=PoolType.choices,
         null=True,
         blank=True,
         verbose_name='Pool Type',
-    )
-    pool_address = models.CharField(
-        null=True,
-        blank=True,
-        max_length=42,
-        verbose_name='Pool Address',
     )
     token_0_address = models.CharField(
         null=True,
@@ -101,4 +88,4 @@ class UniswapPool(BaseModel):
         verbose_name_plural = 'Uniswap Pools'
 
     def __str__(self):
-        return f'{self.id} - {self.pool_type} - {self.pool_address}'
+        return f'{self.pool_type} - {self.pool_address}'
