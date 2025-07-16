@@ -75,3 +75,49 @@ def task_get_uniswap_pools(self):
             # print('\n')
         except Exception as e:
             print(f"Error at block range {from_block}-{to_block}: {e}")
+
+
+@app.task(bind=True)
+def task_get_txpool_content(self):
+    """Запрос в mempool"""
+
+    # import json
+    # import requests
+    #
+    # url = "http://172.17.0.1:32769"
+    # payload = {
+    #     "jsonrpc": "2.0",
+    #     "method": "web3_clientVersion",
+    #     "params": [],
+    #     "id": 1
+    # }
+    #
+    # headers = {"Content-Type": "application/json"}
+    #
+    # response = requests.post(url, json=payload, headers=headers)
+    # print("Status code:", response.status_code)
+    # print("Response:", response.text)
+    #
+    # return
+
+
+    # url = 'http://127.0.0.1:32769'
+
+    # url = 'http://127.0.0.1:32769'
+    url = 'http://172.17.0.1:32769'  # это IP какой имеет основной хост из докера, узнать его - ip addr show docker0
+
+    web3 = Web3(Web3.HTTPProvider(url))
+    print("Connected:", web3.is_connected())
+
+    # Получить все транзакции из мемпула
+    pending = web3.geth.txpool.content()['pending']
+
+    print(pending)
+
+    # Вывести все адреса и их tx
+    for address, txs in pending.items():
+        for nonce, tx in txs.items():
+            print(
+                f"{address} → {tx['to']}, "
+                f"value={web3.from_wei(int(tx['value'], 16), 'ether')}"
+            )
