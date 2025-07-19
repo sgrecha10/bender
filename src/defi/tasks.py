@@ -5,6 +5,10 @@ from bender.celery_entry import app
 from .models import UniswapPool
 from .utils import decode_hexbytes
 from django.conf import settings
+from web3.providers.persistent import (
+    AsyncIPCProvider,
+    WebSocketProvider,
+)
 
 
 @app.task(bind=True)

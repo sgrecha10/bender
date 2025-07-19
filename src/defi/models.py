@@ -89,3 +89,85 @@ class UniswapPool(BaseModel):
 
     def __str__(self):
         return f'{self.pool_type} - {self.pool_address}'
+
+
+class Transaction(BaseModel):
+    tx_hash = models.CharField(
+        primary_key=True,
+        max_length=255,
+        verbose_name='Transaction Hash',
+    )
+    block_hash = models.CharField(
+        null=True,
+        max_length=255,
+        verbose_name='Block Hash',
+    )
+    block_number = models.PositiveBigIntegerField(
+        null=True,
+        verbose_name='Block Number',
+    )
+    from_address = models.CharField(
+        null=True,
+        max_length=42,
+        verbose_name='From',
+    )
+    to_address = models.CharField(
+        null=True,
+        max_length=42,
+        verbose_name='To',
+    )
+    value = models.TextField(
+        null=True,
+        verbose_name='Value',
+    )
+    gas = models.TextField(
+        null=True,
+        verbose_name='Gas',
+    )
+    input = models.TextField(
+        null=True,
+        verbose_name='Input',
+    )
+    nonce = models.PositiveBigIntegerField(
+        null=True,
+        verbose_name='Nonce',
+    )
+    tx_index = models.PositiveIntegerField(
+        null=True,
+        verbose_name='Transaction Index',
+    )
+    gas_price = models.TextField(
+        null=True,
+        verbose_name='gasPrice',
+    )
+    max_fee_per_gas = models.TextField(
+        null=True,
+        verbose_name='maxFeePerGas',
+    )
+    max_priority_fee_per_gas = models.TextField(
+        null=True,
+        verbose_name='maxPriorityFeePerGas',
+    )
+    type = models.PositiveSmallIntegerField(
+        null=True,
+        verbose_name='Type',
+    )
+    chain_id = models.PositiveBigIntegerField(
+        null=True,
+        verbose_name='ChainId',
+    )
+    y_parity = models.PositiveSmallIntegerField(
+        null=True,
+        verbose_name='yParity',
+    )
+    access_list = models.TextField(
+        null=True,
+        verbose_name='Access List',
+    )
+
+    class Meta:
+        verbose_name = 'Transaction'
+        verbose_name_plural = 'Transactions'
+
+    def __str__(self):
+        return self.tx_hash

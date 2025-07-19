@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
-from .models import UniswapPool
+from .models import UniswapPool, Transaction
 from django.utils.safestring import mark_safe
 from .tasks import task_get_uniswap_pools
 
@@ -100,3 +100,66 @@ class UniswapPoolAdmin(admin.ModelAdmin):
         UniswapPool.objects.all().delete()
         message = 'UniswapPool table is cleared.'
         return redirect_to_change_list(request, self.model, message)
+
+
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    ordering = ('-created',)
+    list_display = (
+        'tx_hash',
+        'updated',
+        'created',
+    )
+    readonly_fields = (
+        'tx_hash',
+        'block_hash',
+        'block_number',
+        'from_address',
+        'to_address',
+        'value',
+        'gas',
+        'input',
+        'nonce',
+        'tx_index',
+        'gas_price',
+        'max_fee_per_gas',
+        'max_priority_fee_per_gas',
+        'type',
+        'chain_id',
+        'y_parity',
+        'access_list',
+    )
+    fieldsets = [
+        ('Common', {
+            'fields': [
+                'tx_hash',
+                'block_hash',
+                'block_number',
+                'tx_index',
+                'from_address',
+                'to_address',
+                'value',
+                'gas',
+                'input',
+                'nonce',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+        ('Комиссии', {
+            'fields': [
+                'gas_price',
+                'max_fee_per_gas',
+                'max_priority_fee_per_gas',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+        ('Подпись и тип', {
+            'fields': [
+                'type',
+                'chain_id',
+                'y_parity',
+                'access_list',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+    ]

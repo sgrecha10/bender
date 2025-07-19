@@ -78,6 +78,7 @@ class CustomIndexDashboard(Dashboard):
                 collapsible=True,
                 models=(
                     'defi.models.UniswapPool',
+                    'defi.models.MempoolTransaction',
                 ),
             )
         )
