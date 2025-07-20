@@ -83,7 +83,9 @@ def task_get_uniswap_pools(self):
 
 @app.task(bind=True)
 def task_get_txpool_content(self):
-    """Запрос в mempool"""
+    """Запрос в mempool
+    Получаем мгновенный снимок
+    """
 
     # import json
     # import requests
@@ -125,3 +127,47 @@ def task_get_txpool_content(self):
                 f"{address} → {tx['to']}, "
                 f"value={web3.from_wei(int(tx['value'], 16), 'ether')}"
             )
+
+
+def task_call_contract():
+    url = 'http://172.17.0.1:32769'
+
+    w3 = Web3(Web3.HTTPProvider(url))
+    print('Connected:', w3.is_connected())
+    assert w3.is_connected()
+
+    # данные контракта
+    contract_address = '0x1A001C36dcF27899812168503E0c2Ad3de499B7d'
+    abi = [{"stateMutability": "nonpayable", "type": "function", "name": "update_data", "inputs": [{"name": "_msg", "type": "string"}, {"name": "_user", "type": "address"}, {"name": "_nums", "type": "uint256[]"}], "outputs": []}, {"stateMutability": "view", "type": "function", "name": "message", "inputs": [], "outputs": [{"name": "", "type": "string"}]}, {"stateMutability": "view", "type": "function", "name": "user", "inputs": [], "outputs": [{"name": "", "type": "address"}]}, {"stateMutability": "view", "type": "function", "name": "numbers", "inputs": [{"name": "arg0", "type": "uint256"}], "outputs": [{"name": "", "type": "uint256"}]}, {"stateMutability": "view", "type": "function", "name": "count", "inputs": [], "outputs": [{"name": "", "type": "uint256"}]}]
+
+    contract_address = Web3.to_checksum_address(contract_address)
+
+    contract = w3.eth.contract(
+        address=contract_address,
+        abi=abi,
+    )
+
+    # Данные
+    message = 'Hi from Python 555'
+    # recipient = '0xRecipientAddressHere'
+    recipient = contract_address
+    numbers = [1, 2, 3, 4]
+
+    account = '0x8943545177806ED17B9F23F0a21ee5948eCaa776'
+    nonce = w3.eth.get_transaction_count(account)
+
+    estimated_gas = contract.functions.update_data(message, recipient, numbers).estimate_gas({'from': account})
+    print('estimated_gas', estimated_gas)
+
+    tx = contract.functions.update_data(message, recipient, numbers).build_transaction({
+        'from': account,
+        'nonce': nonce,
+        'gas': estimated_gas + 10_000,  # запас
+        'gasPrice': w3.to_wei('5', 'gwei'),
+    })
+
+    # Подпись и отправка
+    private_key = '0xbcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31'
+    signed = w3.eth.account.sign_transaction(tx, private_key)
+    tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
+    print('TX sent:', tx_hash.hex())
