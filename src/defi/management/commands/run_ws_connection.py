@@ -22,7 +22,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('Остановлено пользователем (Ctrl+C)'))
 
     async def listen_to_mempool(self):
-        async with AsyncWeb3(WebSocketProvider('ws://172.17.0.1:32770')) as w3:
+        async with AsyncWeb3(WebSocketProvider('ws://172.17.0.1:32771')) as w3:
             subscription_id = await w3.eth.subscribe('newPendingTransactions')
             self.stdout.write(f'Подписка активна: {subscription_id}')
 

@@ -171,3 +171,36 @@ class Transaction(BaseModel):
 
     def __str__(self):
         return self.tx_hash
+
+
+class SwapChain(BaseModel):
+    codename = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name='Codename',
+    )
+    name = models.CharField(
+        max_length=255,
+        verbose_name='Name',
+    )
+    pool_0 = models.ForeignKey(
+        UniswapPool,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='pool_0',
+        verbose_name='Pool 0',
+    )
+    pool_1 = models.ForeignKey(
+        UniswapPool,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='pool_1',
+        verbose_name='Pool 1',
+    )
+
+    class Meta:
+        verbose_name = 'Swap Chain'
+        verbose_name_plural = 'Swap Chains'
+
+    def __str__(self):
+        return str(self.id)

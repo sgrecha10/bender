@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
-from .models import UniswapPool, Transaction
+from .models import UniswapPool, Transaction, SwapChain
 from django.utils.safestring import mark_safe
 from .tasks import task_get_uniswap_pools
 
@@ -10,6 +10,7 @@ from .tasks import task_get_uniswap_pools
 @admin.register(UniswapPool)
 class UniswapPoolAdmin(admin.ModelAdmin):
     change_list_template = 'admin/defi/uniswap_pool/change_list.html'
+    list_filter = ('pool_type',)
     list_display = (
         'pool_address',
         'pool_type',
@@ -105,8 +106,11 @@ class UniswapPoolAdmin(admin.ModelAdmin):
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     ordering = ('-created',)
+    list_filter = ('type',)
+    search_fields = ('tx_hash',)
     list_display = (
         'tx_hash',
+        'type',
         'updated',
         'created',
     )
@@ -163,3 +167,24 @@ class TransactionAdmin(admin.ModelAdmin):
             'classes': ('grp-collapse', 'grp-open'),
         }),
     ]
+
+
+@admin.register(SwapChain)
+class SwapChainAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'codename',
+        'name',
+        'pool_0',
+        'pool_1',
+        'updated',
+        'created',
+    )
+    raw_id_fields = (
+        'pool_0',
+        'pool_1'
+    )
+    readonly_fields = (
+        'updated',
+        'created',
+    )

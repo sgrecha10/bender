@@ -153,6 +153,8 @@ def task_call_contract():
     recipient = contract_address
     numbers = [1, 2, 3, 4]
 
+
+    # account = Account.from_key(PRIVATE_KEY)  # это работает, переписать.
     account = '0x8943545177806ED17B9F23F0a21ee5948eCaa776'
     nonce = w3.eth.get_transaction_count(account)
 

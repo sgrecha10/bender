@@ -79,6 +79,7 @@ class CustomIndexDashboard(Dashboard):
                 models=(
                     'defi.models.UniswapPool',
                     'defi.models.MempoolTransaction',
+                    'defi.models.SwapChain',
                 ),
             )
         )
