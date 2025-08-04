@@ -12,14 +12,74 @@ from web3.providers.persistent import (
 
 
 @app.task(bind=True)
-def task_get_uniswap_pools(self):
+def task_get_uniswap_pools_v2(self):
+    # Подключение к Ethereum-ноде (можно заменить на Infura, Alchemy и т.д.)
+    # web3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"))
+    url = settings.ALCHEMY_CLIENT['uri'] + settings.ALCHEMY_CLIENT['token']
+    web3 = Web3(Web3.HTTPProvider(url))
+
+    factory_address = Web3.to_checksum_address('0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f')  # v2
+    start_block = 10000835  # Uniswap V2 Factory deployment block
+    end_block = web3.eth.block_number
+    step = 500
+
+    topic = web3.keccak(text="PairCreated(address,address,address,uint256)").hex()
+
+    for block in range(start_block, end_block, step):
+        from_block = block
+        to_block = min(block + step - 1, end_block)
+
+        try:
+            logs = web3.eth.get_logs({
+                "fromBlock": from_block,
+                "toBlock": to_block,
+                "address": factory_address,
+                "topics": [topic]
+            })
+
+            for log in logs:
+                data = log['data']
+                arg_types = ['uint256', 'address']
+                decoded_data = decode_abi(arg_types, data)
+                topics = log['topics']
+                block_hash = log['blockHash']
+                block_number = log['blockNumber']
+                block_timestamp = log['blockTimestamp']
+                transaction_hash = log['transactionHash']
+                transaction_index = log['transactionIndex']
+                log_index = log['logIndex']
+                removed = log['removed']
+
+                UniswapPool.objects.update_or_create(
+                    pool_address=decode_hexbytes(decoded_data[0], kind='address'),
+                    defaults={
+                        'pool_type': UniswapPool.PoolType.UNISWAP_V2,
+                        'token_0_address': decode_hexbytes(topics[1], kind='address'),
+                        'token_1_address': decode_hexbytes(topics[2], kind='address'),
+                        'fee': 3000,  # или 0.003. короче для всех пулов 0,30%
+                        'block_hash': decode_hexbytes(block_hash),
+                        'block_number': block_number,
+                        'block_timestamp': decode_hexbytes(block_timestamp, kind='int'),
+                        'transaction_hash': decode_hexbytes(transaction_hash),
+                        'transaction_index': transaction_index,
+                        'log_index': log_index,
+                        'removed': removed,
+                    }
+                )
+
+        except Exception as e:
+            print(f"Error at block range {from_block}-{to_block}: {e}")
+
+
+@app.task(bind=True)
+def task_get_uniswap_pools_v3(self):
     # Подключение к Ethereum-ноде (можно заменить на Infura, Alchemy и т.д.)
     # web3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"))
     url = settings.ALCHEMY_CLIENT['uri'] + settings.ALCHEMY_CLIENT['token']
     web3 = Web3(Web3.HTTPProvider(url))
 
     # ver2
-    factory_address = Web3.to_checksum_address("0x1F98431c8aD98523631AE4a59f267346ea31F984")
+    factory_address = Web3.to_checksum_address("0x1F98431c8aD98523631AE4a59f267346ea31F984")  # v3
     start_block = 12369621  # Uniswap V3 Factory deployment block
     end_block = web3.eth.block_number
     step = 500

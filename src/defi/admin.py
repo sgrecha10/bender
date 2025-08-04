@@ -4,7 +4,7 @@ from django.urls import path
 from core.utils.admin_utils import redirect_to_change_list
 from .models import UniswapPool, Transaction, SwapChain
 from django.utils.safestring import mark_safe
-from .tasks import task_get_uniswap_pools
+from .tasks import task_get_uniswap_pools_v3, task_get_uniswap_pools_v2
 
 
 @admin.register(UniswapPool)
@@ -93,7 +93,8 @@ class UniswapPoolAdmin(admin.ModelAdmin):
         return added_urls + urls
 
     def get_uniswap_pools(self, request, *args, **kwargs):
-        task_get_uniswap_pools.delay()
+        task_get_uniswap_pools_v2.delay()
+        task_get_uniswap_pools_v3.delay()
         message = mark_safe('Таска запущена. <a href="http://localhost:5555" target="_blank">Flower</a>')
         return redirect_to_change_list(request, self.model, message)
 
