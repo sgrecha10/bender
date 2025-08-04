@@ -25,6 +25,15 @@ docker exec -i bender_postgres su postgres -c "dropdb -U bender bender"
 ```
 docker exec -i bender_postgres su postgres -c "createdb -U bender -O bender bender"
 ```
+```
+docker exec -i bender_postgres su postgres -c "pg_dump -U bender bender" > dump-data.sql
+```
+```
+docker exec -i bender_postgres su postgres -c "psql -U bender -d bender" < dump-data.sql
+```
+```
+docker exec -i bender_postgres su postgres -c "pg_restore -U bender -d bender" < dump-data.bin
+```
 
 ## Linters
 ```
