@@ -5,6 +5,7 @@ from bender.celery_entry import app
 from .models import UniswapPool, ERC20Token
 from .utils import decode_hexbytes
 from django.conf import settings
+import time
 from web3.providers.persistent import (
     AsyncIPCProvider,
     WebSocketProvider,
@@ -241,10 +242,25 @@ def task_get_erc20_eip2612(self, token_address: str):
     address = Web3.to_checksum_address(token_address)
     contract = web3.eth.contract(address=address, abi=ERC20_PERMIT_ABI)
 
-    name = contract.functions.name().call()
-    symbol = contract.functions.symbol().call()
-    decimals = contract.functions.decimals().call()
-    total_supply = contract.functions.totalSupply().call()
+    try:
+        name = contract.functions.name().call()
+    except:
+        name = None
+
+    try:
+        symbol = str(contract.functions.symbol().call())
+    except:
+        symbol = None
+
+    try:
+        decimals = contract.functions.decimals().call()
+    except:
+        decimals = None
+
+    try:
+        total_supply = contract.functions.totalSupply().call()
+    except:
+        total_supply = None
 
     try:
         owner = contract.functions.owner().call()
@@ -264,18 +280,18 @@ def task_get_erc20_eip2612(self, token_address: str):
         domain_separator = None
         # print("❌ Токен не поддерживает Permit")
 
-    print("Name:", name)
-    print("Symbol:", symbol)
-    print("Decimals:", decimals)
-    print("Total Supply:", total_supply)
-    # print("balanceOf:", contract.functions.balanceOf().call())
-    # print("allowance:", contract.functions.allowance().call())
-    print("Owner:", owner)
-    print("Owner:", decode_hexbytes(owner))
-    print("Version:", version)
-    print('domain_separator', decode_hexbytes(domain_separator))
+    # print("Name:", name)
+    # print("Symbol:", symbol)
+    # print("Decimals:", decimals)
+    # print("Total Supply:", total_supply)
+    # # print("balanceOf:", contract.functions.balanceOf().call())
+    # # print("allowance:", contract.functions.allowance().call())
+    # print("Owner:", owner)
+    # print("Owner:", decode_hexbytes(owner))
+    # print("Version:", version)
+    # print('domain_separator', decode_hexbytes(domain_separator))
 
-    ERC20Token.objects.update_or_create(
+    item, _ = ERC20Token.objects.update_or_create(
         address=token_address,
         defaults={
             'name': name,
@@ -287,6 +303,45 @@ def task_get_erc20_eip2612(self, token_address: str):
             'domain_separator': decode_hexbytes(domain_separator),
         }
     )
+    return item and item.pk
+
+
+@app.task(bind=True)
+def task_get_tokens_from_uniswap_pool(self):
+    # token 0
+    uniswap_pool_qs = list(
+        UniswapPool.objects.all().distinct(
+            'token_0_address'
+        ).values_list('token_0_address', flat=True)
+    )
+
+    i = 0
+    for token in uniswap_pool_qs:
+        if ERC20Token.objects.filter(address=token).exists():
+            continue
+        task_get_erc20_eip2612.delay(token_address=token)
+        i += 1
+        if i == 10:
+            i = 0
+            time.sleep(1)
+
+    # token 1
+    uniswap_pool_qs = list(
+        UniswapPool.objects.all().distinct(
+            'token_1_address'
+        ).values_list('token_1_address', flat=True)
+    )
+
+    for token in uniswap_pool_qs:
+        if ERC20Token.objects.filter(address=token).exists():
+            continue
+        task_get_erc20_eip2612.delay(token_address=token)
+        i += 1
+        if i == 10:
+            i = 0
+            time.sleep(1)
+
+
 
 
 # ниже всякая фигня.

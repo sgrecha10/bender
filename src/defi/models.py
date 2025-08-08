@@ -226,8 +226,9 @@ class ERC20Token(BaseModel):
         null=True,
         verbose_name='Decimals',
     )
-    total_supply = models.BigIntegerField(
+    total_supply = models.CharField(
         null=True,
+        max_length=255,
         verbose_name='Total Supply',
     )
     owner = models.CharField(

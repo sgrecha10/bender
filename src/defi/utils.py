@@ -1,7 +1,7 @@
 from hexbytes import HexBytes
 
 
-def decode_hexbytes(value: HexBytes, kind: str = "auto") -> str:
+def decode_hexbytes(value: HexBytes, kind: str = "auto") -> [None | str]:
     """
     Преобразует HexBytes в строку без незначащих нулей.
 
@@ -9,6 +9,9 @@ def decode_hexbytes(value: HexBytes, kind: str = "auto") -> str:
     :param kind: один из 'auto', 'int', 'address', 'hash', 'raw'
     :return: человекочитаемая строка
     """
+    if not value:
+        return
+
     if not isinstance(value, HexBytes):
         value = HexBytes(value)
 
