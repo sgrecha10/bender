@@ -2,7 +2,7 @@ from eth_abi import decode as decode_abi
 from web3 import Web3
 
 from bender.celery_entry import app
-from .models import UniswapPool
+from .models import UniswapPool, ERC20Token
 from .utils import decode_hexbytes
 from django.conf import settings
 from web3.providers.persistent import (
@@ -10,13 +10,15 @@ from web3.providers.persistent import (
     WebSocketProvider,
 )
 
+def _get_endpoint_uri():
+    # Подключение к Ethereum-ноде (можно заменить на Infura, Alchemy и т.д.)
+    # web3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"))
+    return settings.ALCHEMY_CLIENT['uri'] + settings.ALCHEMY_CLIENT['token']
+
 
 @app.task(bind=True)
 def task_get_uniswap_pools_v2(self):
-    # Подключение к Ethereum-ноде (можно заменить на Infura, Alchemy и т.д.)
-    # web3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"))
-    url = settings.ALCHEMY_CLIENT['uri'] + settings.ALCHEMY_CLIENT['token']
-    web3 = Web3(Web3.HTTPProvider(url))
+    web3 = Web3(Web3.HTTPProvider(endpoint_uri=_get_endpoint_uri()))
 
     factory_address = Web3.to_checksum_address('0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f')  # v2
     start_block = 10000835  # Uniswap V2 Factory deployment block
@@ -73,10 +75,7 @@ def task_get_uniswap_pools_v2(self):
 
 @app.task(bind=True)
 def task_get_uniswap_pools_v3(self):
-    # Подключение к Ethereum-ноде (можно заменить на Infura, Alchemy и т.д.)
-    # web3 = Web3(Web3.HTTPProvider("https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID"))
-    url = settings.ALCHEMY_CLIENT['uri'] + settings.ALCHEMY_CLIENT['token']
-    web3 = Web3(Web3.HTTPProvider(url))
+    web3 = Web3(Web3.HTTPProvider(endpoint_uri=_get_endpoint_uri()))
 
     # ver2
     factory_address = Web3.to_checksum_address("0x1F98431c8aD98523631AE4a59f267346ea31F984")  # v3
@@ -141,6 +140,156 @@ def task_get_uniswap_pools_v3(self):
             print(f"Error at block range {from_block}-{to_block}: {e}")
 
 
+@app.task(bind=True)
+def task_get_erc20_eip2612(self, token_address: str):
+    web3 = Web3(Web3.HTTPProvider(endpoint_uri=_get_endpoint_uri()))
+
+    ERC20_PERMIT_ABI = [
+        # --- ERC20 стандарт ---
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "name",
+            "outputs": [{"name": "", "type": "string"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "symbol",
+            "outputs": [{"name": "", "type": "string"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "decimals",
+            "outputs": [{"name": "", "type": "uint8"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "totalSupply",
+            "outputs": [{"name": "", "type": "uint256"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [{"name": "owner", "type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"name": "balance", "type": "uint256"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [
+                {"name": "owner", "type": "address"},
+                {"name": "spender", "type": "address"},
+            ],
+            "name": "allowance",
+            "outputs": [{"name": "remaining", "type": "uint256"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "version",
+            "outputs": [{"name": "", "type": "string"}],
+            "type": "function"
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "owner",
+            "outputs": [{"name": "", "type": "address"}],
+            "type": "function"
+        },
+
+        # --- Permit (EIP-2612) ---
+        {
+            "constant": False,
+            "inputs": [
+                {"name": "owner", "type": "address"},
+                {"name": "spender", "type": "address"},
+                {"name": "value", "type": "uint256"},
+                {"name": "deadline", "type": "uint256"},
+                {"name": "v", "type": "uint8"},
+                {"name": "r", "type": "bytes32"},
+                {"name": "s", "type": "bytes32"},
+            ],
+            "name": "permit",
+            "outputs": [],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [{"name": "owner", "type": "address"}],
+            "name": "nonces",
+            "outputs": [{"name": "", "type": "uint256"}],
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "DOMAIN_SEPARATOR",
+            "outputs": [{"name": "", "type": "bytes32"}],
+            "type": "function",
+        },
+    ]
+    # token_address = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'
+    address = Web3.to_checksum_address(token_address)
+    contract = web3.eth.contract(address=address, abi=ERC20_PERMIT_ABI)
+
+    name = contract.functions.name().call()
+    symbol = contract.functions.symbol().call()
+    decimals = contract.functions.decimals().call()
+    total_supply = contract.functions.totalSupply().call()
+
+    try:
+        owner = contract.functions.owner().call()
+    except:
+        owner = None
+
+    try:
+        version = contract.functions.version().call()
+    except:
+        version = None
+
+    try:
+        domain_separator = contract.functions.DOMAIN_SEPARATOR().call()
+        # print("✅ Токен поддерживает Permit (EIP-2612)")
+        # print(decode_hexbytes(domain_separator))
+    except:
+        domain_separator = None
+        # print("❌ Токен не поддерживает Permit")
+
+    print("Name:", name)
+    print("Symbol:", symbol)
+    print("Decimals:", decimals)
+    print("Total Supply:", total_supply)
+    # print("balanceOf:", contract.functions.balanceOf().call())
+    # print("allowance:", contract.functions.allowance().call())
+    print("Owner:", owner)
+    print("Owner:", decode_hexbytes(owner))
+    print("Version:", version)
+    print('domain_separator', decode_hexbytes(domain_separator))
+
+    ERC20Token.objects.update_or_create(
+        address=token_address,
+        defaults={
+            'name': name,
+            'symbol': symbol,
+            'decimals': decimals,
+            'total_supply': total_supply,
+            'owner': decode_hexbytes(owner),
+            'version': version,
+            'domain_separator': decode_hexbytes(domain_separator),
+        }
+    )
+
+
+# ниже всякая фигня.
 @app.task(bind=True)
 def task_get_txpool_content(self):
     """Запрос в mempool

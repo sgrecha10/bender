@@ -204,3 +204,51 @@ class SwapChain(BaseModel):
 
     def __str__(self):
         return str(self.id)
+
+
+class ERC20Token(BaseModel):
+    address = models.CharField(
+        primary_key=True,
+        max_length=42,
+        verbose_name='Address',
+    )
+    name = models.CharField(
+        null=True,
+        max_length=100,
+        verbose_name='Name',
+    )
+    symbol = models.CharField(
+        null=True,
+        max_length=50,
+        verbose_name='Symbol',
+    )
+    decimals = models.PositiveSmallIntegerField(
+        null=True,
+        verbose_name='Decimals',
+    )
+    total_supply = models.BigIntegerField(
+        null=True,
+        verbose_name='Total Supply',
+    )
+    owner = models.CharField(
+        null=True,
+        max_length=42,
+        verbose_name='Owner',
+    )
+    version = models.CharField(
+        null=True,
+        max_length=50,
+        verbose_name='Version',
+    )
+    domain_separator = models.CharField(
+        null=True,
+        max_length=255,
+        verbose_name='Domain Separator',
+    )
+
+    class Meta:
+        verbose_name = 'ERC-20 Token'
+        verbose_name_plural = 'ERC-20 Tokens'
+
+    def __str__(self):
+        return f'ERC20 {self.pk}'

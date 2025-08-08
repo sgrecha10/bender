@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 
 from core.utils.admin_utils import redirect_to_change_list
-from .models import UniswapPool, Transaction, SwapChain
+from .models import UniswapPool, Transaction, SwapChain, ERC20Token
 from django.utils.safestring import mark_safe
 from .tasks import task_get_uniswap_pools_v3, task_get_uniswap_pools_v2
 
@@ -189,3 +189,50 @@ class SwapChainAdmin(admin.ModelAdmin):
         'updated',
         'created',
     )
+
+
+@admin.register(ERC20Token)
+class ERC20TokenAdmin(admin.ModelAdmin):
+    change_list_template = 'admin/defi/erc20_token/change_list.html'
+    list_display = (
+        'address',
+        'name',
+        'symbol',
+        'decimals',
+        'total_supply',
+        # 'owner',
+        'version',
+        # 'domain_separator',
+        'updated',
+        'created',
+    )
+
+    readonly_fields = (
+        'address',
+        'name',
+        'symbol',
+        'decimals',
+        'total_supply',
+        'owner',
+        'version',
+        'domain_separator',
+        'server_time',
+        'updated',
+        'created',
+    )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        added_urls = [
+            path(
+                'get_tokens_from_uniswap_pool/',
+                self.admin_site.admin_view(self.get_tokens_from_uniswap_pool),
+                name='get_tokens_from_uniswap_pool',
+            ),
+        ]
+        return added_urls + urls
+
+    def get_tokens_from_uniswap_pool(self, request, *args, **kwargs):
+        # сюда таску которая будет вытаскивать уникальные токены из UniswapPool и запрашивать по ним данные
+        message = mark_safe('Таска запущена. <a href="http://localhost:5555" target="_blank">Flower</a>')
+        return redirect_to_change_list(request, self.model, message)

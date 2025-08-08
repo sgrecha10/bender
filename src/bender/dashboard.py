@@ -80,6 +80,7 @@ class CustomIndexDashboard(Dashboard):
                     'defi.models.UniswapPool',
                     'defi.models.MempoolTransaction',
                     'defi.models.SwapChain',
+                    'defi.models.ERC20Token',
                 ),
             )
         )
