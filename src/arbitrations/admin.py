@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 from .tasks import run_arbitration_test_mode
 from core.utils.admin_utils import redirect_to_change_form
 from indicators.models import MovingAverage, StandardDeviation, BetaFactor
+from django.contrib import messages
 
 
 class MovingAverageInlineAdmin(admin.TabularInline):
@@ -197,7 +198,8 @@ class ArbitrationAdmin(admin.ModelAdmin):
     def test_run(self, request, *args, **kwargs):
         run_arbitration_test_mode(arbitration_id=kwargs['id'])
         message = 'Run arbitration test mode started..'
-        return redirect_to_change_form(request, self.model, kwargs['id'], message)
+        messages.success(request, message)
+        return redirect_to_change_form(self.model, kwargs['id'])
 
     def deals_information(self, request, *args, **kwargs):
         instance = self.model.objects.get(pk=kwargs['id'])

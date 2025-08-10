@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 from .constants import CODENAME_MAP
 from market_data.constants import Interval
 from strategies.tasks import run_strategy_test_mode
+from django.contrib import messages
 
 
 class IndicatorInlineBaseAdmin(admin.TabularInline):
@@ -138,8 +139,8 @@ class StrategyAdmin(admin.ModelAdmin):
             run_strategy_test_mode.delay(strategy_id=obj.id)
             # run_strategy_test_mode(strategy_id=obj.id)
             message = 'Run strategy test mode started..'
-
-            return redirect_to_change_form(request, self.model, obj.id, message)
+            messages.success(request, message)
+            return redirect_to_change_form(self.model, obj.id)
         else:
             return super().response_change(request, obj)
 

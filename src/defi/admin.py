@@ -1,9 +1,12 @@
 from django.contrib import admin
+from django.contrib import messages
 from django.urls import path
-
-from core.utils.admin_utils import redirect_to_change_list
-from .models import UniswapPool, Transaction, SwapChain, ERC20Token
+from django.urls import reverse
 from django.utils.safestring import mark_safe
+
+from core.utils.admin_utils import redirect_to_change_list, redirect_to_change_form
+from defi.tasks import task_get_erc20_eip2612
+from .models import UniswapPool, Transaction, SwapChain, ERC20Token
 from .tasks import (
     task_get_uniswap_pools_v3,
     task_get_uniswap_pools_v2,
@@ -15,16 +18,22 @@ from .tasks import (
 class UniswapPoolAdmin(admin.ModelAdmin):
     change_list_template = 'admin/defi/uniswap_pool/change_list.html'
     list_filter = ('pool_type',)
+    search_fields = (
+        'token_0_address',
+        'token_1_address',
+    )
     list_display = (
         'pool_address',
         'pool_type',
         'token_0_address',
+        'display_token_0_symbol',
         'token_1_address',
+        'display_token_1_symbol',
         'fee',
         'tick_spacing',
         'removed',
-        'updated',
-        'created',
+        # 'updated',
+        # 'created',
     )
     readonly_fields = (
         'pool_type',
@@ -42,14 +51,20 @@ class UniswapPoolAdmin(admin.ModelAdmin):
         'removed',
         'updated',
         'created',
+        'display_token_0',
+        'display_token_1',
+        'display_token_0_symbol',
+        'display_token_1_symbol',
     )
     fieldsets = [
         ('Main', {
             'fields': [
                 'pool_address',
                 'pool_type',
-                'token_0_address',
-                'token_1_address',
+                # 'token_0_address',
+                'display_token_0',
+                # 'token_1_address',
+                'display_token_1',
                 'fee',
                 'tick_spacing',
                 'removed',
@@ -80,6 +95,62 @@ class UniswapPoolAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+    def _display_token_symbol(self, obj, token_address):
+        try:
+            erc20_token = ERC20Token.objects.get(address=token_address)
+            return erc20_token.symbol
+        except ERC20Token.DoesNotExist:
+            return
+
+    @admin.display(description='Token 0 Symbol')
+    def display_token_0_symbol(self, obj):
+        token_address = obj.token_0_address
+        return self._display_token_symbol(obj, token_address)
+
+    @admin.display(description='Token 1 Symbol')
+    def display_token_1_symbol(self, obj):
+        token_address = obj.token_1_address
+        return self._display_token_symbol(obj, token_address)
+
+    def _display_token(self, obj, token_address: str):
+        try:
+            erc20_token = ERC20Token.objects.get(address=token_address)
+        except ERC20Token.DoesNotExist:
+            erc20_token = None
+
+        if erc20_token:
+            meta = ERC20Token._meta
+            url = reverse(
+                f'admin:{meta.app_label}_{meta.model_name}_change',
+                args=(token_address,)
+            )
+            return mark_safe(
+                '<a href="{}" target="_blank">{}</a> | {} | {}'.format(
+                    url,
+                    token_address,
+                    erc20_token.name,
+                    erc20_token.symbol,
+                )
+            )
+
+        return mark_safe(
+            '{} | <a href="{}?token_address={}">Get token data</a>'.format(
+                token_address,
+                reverse('admin:get_token_data', args=(obj.pk,)),
+                token_address,
+            )
+        )
+
+    @admin.display(description='Token 0')
+    def display_token_0(self, obj):
+        token_address = obj.token_0_address
+        return self._display_token(obj, token_address)
+
+    @admin.display(description='Token 1')
+    def display_token_1(self, obj):
+        token_address = obj.token_1_address
+        return self._display_token(obj, token_address)
+
     def get_urls(self):
         urls = super().get_urls()
         added_urls = [
@@ -92,6 +163,11 @@ class UniswapPoolAdmin(admin.ModelAdmin):
                 'delete_uniswap_pools/',
                 self.admin_site.admin_view(self.delete_uniswap_pools),
                 name='delete_uniswap_pools',
+            ),
+            path(
+                '<pk>/get_token_data/',
+                self.admin_site.admin_view(self.get_token_data),
+                name='get_token_data',
             ),
         ]
         return added_urls + urls
@@ -106,6 +182,12 @@ class UniswapPoolAdmin(admin.ModelAdmin):
         UniswapPool.objects.all().delete()
         message = 'UniswapPool table is cleared.'
         return redirect_to_change_list(request, self.model, message)
+
+    def get_token_data(self, request, *args, **kwargs):
+        token_address = request.GET['token_address']
+        task_get_erc20_eip2612.delay(token_address=token_address)
+        messages.success(request, 'task_get_erc20_eip2612 started..')
+        return redirect_to_change_form(self.model, kwargs['pk'])
 
 
 @admin.register(Transaction)
@@ -198,6 +280,7 @@ class SwapChainAdmin(admin.ModelAdmin):
 @admin.register(ERC20Token)
 class ERC20TokenAdmin(admin.ModelAdmin):
     change_list_template = 'admin/defi/erc20_token/change_list.html'
+    search_fields = ('address', 'symbol')
     list_display = (
         'address',
         'name',

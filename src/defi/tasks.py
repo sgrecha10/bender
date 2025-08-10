@@ -315,15 +315,15 @@ def task_get_tokens_from_uniswap_pool(self):
         ).values_list('token_0_address', flat=True)
     )
 
-    i = 0
+    # i = 0
     for token in uniswap_pool_qs:
         if ERC20Token.objects.filter(address=token).exists():
             continue
         task_get_erc20_eip2612.delay(token_address=token)
-        i += 1
-        if i == 10:
-            i = 0
-            time.sleep(1)
+        # i += 1
+        # if i == 10:
+        #     i = 0
+        #     time.sleep(1)
 
     # token 1
     uniswap_pool_qs = list(
@@ -336,10 +336,10 @@ def task_get_tokens_from_uniswap_pool(self):
         if ERC20Token.objects.filter(address=token).exists():
             continue
         task_get_erc20_eip2612.delay(token_address=token)
-        i += 1
-        if i == 10:
-            i = 0
-            time.sleep(1)
+        # i += 1
+        # if i == 10:
+        #     i = 0
+        #     time.sleep(1)
 
 
 
