@@ -19,6 +19,7 @@ class UniswapPoolAdmin(admin.ModelAdmin):
     change_list_template = 'admin/defi/uniswap_pool/change_list.html'
     list_filter = ('pool_type',)
     search_fields = (
+        'pool_address',
         'token_0_address',
         'token_1_address',
     )
@@ -262,8 +263,11 @@ class SwapChainAdmin(admin.ModelAdmin):
         'id',
         'codename',
         'name',
-        'pool_0',
-        'pool_1',
+        'is_active',
+        # 'pool_0',
+        'display_pool_0',
+        # 'pool_1',
+        'display_pool_1',
         'updated',
         'created',
     )
@@ -274,7 +278,41 @@ class SwapChainAdmin(admin.ModelAdmin):
     readonly_fields = (
         'updated',
         'created',
+        'display_pool_0',
+        'display_pool_1',
     )
+
+    @admin.display(description='Pool 0')
+    def display_pool_0(self, obj):
+        return self._display_pool(pool=obj.pool_0)
+
+    @admin.display(description='Pool 1')
+    def display_pool_1(self, obj):
+        return self._display_pool(pool=obj.pool_1)
+
+    def _display_pool(self, pool: UniswapPool):
+        meta = ERC20Token._meta
+        token_address_0 = pool.token_0_address
+        token_address_1 = pool.token_1_address
+
+        url_0 = reverse(
+            f'admin:{meta.app_label}_{meta.model_name}_change',
+            args=(token_address_0,)
+        )
+        url_1 = reverse(
+            f'admin:{meta.app_label}_{meta.model_name}_change',
+            args=(token_address_1,)
+        )
+
+        return mark_safe(
+            '{}<br>'
+            '<a href="{}" target="_blank">{}</a><br>'
+            '<a href="{}" target="_blank">{}</a><br>'.format(
+                pool,
+                url_0, token_address_0,
+                url_1, token_address_1,
+            )
+        )
 
 
 @admin.register(ERC20Token)

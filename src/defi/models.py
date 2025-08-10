@@ -183,6 +183,10 @@ class SwapChain(BaseModel):
         max_length=255,
         verbose_name='Name',
     )
+    is_active = models.BooleanField(
+        default=False,
+        verbose_name='Is Active',
+    )
     pool_0 = models.ForeignKey(
         UniswapPool,
         on_delete=models.CASCADE,
