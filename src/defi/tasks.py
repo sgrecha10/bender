@@ -342,6 +342,100 @@ def task_get_tokens_from_uniswap_pool(self):
         #     time.sleep(1)
 
 
+def get_uniswap_pool_liquidity_v2() -> None:
+    """Получает ликвидность пула по запросу
+    Это для проверки возможности, лучше использовать подписку по вебсокету.
+    """
+
+    web3 = Web3(Web3.HTTPProvider(endpoint_uri=_get_endpoint_uri()))
+
+    # ✅ Адрес пула Uniswap V2 (пример: WETH/USDC)
+    pair_address = Web3.to_checksum_address("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc")  # address
+
+    # ABI пула (только нужные методы)
+    pair_abi = [
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "getReserves",
+            "outputs": [
+                {"internalType": "uint112", "name": "_reserve0", "type": "uint112"},
+                {"internalType": "uint112", "name": "_reserve1", "type": "uint112"},
+                {"internalType": "uint32", "name": "_blockTimestampLast", "type": "uint32"},
+            ],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "token0",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "token1",
+            "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+    ]
+
+    # ABI ERC20 (чтобы получить имя и decimals)
+    erc20_abi = [
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "decimals",
+            "outputs": [{"name": "", "type": "uint8"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+        {
+            "constant": True,
+            "inputs": [],
+            "name": "symbol",
+            "outputs": [{"name": "", "type": "string"}],
+            "stateMutability": "view",
+            "type": "function",
+        },
+    ]
+
+    # Загружаем контракт пула
+    pair = web3.eth.contract(address=pair_address, abi=pair_abi)
+
+    # Получаем токены
+    token0_address = pair.functions.token0().call()
+    token1_address = pair.functions.token1().call()
+
+    # Загружаем контракты токенов
+    token0 = web3.eth.contract(address=token0_address, abi=erc20_abi)
+    token1 = web3.eth.contract(address=token1_address, abi=erc20_abi)
+
+    # Получаем данные токенов
+    symbol0 = token0.functions.symbol().call()
+    decimals0 = token0.functions.decimals().call()
+
+    symbol1 = token1.functions.symbol().call()
+    decimals1 = token1.functions.decimals().call()
+
+    # Получаем резервы пула
+    reserve0, reserve1, timestamp = pair.functions.getReserves().call()
+
+    # Приводим к "человеческому" виду
+    reserve0_norm = reserve0 / (10 ** decimals0)
+    reserve1_norm = reserve1 / (10 ** decimals1)
+
+    print(f"Pool: {symbol0}/{symbol1}")
+    print(f"{symbol0}: {reserve0_norm}")
+    print(f"{symbol1}: {reserve1_norm}")
+    print(f"Timestamp: {timestamp}")
+
+
+
 
 
 # ниже всякая фигня.
