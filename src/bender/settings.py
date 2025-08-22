@@ -184,6 +184,7 @@ PERIODIC_CELERY_TASKS_DEBUG = config(
 
 ALCHEMY_CLIENT = {
     'uri': config('ALCHEMY_CLIENT_URI', default='', cast=str),
+    'ws_uri': config('ALCHEMY_CLIENT_WSS_URI', default='', cast=str),
     'token': config('ALCHEMY_CLIENT_TOKEN', default='', cast=str),
 }
 

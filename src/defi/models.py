@@ -1,4 +1,5 @@
 from django.db import models
+
 from core.utils.db_utils import BaseModel
 
 
@@ -257,3 +258,26 @@ class ERC20Token(BaseModel):
 
     def __str__(self):
         return f'ERC20 {self.pk}'
+
+
+class PoolLiquidity(BaseModel):
+    pool = models.OneToOneField(
+        UniswapPool,
+        on_delete=models.CASCADE,
+        verbose_name='UniswapPool',
+    )
+    reserve0 = models.CharField(
+        max_length=255,
+        verbose_name='reserve0',
+    )
+    reserve1 = models.CharField(
+        max_length=255,
+        verbose_name='reserve1',
+    )
+
+    class Meta:
+        verbose_name = 'Pool Liquidity'
+        verbose_name_plural = 'Pool Liquidies'
+
+    def __str__(self):
+        return f'Pool Liquidity {self.pool}'

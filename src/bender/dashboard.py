@@ -81,6 +81,7 @@ class CustomIndexDashboard(Dashboard):
                     'defi.models.Transaction',
                     'defi.models.SwapChain',
                     'defi.models.ERC20Token',
+                    'defi.models.PoolLiquidity',
                 ),
             )
         )

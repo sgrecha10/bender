@@ -6,7 +6,13 @@ from django.utils.safestring import mark_safe
 
 from core.utils.admin_utils import redirect_to_change_list, redirect_to_change_form
 from defi.tasks import task_get_erc20_eip2612
-from .models import UniswapPool, Transaction, SwapChain, ERC20Token
+from .models import (
+    UniswapPool,
+    Transaction,
+    SwapChain,
+    ERC20Token,
+    PoolLiquidity,
+)
 from .tasks import (
     task_get_uniswap_pools_v3,
     task_get_uniswap_pools_v2,
@@ -362,3 +368,17 @@ class ERC20TokenAdmin(admin.ModelAdmin):
         task_get_tokens_from_uniswap_pool.delay()
         message = mark_safe('Таска запущена. <a href="http://localhost:5555" target="_blank">Flower</a>')
         return redirect_to_change_list(request, self.model, message)
+
+
+@admin.register(PoolLiquidity)
+class PoolLiquidityAdmin(admin.ModelAdmin):
+    list_display = (
+        # 'id',
+        'pool',
+        'reserve0',
+        'reserve1',
+        'updated',
+        'created',
+    )
+
+    readonly_fields = list_display + ('server_time',)
