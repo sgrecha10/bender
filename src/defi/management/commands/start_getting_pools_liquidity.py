@@ -9,8 +9,10 @@ from web3._utils.events import get_event_data
 from web3.providers.persistent import (
     WebSocketProvider,
 )
-
+from defi.models import SwapChain, UniswapPool
 from defi.models import PoolLiquidity
+from django.db.models import Q
+
 
 # Адрес пула Uniswap V2 (пример: WETH/USDC)
 pair_address = "0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc"
@@ -40,28 +42,46 @@ class Command(BaseCommand):
     def _get_endpoint_uri(self):
         return settings.ALCHEMY_CLIENT['ws_uri'] + settings.ALCHEMY_CLIENT['token']
 
+    @sync_to_async
+    def _get_pair_addresses(self):
+        print('_get_pair_addresses !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+        pool_0_address_list = list(SwapChain.objects.filter(
+            is_active=True,
+            pool_0__pool_type=UniswapPool.PoolType.UNISWAP_V2,
+        ).values_list('pool_0_id', flat=True))
+        pool_1_address_list = list(SwapChain.objects.filter(
+            is_active=True,
+            pool_1__pool_type=UniswapPool.PoolType.UNISWAP_V2,
+        ).values_list('pool_1_id', flat=True))
+        return pool_0_address_list + pool_1_address_list
+
     async def get_liquidity(self):
         async with AsyncWeb3(WebSocketProvider(endpoint_uri=self._get_endpoint_uri())) as w3:
             sync_topic = event_abi_to_log_topic(sync_event_abi)
-            subscription_id = await w3.eth.subscribe("logs", {"address": pair_address})
+            pair_addresses = await self._get_pair_addresses()
+            subscription_id = await w3.eth.subscribe("logs", {"address": pair_addresses})
 
             async for event in w3.socket.process_subscriptions():
                 log = event.get("result")
+                # print('log: ', log)
+                # print('address: ', log["address"])
                 if not log:
                     continue
 
                 if log["topics"][0].hex() == sync_topic.hex():
                     decoded = get_event_data(w3.codec, sync_event_abi, log)
+                    print('decoded: ', decoded)
                     await self.handle_event(data=decoded)
 
     @sync_to_async
     def handle_event(self, data):
+        address = data['address']
         reserve0 = data["args"]["reserve0"]
         reserve1 = data["args"]["reserve1"]
         self.stdout.write(f'Reserves: {reserve0} / {reserve1}')
 
         PoolLiquidity.objects.update_or_create(
-            pool_id=pair_address.lower(),
+            pool_id=address.lower(),
             defaults={
                 'reserve0': reserve0,
                 'reserve1': reserve1,
