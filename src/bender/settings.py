@@ -188,6 +188,15 @@ ALCHEMY_CLIENT = {
     'token': config('ALCHEMY_CLIENT_TOKEN', default='', cast=str),
 }
 
+RPC_DATA = {
+    'arbitrum_rpc_url': config('ARBITRUM_RPC_URL', default='https://arb1.arbitrum.io/rpc', cast=str),
+}
+
+
+WALLET_PRIVATE_KEYS = {
+    'arbitrum_private_key': config('ARBITRUM_PRIVATE_KEY', default='', cast=str),
+}
+
 LOGGING = {
     'version': 1,
     "disable_existing_loggers": False,
@@ -201,18 +210,22 @@ LOGGING = {
             "style": "{",
         },
     },
-    'filters': {
-        'require_debug_true': {
-            '()': 'django.utils.log.RequireDebugTrue',
-        }
-    },
+    # 'filters': {
+    #     'require_debug_true': {
+    #         '()': 'django.utils.log.RequireDebugTrue',
+    #     }
+    # },
     'handlers': {
         'console': {
             # 'level': 'DEBUG',
             'level': 'INFO',
-            'filters': ['require_debug_true'],
-            'class': 'logging.StreamHandler',
-            "formatter": "verbose",
+            # 'filters': ['require_debug_true'],
+            # 'class': 'logging.StreamHandler',
+            "class": "rich.logging.RichHandler",
+            # "formatter": "simple",
+            'rich_tracebacks': True,
+            'show_path': False,
+            'enable_link_path': False,  # 👈 ВАЖНО
         }
     },
     'loggers': {
@@ -223,7 +236,7 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
-        'level': 'INFO',
+        'level': 'DEBUG',
         # 'format': '[%(asctime)s | %(levelname)s]: %(message)s',
         # 'datefmt': '%m.%d.%Y %H:%M:%S',
     },
