@@ -32,7 +32,7 @@ class UniswapService:
         slippage: float | int,
         token_in: str,
         token_out: str,
-        pool_fee: int = 500,
+        pool_fee: int,
     ):
         """Makes a swap.
 

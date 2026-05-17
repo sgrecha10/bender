@@ -22,4 +22,5 @@ class UniswapServiceTest(TestCase):
             slippage=slippage,
             token_in=usdc_token,
             token_out=weth_token,
+            pool_fee=500,
         )
