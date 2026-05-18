@@ -17,19 +17,20 @@ class UniswapClient:
         self,
         rpc_url: str,
         private_key: str,
-        router_address: str,
+        router_address: HexBytes,
         router_abi: list,
-        quoter_address: str,
+        quoter_address: HexBytes,
         quoter_abi: list,
+        position_manager_address: HexBytes,
+        position_manager_abi: list,
     ):
+        self.nonce = None
         self.w3 = Web3(Web3.HTTPProvider(endpoint_uri=rpc_url))
         self.private_key = private_key
         self.account = Account.from_key(private_key)
-        self.nonce = None
-        self.router_address = router_address
-        self.router_abi = router_abi
-        self.quoter_address = quoter_address
-        self.quoter_abi = quoter_abi
+        self.router = self.w3.eth.contract(router_address, abi=router_abi)
+        self.quoter = self.w3.eth.contract(quoter_address, abi=quoter_abi)
+        self.position_manager = self.w3.eth.contract(position_manager_address, abi=position_manager_abi)
 
     def is_connected(self) -> bool:
         return self.w3.is_connected()
@@ -57,7 +58,7 @@ class UniswapClient:
 
         :param token_contract:
         :param spender:
-        :param amount: в минимальных единицах токена
+        :param amount: В минимальных единицах токена
         :param nonce:
         :return:
         """
@@ -132,11 +133,6 @@ class UniswapClient:
         :param pool_fee:
         :return:
         """
-        router = self.w3.eth.contract(
-            address=self.router_address,
-            abi=self.router_abi,
-        )
-
         params = {
             "tokenIn": Web3.to_checksum_address(token_in),
             "tokenOut": Web3.to_checksum_address(token_out),
@@ -148,7 +144,7 @@ class UniswapClient:
             "sqrtPriceLimitX96": 0
         }
 
-        tx = router.functions.exactInputSingle(params).build_transaction({
+        tx = self.router.functions.exactInputSingle(params).build_transaction({
             "from": self.account.address,
             "nonce": nonce,
             "gas": 300000,
@@ -169,7 +165,7 @@ class UniswapClient:
         token_out: str,
         pool_fee: int,
     ) -> int:
-        """Retrieve quotes.
+        """Retrieve quotes for swap tokens.
 
         :param amount_in:
         :param token_in:
@@ -177,11 +173,6 @@ class UniswapClient:
         :param pool_fee:
         :return:
         """
-        quoter = self.w3.eth.contract(
-            address=self.quoter_address,
-            abi=self.quoter_abi,
-        )
-
         params = {
             "tokenIn": Web3.to_checksum_address(token_in),
             "tokenOut": Web3.to_checksum_address(token_out),
@@ -190,7 +181,94 @@ class UniswapClient:
             "sqrtPriceLimitX96": 0,
         }
 
-        amount_out = quoter.functions.quoteExactInputSingle(**params).call()
+        amount_out = self.quoter.functions.quoteExactInputSingle(**params).call()
 
         logger.info(f'Amount_out {amount_out}')
         return amount_out
+
+    def get_position(self, token_id: int):
+        """Retrieve exists pool position."""
+        position = self.position_manager.functions.positions(token_id).call()
+        logger.info(f'Pool position, liquidity: {position[7]}')
+
+        return {
+            "token0": position[2],
+            "token1": position[3],
+            "fee": position[4],
+            "tick_lower": position[5],
+            "tick_upper": position[6],
+            "liquidity": position[7],
+            "tokens_owed0": position[10],
+            "tokens_owed1": position[11],
+        }
+
+    @retry(exceptions=(Web3RPCError,))
+    def send_decrease_liquidity_transaction(
+        self,
+        nonce: int,
+        token_id: int,
+        liquidity: int,
+        amount0_min: int = 0,
+        amount1_min: int = 0,
+        deadline_seconds: int = 600,
+    ):
+        """Send decrease liquidity transaction."""
+
+        deadline = int(time.time()) + deadline_seconds
+
+        params = (
+            token_id,
+            liquidity,
+            amount0_min,
+            amount1_min,
+            deadline,
+        )
+
+        tx = self.position_manager.functions.decreaseLiquidity(
+            params
+        ).build_transaction({
+            "from": self.account.address,
+            "nonce": nonce,
+            "gas": 500000,
+            "gasPrice": self.w3.eth.gas_price,
+        })
+
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        logger.info(f'Decrease liquidity transaction sent {tx_hash.hex()}')
+
+        return tx_hash
+
+    @retry(exceptions=(Web3RPCError,))
+    def send_collect_liquidity_transaction(
+        self,
+        nonce: int,
+        token_id: int,
+        amount0_max: int = (2**128 - 1),
+        amount1_max: int = (2**128 - 1),
+    ):
+        """Send collect liquidity transaction."""
+
+        params = (
+            token_id,
+            self.account.address,
+            amount0_max,
+            amount1_max,
+        )
+
+        tx = self.position_manager.functions.collect(
+            params
+        ).build_transaction({
+            "from": self.account.address,
+            "nonce": nonce,
+            "gas": 500000,
+            "gasPrice": self.w3.eth.gas_price,
+        })
+
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        logger.info(f'Collect liquidity transaction sent {tx_hash.hex()}')
+
+        return tx_hash

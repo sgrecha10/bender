@@ -8,8 +8,8 @@ class UniswapServiceTest(TestCase):
         self.service = UniswapService()
 
     def test_make_swap(self):
-        amount_in = int(0.5 * 10**6)  # 0.5 USDC (6 decimals)
-        # amount_in = int(0.000190 * 10**18)  # WETH (18 decimal)
+        # amount_in = int(0.5 * 10**6)  # 0.5 USDC (6 decimals)
+        amount_in = int(0.0002 * 10**18)  # WETH (18 decimal)
 
         slippage = 0.005  # 0.5%
         # slippage = 0
@@ -20,7 +20,11 @@ class UniswapServiceTest(TestCase):
         self.service.make_swap(
             amount_in=amount_in,
             slippage=slippage,
-            token_in=usdc_token,
-            token_out=weth_token,
+            token_in=weth_token,
+            token_out=usdc_token,
             pool_fee=500,
         )
+
+    def test_remove_liquidity(self):
+        token_id = 5484946
+        self.service.remove_liquidity(token_id=token_id)

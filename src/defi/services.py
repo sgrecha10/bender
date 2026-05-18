@@ -24,6 +24,8 @@ class UniswapService:
             router_abi=arbitrum.router_abi,
             quoter_address=arbitrum.quoter_address,
             quoter_abi=arbitrum.quoter_abi,
+            position_manager_address=arbitrum.position_manager_address,
+            position_manager_abi=arbitrum.position_manager_abi,
         )
 
     def make_swap(
@@ -58,7 +60,7 @@ class UniswapService:
         _ = self.client.send_approval_transaction(
             nonce=self.client.get_nonce(),
             token_contract=token_in,
-            spender=self.client.router_address,
+            spender=self.client.router.address,
             amount=amount_in,
         )
 
@@ -74,3 +76,30 @@ class UniswapService:
         self.client.get_receipt_transaction(tx_hash=swap_tx_hash)
 
         logger.info(f'End swap \n{token_in} {token_out}')
+
+    def remove_liquidity(self, token_id: int):
+        """Removes liquidity.
+
+        :param token_id: Position id.
+        """
+        logger.info(f'Starting remove liquidity ... {token_id}')
+
+        position_data = self.client.get_position(token_id=token_id)
+
+        liquidity = position_data['liquidity']
+
+        decrease_liquidity_tx_hash = self.client.send_decrease_liquidity_transaction(
+            nonce=self.client.get_nonce(),
+            token_id=token_id,
+            liquidity=liquidity,
+        )
+
+        collect_liquidity_tx_hash = self.client.send_collect_liquidity_transaction(
+            nonce=self.client.get_nonce(),
+            token_id=token_id,
+        )
+
+        self.client.get_receipt_transaction(tx_hash=decrease_liquidity_tx_hash)
+        self.client.get_receipt_transaction(tx_hash=collect_liquidity_tx_hash)
+
+        logger.info(f'End remove liquidity \n{token_id}')
