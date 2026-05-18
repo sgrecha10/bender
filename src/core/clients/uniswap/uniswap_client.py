@@ -26,9 +26,9 @@ class UniswapClient:
         self.private_key = private_key
         self.account = Account.from_key(private_key)
         self.nonce = None
-        self.router_address = Web3.to_checksum_address(router_address)
+        self.router_address = router_address
         self.router_abi = router_abi
-        self.quoter_address = Web3.to_checksum_address(quoter_address)
+        self.quoter_address = quoter_address
         self.quoter_abi = quoter_abi
 
     def is_connected(self) -> bool:

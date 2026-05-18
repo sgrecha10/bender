@@ -192,76 +192,8 @@ RPC_DATA = {
     'arbitrum_rpc_url': config('ARBITRUM_RPC_URL', default='https://arb1.arbitrum.io/rpc', cast=str),
 }
 
-
 WALLET_PRIVATE_KEYS = {
     'arbitrum_private_key': config('ARBITRUM_PRIVATE_KEY', default='', cast=str),
-}
-
-# Контракт Uniswap для Arbitrum
-SWAP_POOL_DATA = {
-    'swap_quoter': config('SWAP_QUOTER', default='0xb27308f9F90D607463bb33eA1BeBb41C27CE5AB6', cast=str),
-    'swap_quoter_abi': [
-        {
-            "inputs": [
-                {
-                    "internalType": "address",
-                    "name": "tokenIn",
-                    "type": "address"
-                },
-                {
-                    "internalType": "address",
-                    "name": "tokenOut",
-                    "type": "address"
-                },
-                {
-                    "internalType": "uint24",
-                    "name": "fee",
-                    "type": "uint24"
-                },
-                {
-                    "internalType": "uint256",
-                    "name": "amountIn",
-                    "type": "uint256"
-                },
-                {
-                    "internalType": "uint160",
-                    "name": "sqrtPriceLimitX96",
-                    "type": "uint160"
-                }
-            ],
-            "name": "quoteExactInputSingle",
-            "outputs": [
-                {
-                    "internalType": "uint256",
-                    "name": "amountOut",
-                    "type": "uint256"
-                }
-            ],
-            "stateMutability": "nonpayable",
-            "type": "function"
-        }
-    ],
-    'swap_router': config('SWAP_ROUTER', default='0xE592427A0AEce92De3Edee1F18E0157C05861564', cast=str),
-    'swap_router_abi': [{
-        "name": "exactInputSingle",
-        "type": "function",
-        "stateMutability": "payable",
-        "inputs": [{
-            "components": [
-                {"name": "tokenIn", "type": "address"},
-                {"name": "tokenOut", "type": "address"},
-                {"name": "fee", "type": "uint24"},
-                {"name": "recipient", "type": "address"},
-                {"name": "deadline", "type": "uint256"},
-                {"name": "amountIn", "type": "uint256"},
-                {"name": "amountOutMinimum", "type": "uint256"},
-                {"name": "sqrtPriceLimitX96", "type": "uint160"}
-            ],
-            "name": "params",
-            "type": "tuple"
-        }],
-        "outputs": [{"name": "amountOut", "type": "uint256"}]
-    }],
 }
 
 LOGGING = {

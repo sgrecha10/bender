@@ -1,9 +1,9 @@
 import logging
-from decimal import Decimal
 
 from django.conf import settings
 
 from core.clients.uniswap.uniswap_client import UniswapClient
+from defi.interfaces import arbitrum
 
 logger = logging.getLogger(__name__)
 
@@ -20,10 +20,10 @@ class UniswapService:
         self.client = UniswapClient(
             rpc_url=settings.RPC_DATA['arbitrum_rpc_url'],
             private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key'],
-            router_address=settings.SWAP_POOL_DATA['swap_router'],
-            router_abi=settings.SWAP_POOL_DATA['swap_router_abi'],
-            quoter_address=settings.SWAP_POOL_DATA['swap_quoter'],
-            quoter_abi=settings.SWAP_POOL_DATA['swap_quoter_abi'],
+            router_address=arbitrum.router_address,
+            router_abi=arbitrum.router_abi,
+            quoter_address=arbitrum.quoter_address,
+            quoter_abi=arbitrum.quoter_abi,
         )
 
     def make_swap(
@@ -73,4 +73,4 @@ class UniswapService:
 
         self.client.get_receipt_transaction(tx_hash=swap_tx_hash)
 
-        logger.info(f'End swap {token_in} {token_out}')
+        logger.info(f'End swap \n{token_in} {token_out}')
