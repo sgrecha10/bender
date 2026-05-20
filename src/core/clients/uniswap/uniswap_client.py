@@ -6,6 +6,7 @@ from hexbytes.main import HexBytes
 from web3 import Web3
 from web3.exceptions import Web3RPCError
 from web3.types import TxReceipt
+from typing import Optional
 
 from defi.decorators import retry
 
@@ -13,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 class UniswapClient:
+    TICK_SPACING = {
+        100: 1,
+        500: 10,
+        3000: 60,
+        10000: 200,
+    }
+
     def __init__(
         self,
         rpc_url: str,
@@ -23,6 +31,8 @@ class UniswapClient:
         quoter_abi: list,
         position_manager_address: HexBytes,
         position_manager_abi: list,
+        slot0_abi: list,
+        erc20_abi: list,
     ):
         self.nonce = None
         self.w3 = Web3(Web3.HTTPProvider(endpoint_uri=rpc_url))
@@ -31,6 +41,8 @@ class UniswapClient:
         self.router = self.w3.eth.contract(router_address, abi=router_abi)
         self.quoter = self.w3.eth.contract(quoter_address, abi=quoter_abi)
         self.position_manager = self.w3.eth.contract(position_manager_address, abi=position_manager_abi)
+        self.slot0_abi = slot0_abi
+        self.erc20_abi = erc20_abi
 
     def is_connected(self) -> bool:
         return self.w3.is_connected()
@@ -63,19 +75,9 @@ class UniswapClient:
         :return:
         """
         token_contract_checksum = Web3.to_checksum_address(token_contract)
-        erc20_abi = [{
-            "name": "approve",
-            "type": "function",
-            "stateMutability": "nonpayable",
-            "inputs": [
-                {"name": "spender", "type": "address"},
-                {"name": "amount", "type": "uint256"}
-            ],
-            "outputs": [{"name": "", "type": "bool"}]
-        }]
         token_contract = self.w3.eth.contract(
             address=token_contract_checksum,
-            abi=erc20_abi,
+            abi=self.erc20_abi,
         )
 
         tx = token_contract.functions.approve(
@@ -270,5 +272,125 @@ class UniswapClient:
 
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         logger.info(f'Collect liquidity transaction sent {tx_hash.hex()}')
+
+        return tx_hash
+
+    # Ниже специфично для mint liquidity
+
+    def get_current_tick(
+        self,
+        pool_address: str,
+    ) -> int:
+        """Retrieve current tick."""
+        token_pool = self.w3.eth.contract(
+            address=Web3.to_checksum_address(pool_address),
+            abi=self.slot0_abi,
+        )
+
+        slot0 = token_pool.functions.slot0().call()
+        logger.info(f'Get current tick {slot0[1]}')
+
+        return slot0[1]
+
+    def align_tick_to_spacing(
+        self,
+        tick: int,
+        fee: int,
+    ) -> int:
+
+        spacing = self.TICK_SPACING[fee]
+
+        return (tick // spacing) * spacing
+
+    def calculate_range_ticks(
+        self,
+        current_tick: int,
+        fee: int,
+        width: int,
+    ):
+
+        tick_lower = current_tick - width
+        tick_upper = current_tick + width
+
+        tick_lower = self.align_tick_to_spacing(
+            tick_lower,
+            fee,
+        )
+
+        tick_upper = self.align_tick_to_spacing(
+            tick_upper,
+            fee,
+        )
+        logger.info(f'Calculate range ticks \n{tick_lower} / {tick_upper}')
+        return tick_lower, tick_upper
+
+    @retry(exceptions=(Web3RPCError,))
+    def send_mint_transaction(
+        self,
+        nonce: int,
+        token0: str,
+        token1: str,
+        fee: int,
+        tick_lower: int,
+        tick_upper: int,
+        amount0_desired: int,
+        amount1_desired: int,
+        amount0_min: int = 0,
+        amount1_min: int = 0,
+        deadline_seconds: int = 600,
+    ) -> Optional[HexBytes]:
+
+        token0 = Web3.to_checksum_address(token0)
+        token1 = Web3.to_checksum_address(token1)
+
+        if token0.lower() > token1.lower():
+            raise ValueError(
+                "token0 must be < token1"
+            )
+
+        deadline = int(time.time()) + deadline_seconds
+
+        params = (
+            token0,
+            token1,
+            fee,
+            tick_lower,
+            tick_upper,
+            amount0_desired,
+            amount1_desired,
+            amount0_min,
+            amount1_min,
+            self.account.address,
+            deadline,
+        )
+
+        try:
+            res = self.position_manager.functions.mint(
+                params
+            ).call({
+                "from": self.account.address
+            })
+            logger.info(
+                f'Mint transaction call() is SUCCESS:\n '
+                f'tokenId {res["tokenId"]}, liquidity {res["liquidity"]}, '
+                f'amount0 {res["amount0"]}, amount1 {res["amount1"]}'
+            )
+        except Exception as e:
+            logger.error(f'Mint transaction call() is REVERT,\n {e}')
+            return
+
+        tx = self.position_manager.functions.mint(
+            params
+        ).build_transaction({
+            "from": self.account.address,
+            "nonce": nonce,
+            "gas": 1500000,
+            "gasPrice": self.w3.eth.gas_price,
+        })
+
+        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
+
+        tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+        logger.info(f'Mint liquidity transaction sent {tx_hash.hex()}')
 
         return tx_hash

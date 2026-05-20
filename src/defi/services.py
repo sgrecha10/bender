@@ -20,12 +20,14 @@ class UniswapService:
         self.client = UniswapClient(
             rpc_url=settings.RPC_DATA['arbitrum_rpc_url'],
             private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key'],
-            router_address=arbitrum.router_address,
-            router_abi=arbitrum.router_abi,
-            quoter_address=arbitrum.quoter_address,
-            quoter_abi=arbitrum.quoter_abi,
-            position_manager_address=arbitrum.position_manager_address,
-            position_manager_abi=arbitrum.position_manager_abi,
+            router_address=arbitrum.ROUTER_ADDRESS,
+            router_abi=arbitrum.ROUTER_ABI,
+            quoter_address=arbitrum.QUOTER_ADDRESS,
+            quoter_abi=arbitrum.QUOTER_ABI,
+            position_manager_address=arbitrum.POSITION_MANAGER_ADDRESS,
+            position_manager_abi=arbitrum.POSITION_MANAGER_ABI,
+            slot0_abi=arbitrum.SLOT0_ABI,
+            erc20_abi=arbitrum.ERC20_ABI,
         )
 
     def make_swap(
@@ -103,3 +105,61 @@ class UniswapService:
         self.client.get_receipt_transaction(tx_hash=collect_liquidity_tx_hash)
 
         logger.info(f'End remove liquidity \n{token_id}')
+
+    def mint_liquidity(
+        self,
+        token0: str,
+        token1: str,
+        fee: int,
+        pool_address: str,
+        amount0_desired: int,
+        amount1_desired: int,
+        tick_width: int,
+        amount0_min: int = 0,
+        amount1_min: int = 0,
+    ):
+        logger.info(f'Starting mint liquidity ...\n {pool_address}')
+
+        current_tick = self.client.get_current_tick(
+            pool_address=pool_address,
+        )
+
+        tick_lower, tick_upper = (
+            self.client.calculate_range_ticks(
+                current_tick=current_tick,
+                fee=fee,
+                width=tick_width,
+            )
+        )
+
+        # _ = self.client.send_approval_transaction(
+        #     nonce=self.client.get_nonce(),
+        #     token_contract=token0,
+        #     spender=self.client.position_manager.address,
+        #     amount=amount0_desired,
+        # )
+        #
+        # _ = self.client.send_approval_transaction(
+        #     nonce=self.client.get_nonce(),
+        #     token_contract=token1,
+        #     spender=self.client.position_manager.address,
+        #     amount=amount1_desired,
+        # )
+
+        mint_tx_hash = self.client.send_mint_transaction(
+            nonce=self.client.get_nonce(),
+            token0=token0,
+            token1=token1,
+            fee=fee,
+            tick_lower=tick_lower,
+            tick_upper=tick_upper,
+            amount0_desired=amount0_desired,
+            amount1_desired=amount1_desired,
+            amount0_min=amount0_min,
+            amount1_min=amount1_min,
+        )
+
+        if mint_tx_hash:
+            self.client.get_receipt_transaction(tx_hash=mint_tx_hash)
+
+        logger.info(f'End mint liquidity \n{pool_address}')
