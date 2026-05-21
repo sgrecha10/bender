@@ -281,3 +281,81 @@ class PoolLiquidity(BaseModel):
 
     def __str__(self):
         return f'Pool Liquidity {self.pool}'
+
+
+class BlockchainTransaction(models.Model):
+    """Logging."""
+
+    class TransactionType(models.TextChoices):
+        SWAP = 'swap', 'Swap'
+        MINT = 'mint', 'Mint'
+        BURN = 'burn', 'Burn'
+        COLLECT = 'collect', 'Collect'
+        APPROVE = 'approve', 'Approve'
+
+    tx_hash = models.CharField(
+        max_length=66,
+        verbose_name='Transaction Hash',
+    )
+    chain_id = models.PositiveIntegerField(
+        verbose_name='Chain ID',
+    )
+    tx_type = models.CharField(
+        choices=TransactionType.choices,
+        max_length=20,
+        verbose_name='Transaction Type',
+    )
+    status = models.BooleanField(
+        verbose_name='Status',
+    )
+    wallet_address = models.CharField(
+        max_length=42,
+        verbose_name='Wallet Address',
+    )
+    nonce = models.PositiveBigIntegerField(
+        verbose_name='Nonce',
+    )
+    block_number = models.PositiveBigIntegerField(
+        verbose_name='Block Number',
+    )
+    gas_used = models.PositiveBigIntegerField(
+        verbose_name='Gas Used',
+    )
+    gas_used_for_l1 = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Gas Used For L1',
+    )
+    effective_gas_price = models.PositiveBigIntegerField(
+        verbose_name='Effective Gas Price',
+    )
+    total_gas_cost_wei = models.PositiveBigIntegerField(
+        verbose_name='Total Gas Cost WEI',
+    )
+    total_gas_cost_eth = models.DecimalField(
+        max_digits=30,
+        decimal_places=18,
+        verbose_name='Total Gas Cost ETH',
+    )
+    total_gas_cost_usdc = models.DecimalField(
+        max_digits=20,
+        decimal_places=8,
+        verbose_name='Total Gas Cost USDC',
+    )
+    eth_price_usdc = models.DecimalField(
+        max_digits=20,
+        decimal_places=8,
+        verbose_name='ETH Price USDC',
+        help_text='Snapshot at moment.',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+
+    class Meta:
+        verbose_name = 'Blockchain Transaction'
+        verbose_name_plural = 'Blockchain Transaction'
+
+    def __str__(self):
+        return self.tx_hash

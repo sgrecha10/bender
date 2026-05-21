@@ -12,6 +12,7 @@ from .models import (
     SwapChain,
     ERC20Token,
     PoolLiquidity,
+    BlockchainTransaction,
 )
 from .tasks import (
     task_get_uniswap_pools_v3,
@@ -382,3 +383,26 @@ class PoolLiquidityAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = list_display + ('server_time',)
+
+
+@admin.register(BlockchainTransaction)
+class BlockchainTransactionAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'tx_hash',
+        'chain_id',
+        'tx_type',
+        'status',
+        'wallet_address',
+        'nonce',
+        'block_number',
+        'gas_used',
+        'gas_used_for_l1',
+        'effective_gas_price',
+        'total_gas_cost_wei',
+        'total_gas_cost_eth',
+        'total_gas_cost_usdc',
+        'eth_price_usdc',
+        'created_at',
+    )
+    readonly_fields = list_display
