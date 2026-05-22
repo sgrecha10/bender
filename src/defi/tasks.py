@@ -1,15 +1,20 @@
 from eth_abi import decode as decode_abi
 from web3 import Web3
+from django.conf import settings
+from decimal import Decimal
 
 from bender.celery_entry import app
 from .models import UniswapPool, ERC20Token
-from .utils import decode_hexbytes
+from .utils import decode_hexbytes, rpc_hex_to_int
 from django.conf import settings
 import time
 from web3.providers.persistent import (
     AsyncIPCProvider,
     WebSocketProvider,
 )
+from web3.types import HexBytes, HexStr, Hash32
+from web3.exceptions import TransactionNotFound
+
 
 def _get_endpoint_uri():
     # Подключение к Ethereum-ноде (можно заменить на Infura, Alchemy и т.д.)
@@ -531,3 +536,66 @@ def task_call_contract():
     signed = w3.eth.account.sign_transaction(tx, private_key)
     tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction)
     print('TX sent:', tx_hash.hex())
+
+
+
+@app.task(
+    bind=True,
+    autoretry_for=(
+        TransactionNotFound,
+    ),
+    retry_kwargs={'max_retries': 10, 'countdown': 1},
+)
+def index_blockchain_transaction_task(
+    self,
+    tx_hash: Hash32 | HexBytes | HexStr,
+    tx_type: str,
+    native_token_price_usdc: Decimal,
+    created_at: str,
+):
+    """Logging to BlockchainTransaction.
+
+    :param self:
+    :param tx_hash:
+    :param tx_type:
+    :param native_token_price_usdc:
+    :param created_at:
+    """
+    from defi.models import BlockchainTransaction
+
+    rpc_url = settings.RPC_DATA['arbitrum_rpc_url']
+    w3 = Web3(Web3.HTTPProvider(endpoint_uri=rpc_url))
+
+    tx = w3.eth.get_transaction(transaction_hash=tx_hash)
+    receipt = w3.eth.wait_for_transaction_receipt(transaction_hash=tx_hash)
+
+    gas_used = receipt["gasUsed"]
+    effective_gas_price = receipt["effectiveGasPrice"]
+    total_gas_cost_wei = gas_used * effective_gas_price
+    total_gas_cost_eth = Decimal(total_gas_cost_wei)  / Decimal(10 ** 18)
+    total_gas_cost_usdc = Decimal(total_gas_cost_eth) * Decimal(native_token_price_usdc)
+
+    blockchain_transaction = BlockchainTransaction.objects.create(
+        tx_hash=tx["hash"].hex(),
+        chain_id=tx["chainId"],
+        tx_type=tx_type,
+        ethereum_tx_type=receipt["type"],
+        status=bool(receipt["status"]),
+        wallet_address=tx["from"],
+        nonce=tx["nonce"],
+        block_number=receipt["blockNumber"],
+        gas_used=gas_used,
+        gas_used_for_l1=rpc_hex_to_int(receipt["gasUsedForL1"]),
+        effective_gas_price=effective_gas_price,
+        total_gas_cost_wei=total_gas_cost_wei,
+        total_gas_cost_eth=total_gas_cost_eth,
+        total_gas_cost_usdc=total_gas_cost_usdc,
+        native_token_price_usdc=native_token_price_usdc,
+        gas_limit=tx["gas"],
+        max_fee_per_gas=tx.get('maxFeePerGas'),
+        max_priority_fee_per_gas=tx.get('maxPriorityFeePerGas'),
+        gas_price=tx["gasPrice"],
+        created_at=created_at,
+    )
+
+    return blockchain_transaction.tx_hash

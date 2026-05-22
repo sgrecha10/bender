@@ -1,7 +1,11 @@
-from django.test import TestCase
+from datetime import datetime
 
-from defi.services import UniswapService
+from django.test import TestCase
 from web3 import Web3
+
+from defi.models import BlockchainTransaction
+from defi.services import UniswapService
+from defi.tasks import index_blockchain_transaction_task
 
 
 class UniswapServiceTest(TestCase):
@@ -41,3 +45,16 @@ class UniswapServiceTest(TestCase):
             amount1_desired=int(100 * 10**6),
             tick_width=1000,
         )
+
+    def test_index_blockchain_transaction_task(self):
+        tx_hash = '0x2367085a22fe32eac7702b4fb4330791e4dd6b50d30cc2057de4cd2efd60ee71'
+        now = datetime.now()
+
+        result = index_blockchain_transaction_task(
+            tx_hash=tx_hash,
+            tx_type=BlockchainTransaction.TransactionType.APPROVE.value,
+            native_token_price_usdc=2137.50,
+            created_at=now.isoformat(),
+        )
+
+        print(result)

@@ -388,10 +388,10 @@ class PoolLiquidityAdmin(admin.ModelAdmin):
 @admin.register(BlockchainTransaction)
 class BlockchainTransactionAdmin(admin.ModelAdmin):
     list_display = (
-        'id',
         'tx_hash',
         'chain_id',
         'tx_type',
+        'ethereum_tx_type',
         'status',
         'wallet_address',
         'nonce',
@@ -402,7 +402,54 @@ class BlockchainTransactionAdmin(admin.ModelAdmin):
         'total_gas_cost_wei',
         'total_gas_cost_eth',
         'total_gas_cost_usdc',
-        'eth_price_usdc',
+        'native_token_price_usdc',
+        'gas_limit',
+        'max_fee_per_gas',
+        'max_priority_fee_per_gas',
+        'gas_price',
         'created_at',
     )
     readonly_fields = list_display
+
+    fieldsets = [
+        ('Main', {
+            'fields': [
+                'tx_hash',
+                'chain_id',
+                'tx_type',
+                'ethereum_tx_type',
+                'status',
+                'wallet_address',
+                'nonce',
+                'block_number',
+                'created_at',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+        ('Transaction', {
+            'fields': [
+                'gas_limit',
+                'max_fee_per_gas',
+                'max_priority_fee_per_gas',
+                'gas_price',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+        ('Receipt', {
+            'fields': [
+                'gas_used',
+                'gas_used_for_l1',
+                'effective_gas_price',
+                'total_gas_cost_wei',
+                'total_gas_cost_eth',
+                'total_gas_cost_usdc',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+        ('Other', {
+            'fields': [
+                'native_token_price_usdc',
+            ],
+            'classes': ('grp-collapse', 'grp-open'),
+        }),
+    ]

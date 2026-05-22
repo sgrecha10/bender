@@ -292,9 +292,16 @@ class BlockchainTransaction(models.Model):
         BURN = 'burn', 'Burn'
         COLLECT = 'collect', 'Collect'
         APPROVE = 'approve', 'Approve'
+        DECREASE_LIQUIDITY = 'decrease_liquidity', 'Decrease Liquidity'
+
+    class EthereumTxType(models.IntegerChoices):
+        LEGACY = 0, 'legacy'
+        EIP2930 = 1, 'EIP-2930'
+        EIP1559 = 2, 'EIP-1559'
 
     tx_hash = models.CharField(
         max_length=66,
+        primary_key=True,
         verbose_name='Transaction Hash',
     )
     chain_id = models.PositiveIntegerField(
@@ -304,6 +311,10 @@ class BlockchainTransaction(models.Model):
         choices=TransactionType.choices,
         max_length=20,
         verbose_name='Transaction Type',
+    )
+    ethereum_tx_type = models.PositiveSmallIntegerField(
+        choices=EthereumTxType.choices,
+        verbose_name='Ethereum Transaction Type',
     )
     status = models.BooleanField(
         verbose_name='Status',
@@ -342,14 +353,32 @@ class BlockchainTransaction(models.Model):
         decimal_places=8,
         verbose_name='Total Gas Cost USDC',
     )
-    eth_price_usdc = models.DecimalField(
+    native_token_price_usdc = models.DecimalField(
         max_digits=20,
         decimal_places=8,
-        verbose_name='ETH Price USDC',
+        verbose_name='Native Token Price USDC',
         help_text='Snapshot at moment.',
     )
+    gas_limit = models.PositiveBigIntegerField(
+        verbose_name='Gas Limit',
+    )
+    max_fee_per_gas = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Max Fee per Gas',
+    )
+    max_priority_fee_per_gas = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Max Priority Fee per Gas',
+    )
+    gas_price = models.PositiveBigIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Gas Price',
+        help_text='Only legacy transactions are supported.',
+    )
     created_at = models.DateTimeField(
-        auto_now_add=True,
         verbose_name='Created At',
     )
 

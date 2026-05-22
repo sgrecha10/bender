@@ -1,4 +1,20 @@
+from typing import Optional
+
 from hexbytes import HexBytes
+
+
+def rpc_hex_to_int(value: Optional[str]) -> Optional[int]:
+    """Преобразовывает hexadecimal в int.
+
+    Нужен для того, что бы не падать на None
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, int):
+        return value
+
+    return int(value, 16)
 
 
 def decode_hexbytes(value: HexBytes, kind: str = "auto") -> [None | str]:

@@ -1,6 +1,7 @@
 import logging
 import time
 
+from django.utils.datetime_safe import datetime
 from eth_account import Account
 from hexbytes.main import HexBytes
 from web3 import Web3
@@ -9,6 +10,7 @@ from web3.types import TxReceipt
 from typing import Optional
 
 from defi.decorators import retry
+from defi.tasks import index_blockchain_transaction_task
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +95,15 @@ class UniswapClient:
 
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         logger.info(f'Approval transaction sent {tx_hash.hex()}')
+
+        input_data = tx.get("input") or tx.get("data")
+        func, _ = token_contract.decode_function_input(data=input_data)
+        index_blockchain_transaction_task.delay(
+            tx_hash=tx_hash,
+            tx_type=func.fn_name,
+            native_token_price_usdc=2137.50,
+            created_at=datetime.now().isoformat(),
+        )
 
         return tx_hash
 
