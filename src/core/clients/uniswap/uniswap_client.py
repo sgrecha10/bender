@@ -1,13 +1,15 @@
 import logging
 import time
 
-from django.utils.datetime_safe import datetime
+from datetime import datetime
 from eth_account import Account
 from hexbytes.main import HexBytes
 from web3 import Web3
 from web3.exceptions import Web3RPCError
-from web3.types import TxReceipt
+from web3.types import TxReceipt, TxParams
+from web3.contract.contract import Contract
 from typing import Optional
+from decimal import Decimal
 
 from defi.decorators import retry
 from defi.tasks import index_blockchain_transaction_task
@@ -59,6 +61,45 @@ class UniswapClient:
         nonce = self.nonce
         self.nonce += 1
         return nonce
+    
+    @staticmethod
+    def get_native_token_price_usdc():
+        return Decimal(2137.50)
+
+    def index_blockchain_transaction(
+        self,
+        tx: TxParams,
+        tx_hash: HexBytes,
+        contract: Contract,
+    ) -> None:
+        """Index blockchain transaction to DB."""
+        input_data = tx.get('input') or tx.get('data')
+        func, _ = contract.decode_function_input(data=input_data)
+        index_blockchain_transaction_task.delay(
+            tx_hash=tx_hash,
+            tx_type=func.fn_name,
+            native_token_price_usdc=self.get_native_token_price_usdc(),
+            created_at=datetime.now().isoformat(),
+        )
+
+    def get_receipt_transaction(
+        self,
+        tx_hash: HexBytes,
+    ) -> TxReceipt:
+        """Retrieve a transaction receipt.
+
+        :param tx_hash:
+        :return:
+        """
+        logger.info(f'Waiting for receipt ... {tx_hash.hex()}')
+        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
+
+        if receipt.get('status') == 1:
+            logger.info(f'Transaction SUCCESS {tx_hash.hex()}, gasUsed: {receipt.get("gasUsed")}')
+        else:
+            logger.error(f'Transaction FAIL {tx_hash.hex()}, gasUsed: {receipt.get("gasUsed")}')
+
+        return receipt
 
     @retry(exceptions=(Web3RPCError,))
     def send_approval_transaction(
@@ -81,50 +122,28 @@ class UniswapClient:
             address=token_contract_checksum,
             abi=self.erc20_abi,
         )
-
-        tx = token_contract.functions.approve(
-            spender,
-            amount
-        ).build_transaction({
-            "from": self.account.address,
-            "nonce": nonce,
-            "gas": 100000,
-            "gasPrice": self.w3.to_wei("0.1", "gwei")
+        params = {
+            'spender': spender,
+            'amount': amount,
+        }
+        tx = token_contract.functions.approve(**params).build_transaction({
+            'from': self.account.address,
+            'nonce': nonce,
+            'gas': 100000,
+            'gasPrice': self.w3.to_wei('0.1', 'gwei'),
         })
         signed = self.account.sign_transaction(tx)
-
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+
         logger.info(f'Approval transaction sent {tx_hash.hex()}')
 
-        input_data = tx.get("input") or tx.get("data")
-        func, _ = token_contract.decode_function_input(data=input_data)
-        index_blockchain_transaction_task.delay(
+        self.index_blockchain_transaction(
+            tx=tx,
             tx_hash=tx_hash,
-            tx_type=func.fn_name,
-            native_token_price_usdc=2137.50,
-            created_at=datetime.now().isoformat(),
+            contract=token_contract,
         )
 
         return tx_hash
-
-    def get_receipt_transaction(
-        self,
-        tx_hash: HexBytes,
-    ) -> TxReceipt:
-        """Retrieve a transaction receipt.
-
-        :param tx_hash:
-        :return:
-        """
-        logger.info(f'Waiting for receipt ... {tx_hash.hex()}')
-        receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash)
-
-        if receipt.get('status') == 1:
-            logger.info(f'Transaction SUCCESS {tx_hash.hex()}, gasUsed: {receipt.get("gasUsed")}')
-        else:
-            logger.error(f'Transaction FAIL {tx_hash.hex()}, gasUsed: {receipt.get("gasUsed")}')
-
-        return receipt
 
     @retry(exceptions=(Web3RPCError,))
     def send_swap_transaction(
@@ -163,9 +182,7 @@ class UniswapClient:
             "gas": 300000,
             "gasPrice": self.w3.to_wei("0.1", "gwei")
         })
-
-        signed = self.w3.eth.account.sign_transaction(tx, self.private_key)
-
+        signed = self.account.sign_transaction(tx)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         logger.info(f'Swap transaction sent {tx_hash.hex()}')
 

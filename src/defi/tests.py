@@ -3,9 +3,17 @@ from datetime import datetime
 from django.test import TestCase
 from web3 import Web3
 
+from core.clients.defi.approval_service import ApprovalService
 from defi.models import BlockchainTransaction
 from defi.services import UniswapService
 from defi.tasks import index_blockchain_transaction_task
+
+from core.clients.defi.transaction_manager import TransactionManager
+from core.clients.defi.blockchain_client import BlockchainClient
+from defi.interfaces import arbitrum
+from django.conf import settings
+from eth_account.account import Account
+
 
 
 class UniswapServiceTest(TestCase):
@@ -55,6 +63,45 @@ class UniswapServiceTest(TestCase):
             tx_type=BlockchainTransaction.TransactionType.APPROVE.value,
             native_token_price_usdc=2137.50,
             created_at=now.isoformat(),
+        )
+
+        print(result)
+
+
+class ApprovalServiceTest(TestCase):
+    def setUp(self) -> None:
+        self.w3 = Web3(Web3.HTTPProvider(
+            endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
+        )
+        self.account = Account.from_key(
+            private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key']
+        )
+        self.blockchain_client = BlockchainClient(
+            w3=self.w3,
+            account=self.account,
+        )
+        self.transaction_manager = TransactionManager(
+            blockchain_client=self.blockchain_client,
+        )
+        self.service = ApprovalService(
+            blockchain_client=self.blockchain_client,
+            transaction_manager=self.transaction_manager,
+            erc20_abi=arbitrum.ERC20_ABI,
+        )
+
+    def test_make_approval(self):
+        token_address = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'  # usdc_token
+
+        router_address = arbitrum.ROUTER_ADDRESS
+        router_abi = arbitrum.ROUTER_ABI
+        spender = self.blockchain_client.w3.eth.contract(router_address, abi=router_abi).address
+
+        amount = 1
+
+        result = self.service.approve(
+            token_address=token_address,
+            spender=spender,
+            amount=amount,
         )
 
         print(result)
