@@ -13,7 +13,7 @@ from core.clients.defi.blockchain_client import BlockchainClient
 from defi.interfaces import arbitrum
 from django.conf import settings
 from eth_account.account import Account
-
+from defi.tasks import index_blockchain_transaction_task
 
 
 class UniswapServiceTest(TestCase):
@@ -82,6 +82,7 @@ class ApprovalServiceTest(TestCase):
         )
         self.transaction_manager = TransactionManager(
             blockchain_client=self.blockchain_client,
+            transaction_indexer_task=index_blockchain_transaction_task,
         )
         self.service = ApprovalService(
             blockchain_client=self.blockchain_client,
@@ -98,10 +99,12 @@ class ApprovalServiceTest(TestCase):
 
         amount = 1
 
-        result = self.service.approve(
+        tx_hash = self.service.approve(
             token_address=token_address,
             spender=spender,
             amount=amount,
         )
 
-        print(result)
+        receipt = self.blockchain_client.wait_for_receipt(tx_hash)
+
+        print(receipt.get('status'))

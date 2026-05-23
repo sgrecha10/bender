@@ -550,7 +550,6 @@ def index_blockchain_transaction_task(
     self,
     tx_hash: Hash32 | HexBytes | HexStr,
     tx_type: str,
-    native_token_price_usdc: Decimal,
     created_at: str,
 ):
     """Logging to BlockchainTransaction.
@@ -558,7 +557,6 @@ def index_blockchain_transaction_task(
     :param self:
     :param tx_hash:
     :param tx_type:
-    :param native_token_price_usdc:
     :param created_at:
     """
     from defi.models import BlockchainTransaction
@@ -568,6 +566,8 @@ def index_blockchain_transaction_task(
 
     tx = w3.eth.get_transaction(transaction_hash=tx_hash)
     receipt = w3.eth.wait_for_transaction_receipt(transaction_hash=tx_hash)
+
+    native_token_price_usdc = 2137.5  # из какого то хранилища, где оно обновляется.
 
     gas_used = receipt["gasUsed"]
     effective_gas_price = receipt["effectiveGasPrice"]

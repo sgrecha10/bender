@@ -3,6 +3,7 @@ from web3 import Web3
 
 from .blockchain_client import BlockchainClient
 from .transaction_manager import TransactionManager
+from defi.models import BlockchainTransaction
 
 
 class ApprovalService:
@@ -35,5 +36,6 @@ class ApprovalService:
 
         return self.transaction_manager.execute(
             contract_function=contract_function,
+            tx_type=BlockchainTransaction.TransactionType.APPROVE.value,
             gas=100000,
         )
