@@ -6,7 +6,7 @@ from web3 import Web3
 from core.clients.defi.approval_service import ApprovalService
 from defi.models import BlockchainTransaction
 from defi.services import UniswapService
-from defi.tasks import index_blockchain_transaction_task
+
 from core.clients.defi.uniswap_quoter_service import UniswapQuoterService
 
 from core.clients.defi.transaction_manager import TransactionManager
@@ -15,6 +15,7 @@ from defi.interfaces import arbitrum
 from django.conf import settings
 from eth_account.account import Account
 from defi.tasks import index_blockchain_transaction_task
+from core.clients.defi.swap_service import SwapService
 
 
 class UniswapServiceTest(TestCase):
@@ -93,6 +94,7 @@ class UniswapNewServiceTest(TestCase):
             transaction_manager=self.transaction_manager,
             erc20_abi=arbitrum.ERC20_ABI,
         )
+
         self.quoter_contract = self.blockchain_client.w3.eth.contract(
             address=arbitrum.QUOTER_ADDRESS,
             abi=arbitrum.QUOTER_ABI,
@@ -101,16 +103,28 @@ class UniswapNewServiceTest(TestCase):
             quoter_contract=self.quoter_contract,
         )
 
+        self.router_contract = self.blockchain_client.w3.eth.contract(
+            address=arbitrum.ROUTER_ADDRESS,
+            abi=arbitrum.ROUTER_ABI,
+        )
+        self.swap_service = SwapService(
+            blockchain_client=self.blockchain_client,
+            transaction_manager=self.transaction_manager,
+            uniswap_quoter_service=self.uniswap_quoter_service,
+            approval_service=self.approval_service,
+            router_contract=self.router_contract,
+        )
+
     def test_approval(self):
         router_address = arbitrum.ROUTER_ADDRESS
-        router_abi = arbitrum.ROUTER_ABI
-        spender = self.blockchain_client.w3.eth.contract(router_address, abi=router_abi).address
+        # router_abi = arbitrum.ROUTER_ABI
+        # spender = self.blockchain_client.w3.eth.contract(router_address, abi=router_abi).address
 
         amount = 1
 
         tx_hash = self.approval_service.approve(
             token_address=self.usdc_token,
-            spender=spender,
+            spender_address=router_address,
             amount=amount,
         )
 
@@ -126,6 +140,22 @@ class UniswapNewServiceTest(TestCase):
             amount_in=amount_in,
             token_in=self.weth_token,
             token_out=self.usdc_token,
+            pool_fee=500,
+        )
+
+        print(result)
+
+    def test_swap(self):
+        amount_in = int(1 * 10**6)  # 0.5 USDC (6 decimals)
+        # amount_in = int(0.001 * 10**18)  # WETH (18 decimal)
+
+        slippage = 0.005  # 0.5%
+
+        result = self.swap_service.swap(
+            amount_in=amount_in,
+            slippage=slippage,
+            token_in=self.usdc_token,
+            token_out=self.weth_token,
             pool_fee=500,
         )
 

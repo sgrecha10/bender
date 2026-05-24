@@ -20,7 +20,7 @@ class ApprovalService:
     def approve(
         self,
         token_address: str,
-        spender: str,
+        spender_address: HexBytes,
         amount: int,
     ) -> HexBytes:
 
@@ -30,7 +30,7 @@ class ApprovalService:
         )
 
         contract_function = token_contract.functions.approve(
-            spender=spender,
+            spender=spender_address,
             amount=amount,
         )
 
