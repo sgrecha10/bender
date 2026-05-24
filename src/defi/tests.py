@@ -1,6 +1,7 @@
 from datetime import datetime
 
-from django.test import TestCase
+from django.test import TestCase, TransactionTestCase
+from pip._vendor.pygments import token
 from web3 import Web3
 
 from core.clients.defi.approval_service import ApprovalService
@@ -17,6 +18,7 @@ from eth_account.account import Account
 from defi.tasks import index_blockchain_transaction_task
 from core.clients.defi.swap_service import SwapService
 from core.clients.defi.uniswap_get_position_service import UniswapGetPositionService
+from core.clients.defi.liquidity_removal_service import LiquidityRemovalService
 
 
 class UniswapServiceTest(TestCase):
@@ -71,7 +73,7 @@ class UniswapServiceTest(TestCase):
         print(result)
 
 
-class UniswapNewServiceTest(TestCase):
+class UniswapNewServiceTest(TransactionTestCase):
     def setUp(self) -> None:
         self.usdc_token = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
         self.weth_token = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
@@ -124,6 +126,13 @@ class UniswapNewServiceTest(TestCase):
             position_manager_contract=self.position_manager_contract,
         )
 
+        self.liquidity_removal_service = LiquidityRemovalService(
+            uniswap_get_position_service=self.uniswap_get_position_service,
+            transaction_manager=self.transaction_manager,
+            blockchain_client=self.blockchain_client,
+            position_manager_contract=self.position_manager_contract,
+        )
+
     def test_approval(self):
         router_address = arbitrum.ROUTER_ADDRESS
         # router_abi = arbitrum.ROUTER_ABI
@@ -155,16 +164,16 @@ class UniswapNewServiceTest(TestCase):
         print(result)
 
     def test_swap(self):
-        amount_in = int(1 * 10**6)  # 0.5 USDC (6 decimals)
-        # amount_in = int(0.001 * 10**18)  # WETH (18 decimal)
+        # amount_in = int(1 * 10**6)  # 0.5 USDC (6 decimals)
+        amount_in = int(0.001 * 10**18)  # WETH (18 decimal)
 
         slippage = 0.005  # 0.5%
 
         result = self.swap_service.swap(
             amount_in=amount_in,
             slippage=slippage,
-            token_in=self.usdc_token,
-            token_out=self.weth_token,
+            token_in=self.weth_token,
+            token_out=self.usdc_token,
             pool_fee=500,
         )
 
@@ -173,6 +182,14 @@ class UniswapNewServiceTest(TestCase):
     def test_uniswap_get_position_service(self):
         token_id = 5496943
         result = self.uniswap_get_position_service.get_position(
+            token_id=token_id,
+        )
+
+        print(result)
+
+    def test_liquidity_removal_service(self):
+        token_id = 5496943
+        result = self.liquidity_removal_service.remove_liquidity(
             token_id=token_id,
         )
 

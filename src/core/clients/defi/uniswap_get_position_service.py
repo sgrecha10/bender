@@ -4,7 +4,10 @@ logger = logging.getLogger(__name__)
 
 
 class UniswapGetPositionService:
-    def __init__(self, position_manager_contract):
+    def __init__(
+        self,
+        position_manager_contract,
+    ):
         self.position_manager_contract = position_manager_contract
 
     def get_position(

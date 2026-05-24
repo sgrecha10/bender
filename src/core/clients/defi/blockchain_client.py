@@ -14,17 +14,12 @@ class BlockchainClient:
     ):
         self.w3 = w3
         self.account = account
-        self.nonce = None
 
     def get_nonce(self) -> int:
-        if self.nonce is None:
-            self.nonce = self.w3.eth.get_transaction_count(
-                account=self.account.address,
-                block_identifier='pending',
-            )
-        nonce = self.nonce
-        self.nonce += 1
-        return nonce
+        return self.w3.eth.get_transaction_count(
+            account=self.account.address,
+            block_identifier='pending',
+        )
 
     def sign_transaction(
         self,
