@@ -550,7 +550,6 @@ def index_blockchain_transaction_task(
     self,
     tx_hash: Hash32 | HexBytes | HexStr,
     tx_type: str,
-    created_at: str,
 ):
     """Logging to BlockchainTransaction.
 
@@ -575,27 +574,28 @@ def index_blockchain_transaction_task(
     total_gas_cost_eth = Decimal(total_gas_cost_wei)  / Decimal(10 ** 18)
     total_gas_cost_usdc = Decimal(total_gas_cost_eth) * Decimal(native_token_price_usdc)
 
-    blockchain_transaction = BlockchainTransaction.objects.create(
+    blockchain_transaction, _ = BlockchainTransaction.objects.update_or_create(
         tx_hash=tx["hash"].hex(),
-        chain_id=tx["chainId"],
-        tx_type=tx_type,
-        ethereum_tx_type=receipt["type"],
-        status=bool(receipt["status"]),
-        wallet_address=tx["from"],
-        nonce=tx["nonce"],
-        block_number=receipt["blockNumber"],
-        gas_used=gas_used,
-        gas_used_for_l1=rpc_hex_to_int(receipt["gasUsedForL1"]),
-        effective_gas_price=effective_gas_price,
-        total_gas_cost_wei=total_gas_cost_wei,
-        total_gas_cost_eth=total_gas_cost_eth,
-        total_gas_cost_usdc=total_gas_cost_usdc,
-        native_token_price_usdc=native_token_price_usdc,
-        gas_limit=tx["gas"],
-        max_fee_per_gas=tx.get('maxFeePerGas'),
-        max_priority_fee_per_gas=tx.get('maxPriorityFeePerGas'),
-        gas_price=tx["gasPrice"],
-        created_at=created_at,
+        defaults={
+            'chain_id': tx["chainId"],
+            'tx_type': tx_type,
+            'ethereum_tx_type': receipt["type"],
+            'status': bool(receipt["status"]),
+            'wallet_address': tx["from"],
+            'nonce': tx["nonce"],
+            'block_number': receipt["blockNumber"],
+            'gas_used': gas_used,
+            'gas_used_for_l1': rpc_hex_to_int(receipt["gasUsedForL1"]),
+            'effective_gas_price': effective_gas_price,
+            'total_gas_cost_wei': total_gas_cost_wei,
+            'total_gas_cost_eth': total_gas_cost_eth,
+            'total_gas_cost_usdc': total_gas_cost_usdc,
+            'native_token_price_usdc': native_token_price_usdc,
+            'gas_limit': tx["gas"],
+            'max_fee_per_gas': tx.get('maxFeePerGas'),
+            'max_priority_fee_per_gas': tx.get('maxPriorityFeePerGas'),
+            'gas_price': tx["gasPrice"],
+        }
     )
 
     return blockchain_transaction.tx_hash

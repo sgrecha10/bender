@@ -4,6 +4,7 @@ from .blockchain_client import BlockchainClient
 from defi.decorators import retry
 from web3.exceptions import Web3RPCError
 from hexbytes.main import HexBytes
+from defi.models import BlockchainTransaction
 
 import logging
 
@@ -51,10 +52,13 @@ class TransactionManager:
             tx_hash.hex(),
         )
 
+        BlockchainTransaction.objects.create(
+            tx_hash=tx_hash.hex(),
+        )
+
         self.transaction_indexer_task.delay(
-            tx_hash.hex(),
+            tx_hash=tx_hash.hex(),
             tx_type=tx_type,
-            created_at=datetime.now().isoformat(),
         )
 
         return tx_hash
