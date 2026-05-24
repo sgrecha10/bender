@@ -16,6 +16,7 @@ from django.conf import settings
 from eth_account.account import Account
 from defi.tasks import index_blockchain_transaction_task
 from core.clients.defi.swap_service import SwapService
+from core.clients.defi.uniswap_get_position_service import UniswapGetPositionService
 
 
 class UniswapServiceTest(TestCase):
@@ -115,6 +116,14 @@ class UniswapNewServiceTest(TestCase):
             router_contract=self.router_contract,
         )
 
+        self.position_manager_contract = self.blockchain_client.w3.eth.contract(
+            address=arbitrum.POSITION_MANAGER_ADDRESS,
+            abi=arbitrum.POSITION_MANAGER_ABI,
+        )
+        self.uniswap_get_position_service = UniswapGetPositionService(
+            position_manager_contract=self.position_manager_contract,
+        )
+
     def test_approval(self):
         router_address = arbitrum.ROUTER_ADDRESS
         # router_abi = arbitrum.ROUTER_ABI
@@ -157,6 +166,14 @@ class UniswapNewServiceTest(TestCase):
             token_in=self.usdc_token,
             token_out=self.weth_token,
             pool_fee=500,
+        )
+
+        print(result)
+
+    def test_uniswap_get_position_service(self):
+        token_id = 5496943
+        result = self.uniswap_get_position_service.get_position(
+            token_id=token_id,
         )
 
         print(result)
