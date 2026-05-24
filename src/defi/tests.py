@@ -7,6 +7,7 @@ from core.clients.defi.approval_service import ApprovalService
 from defi.models import BlockchainTransaction
 from defi.services import UniswapService
 from defi.tasks import index_blockchain_transaction_task
+from core.clients.defi.uniswap_quoter_service import UniswapQuoterService
 
 from core.clients.defi.transaction_manager import TransactionManager
 from core.clients.defi.blockchain_client import BlockchainClient
@@ -68,8 +69,11 @@ class UniswapServiceTest(TestCase):
         print(result)
 
 
-class ApprovalServiceTest(TestCase):
+class UniswapNewServiceTest(TestCase):
     def setUp(self) -> None:
+        self.usdc_token = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+        self.weth_token = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
+
         self.w3 = Web3(Web3.HTTPProvider(
             endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
         )
@@ -84,23 +88,28 @@ class ApprovalServiceTest(TestCase):
             blockchain_client=self.blockchain_client,
             transaction_indexer_task=index_blockchain_transaction_task,
         )
-        self.service = ApprovalService(
+        self.approval_service = ApprovalService(
             blockchain_client=self.blockchain_client,
             transaction_manager=self.transaction_manager,
             erc20_abi=arbitrum.ERC20_ABI,
         )
+        self.quoter_contract = self.blockchain_client.w3.eth.contract(
+            address=arbitrum.QUOTER_ADDRESS,
+            abi=arbitrum.QUOTER_ABI,
+        )
+        self.uniswap_quoter_service = UniswapQuoterService(
+            quoter_contract=self.quoter_contract,
+        )
 
-    def test_make_approval(self):
-        token_address = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831'  # usdc_token
-
+    def test_approval(self):
         router_address = arbitrum.ROUTER_ADDRESS
         router_abi = arbitrum.ROUTER_ABI
         spender = self.blockchain_client.w3.eth.contract(router_address, abi=router_abi).address
 
         amount = 1
 
-        tx_hash = self.service.approve(
-            token_address=token_address,
+        tx_hash = self.approval_service.approve(
+            token_address=self.usdc_token,
             spender=spender,
             amount=amount,
         )
@@ -108,3 +117,16 @@ class ApprovalServiceTest(TestCase):
         receipt = self.blockchain_client.wait_for_receipt(tx_hash)
 
         print(receipt.get('status'))
+
+    def test_get_quote_exact_input_single(self):
+        # amount_in = int(100 * 10**6)  # usdc
+        amount_in = int(1 * 10**18)  # weth
+
+        result = self.uniswap_quoter_service.get_quote_exact_input_single(
+            amount_in=amount_in,
+            token_in=self.weth_token,
+            token_out=self.usdc_token,
+            pool_fee=500,
+        )
+
+        print(result)
