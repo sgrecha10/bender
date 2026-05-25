@@ -23,11 +23,11 @@ class LiquidityRemovalService:
     def remove_liquidity(
         self,
         token_id: int,
+        removal_percentage: int,
     ):
         position_data = self.uniswap_get_position_service.get_position(token_id=token_id)
         liquidity = position_data['liquidity']
-
-        liquidity = int(liquidity / 8)
+        liquidity = int(removal_percentage * liquidity / 100)
 
         self.decrease_liquidity(
             token_id=token_id,
