@@ -82,7 +82,17 @@ class CustomIndexDashboard(Dashboard):
                     'defi.models.SwapChain',
                     'defi.models.ERC20Token',
                     'defi.models.PoolLiquidity',
-                    'defi.models.BlockchainTransaction',
+                ),
+            )
+        )
+
+        self.children.append(
+            modules.AppList(
+                'LIQUIDITY POOLS',
+                column=1,
+                collapsible=True,
+                models=(
+                    'liquidity_pools.models.BlockchainTransaction',
                 ),
             )
         )

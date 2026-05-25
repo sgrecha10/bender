@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'indicators',
     'arbitrations',
     'defi',
+    'liquidity_pools',
 ]
 
 MIDDLEWARE = [
