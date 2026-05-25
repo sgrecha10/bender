@@ -44,11 +44,12 @@ class SwapService:
             quoted_amount * (1 - slippage)
         )
 
-        self.approval_service.approve(
+        tx_hash = self.approval_service.approve(
             token_address=token_in,
             spender_address=self.router_contract.address,
             amount=amount_in,
         )
+        self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
 
         params = {
             'tokenIn': Web3.to_checksum_address(token_in),

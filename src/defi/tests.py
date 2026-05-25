@@ -19,6 +19,7 @@ from defi.tasks import index_blockchain_transaction_task
 from core.clients.defi.swap_service import SwapService
 from core.clients.defi.uniswap_get_position_service import UniswapGetPositionService
 from core.clients.defi.liquidity_removal_service import LiquidityRemovalService
+from core.clients.defi.liquidity_mint_service import LiquidityMintService
 
 
 class UniswapServiceTest(TestCase):
@@ -133,6 +134,14 @@ class UniswapNewServiceTest(TransactionTestCase):
             position_manager_contract=self.position_manager_contract,
         )
 
+        self.liquidity_mint_service = LiquidityMintService(
+            blockchain_client=self.blockchain_client,
+            transaction_manager=self.transaction_manager,
+            approval_service=self.approval_service,
+            position_manager_contract=self.position_manager_contract,
+            slot0_abi=arbitrum.SLOT0_ABI,
+        )
+
     def test_approval(self):
         router_address = arbitrum.ROUTER_ADDRESS
         # router_abi = arbitrum.ROUTER_ABI
@@ -191,6 +200,22 @@ class UniswapNewServiceTest(TransactionTestCase):
         token_id = 5496943
         result = self.liquidity_removal_service.remove_liquidity(
             token_id=token_id,
+            removal_percentage=100,  # 90% удаляем, 10% остается в пуле
+        )
+
+        print(result)
+
+    def test_liquidity_mint_service(self):
+        pool_address = '0xc6962004f452be9203591991d15f6b388e09e8d0'
+
+        result = self.liquidity_mint_service.mint(
+            token0=self.weth_token,
+            token1=self.usdc_token,
+            fee=500,
+            pool_address=pool_address,
+            amount0_desired=Web3.to_wei(0.5, "ether"),
+            amount1_desired=int(1 * 10**6),
+            tick_width=1000,
         )
 
         print(result)

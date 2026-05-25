@@ -29,12 +29,13 @@ class LiquidityRemovalService:
         liquidity = position_data['liquidity']
         liquidity = int(removal_percentage * liquidity / 100)
 
-        self.decrease_liquidity(
+        tx_hash = self.decrease_liquidity(
             token_id=token_id,
             liquidity=liquidity,
         )
+        self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
 
-        self.collect_liquidity(
+        return self.collect_liquidity(
             token_id=token_id,
         )
 
