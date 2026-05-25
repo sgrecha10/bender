@@ -1,34 +1,12 @@
-from eth_abi import decode as decode_abi
-from web3 import Web3
-from django.conf import settings
 from decimal import Decimal
-from typing import Optional
+
+from django.conf import settings
+from web3 import Web3
+from web3.exceptions import TransactionNotFound
+from web3.types import HexBytes, HexStr, Hash32
 
 from bender.celery_entry import app
-from .models import BlockchainTransaction
-
-from django.conf import settings
-import time
-from web3.providers.persistent import (
-    AsyncIPCProvider,
-    WebSocketProvider,
-)
-from web3.types import HexBytes, HexStr, Hash32
-from web3.exceptions import TransactionNotFound
-
-
-def rpc_hex_to_int(value: Optional[str]) -> Optional[int]:
-    """Преобразовывает hexadecimal в int.
-
-    Нужен для того, что бы не падать на None
-    """
-    if value is None:
-        return None
-
-    if isinstance(value, int):
-        return value
-
-    return int(value, 16)
+from core.utils.value_utils import rpc_hex_to_int
 
 
 @app.task(

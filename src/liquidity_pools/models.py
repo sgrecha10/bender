@@ -1,6 +1,29 @@
 from django.db import models
 
 
+# class Chain(models.Model):
+#     chain_id = models.PositiveIntegerField(
+#         primary_key=True,
+#         verbose_name='Chain ID',
+#     )
+#     name = models.CharField(
+#         blank=True,
+#         max_length=66,
+#         verbose_name='Chain Name',
+#     )
+#     created_at = models.DateTimeField(
+#         auto_now_add=True,
+#         verbose_name='Created At',
+#     )
+#
+#     class Meta:
+#         verbose_name = 'Chain'
+#         verbose_name_plural = 'Chains'
+#
+#     def __str__(self):
+#         return self.name
+
+
 class BlockchainTransaction(models.Model):
     """Logging."""
 
@@ -136,3 +159,60 @@ class BlockchainTransaction(models.Model):
     def __str__(self):
         return self.tx_hash
 
+
+class ERC20Token(models.Model):
+    address = models.CharField(
+        primary_key=True,
+        max_length=42,
+        verbose_name='Address',
+    )
+    chain_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name='Chain ID',
+    )
+    name = models.CharField(
+        null=True,
+        max_length=100,
+        verbose_name='Name',
+    )
+    symbol = models.CharField(
+        null=True,
+        max_length=50,
+        verbose_name='Symbol',
+    )
+    decimals = models.PositiveSmallIntegerField(
+        null=True,
+        verbose_name='Decimals',
+    )
+    total_supply = models.CharField(
+        null=True,
+        max_length=255,
+        verbose_name='Total Supply',
+    )
+    owner = models.CharField(
+        null=True,
+        max_length=42,
+        verbose_name='Owner',
+    )
+    version = models.CharField(
+        null=True,
+        max_length=50,
+        verbose_name='Version',
+    )
+    domain_separator = models.CharField(
+        null=True,
+        max_length=255,
+        verbose_name='Domain Separator',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+
+    class Meta:
+        verbose_name = 'ERC-20 Token'
+        verbose_name_plural = 'ERC-20 Tokens'
+
+    def __str__(self):
+        return self.pk
