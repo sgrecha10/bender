@@ -1,8 +1,15 @@
 from django.contrib import admin
 
-from .models import BlockchainTransaction, ERC20Token
+from .models import (
+    BlockchainTransaction,
+    ERC20Token,
+    SwapRequest,
+)
 from core.utils.admin_utils import redirect_to_change_list
-from .tasks import update_token_metadata_task
+from .tasks import (
+    update_token_metadata_task,
+    execute_swap_request_task,
+)
 
 
 @admin.register(BlockchainTransaction)
@@ -145,3 +152,31 @@ class ERC20TokenAdmin(admin.ModelAdmin):
         count = queryset.count()
         message = f'Запущено обновление {count} токенов.'
         return redirect_to_change_list(request, self.model, message)
+
+
+@admin.register(SwapRequest)
+class SwapRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'wallet_address',
+        'token_in',
+        'token_out',
+        'amount_in',
+        'amount_out_min',
+        'fee',
+        'slippage_percent',
+        'deadline_seconds',
+        'status',
+        'error_message',
+        'created_by',
+        'created_at',
+        'updated_at',
+        'executed_at',
+    )
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        if not change:
+            execute_swap_request_task(
+                swap_request_id=obj.id,
+            )

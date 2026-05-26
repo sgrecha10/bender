@@ -105,3 +105,9 @@ def update_token_metadata_task(
     ERC20Token.objects.filter(pk=token_address).update(**token_metadata)
 
     return token_metadata
+
+
+@app.task(bind=True)
+def execute_swap_request_task(self, swap_request_id: int):
+    """Send SwapRequest to blockchain."""
+    print(swap_request_id)

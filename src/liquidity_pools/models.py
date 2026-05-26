@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 
 
 # class Chain(models.Model):
@@ -215,4 +216,114 @@ class ERC20Token(models.Model):
         verbose_name_plural = 'ERC-20 Tokens'
 
     def __str__(self):
-        return self.pk
+        return f'{self.symbol} | {self.pk}'
+
+
+class SwapRequest(models.Model):
+    """Swap request."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+
+    wallet_address = models.CharField(
+        max_length=42,
+        verbose_name='Wallet Address',
+    )
+    token_in = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.PROTECT,
+        related_name='token_in',
+        verbose_name='Token In',
+    )
+    token_out = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.PROTECT,
+        related_name='token_out',
+        verbose_name='Token Out',
+    )
+    amount_in = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
+        verbose_name='Amount In',
+    )
+    amount_out_min = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
+        default=0,
+        verbose_name='Amount Out Min',
+    )
+    fee = models.PositiveIntegerField(
+        default=500,
+        verbose_name='Fee',
+    )
+    slippage_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.50,
+        verbose_name='Slippage Percent',
+    )
+    deadline_seconds = models.PositiveIntegerField(
+        default=600,
+        verbose_name='Deadline Seconds',
+    )
+    blockchain_transaction = models.ManyToManyField(
+        BlockchainTransaction,
+        through='SwapRequestTransaction',
+        related_name='swap_request',
+        verbose_name='Blockchain Transactions',
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+        verbose_name='Status',
+    )
+    error_message = models.TextField(
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+    executed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Swap Request'
+        verbose_name_plural = 'Swap Requests'
+
+    def __str__(self):
+        return (
+            f'{self.token_in} -> '
+            f'{self.token_out} '
+            f'({self.amount_in})'
+        )
+
+
+class SwapRequestTransaction(models.Model):
+    """M2M table for relation."""
+    swap_request = models.ForeignKey(
+        SwapRequest,
+        on_delete=models.CASCADE,
+    )
+    blockchain_transaction = models.OneToOneField(
+        BlockchainTransaction,
+        on_delete=models.CASCADE,
+        unique=True,
+    )
