@@ -3,11 +3,11 @@ import time
 from hexbytes.main import HexBytes
 from web3 import Web3
 
-from core.clients.defi.uniswap_quoter_service import UniswapQuoterService
-from defi.models import BlockchainTransaction
+from .uniswap_quoter_service import UniswapQuoterService
+from liquidity_pools.models import BlockchainTransaction
 from .approval_service import ApprovalService
-from .blockchain_client import BlockchainClient
-from .transaction_manager import TransactionManager
+from core.clients.blockchain.blockchain_client import BlockchainClient
+from core.clients.blockchain.transaction_manager import TransactionManager
 
 
 class SwapService:

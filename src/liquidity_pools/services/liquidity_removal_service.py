@@ -1,8 +1,9 @@
-from core.clients.defi.uniswap_get_position_service import UniswapGetPositionService
-from .transaction_manager import TransactionManager
-from defi.models import BlockchainTransaction
 import time
-from core.clients.defi.blockchain_client import BlockchainClient
+
+from core.clients.blockchain.blockchain_client import BlockchainClient
+from core.clients.blockchain.transaction_manager import TransactionManager
+from liquidity_pools.models import BlockchainTransaction
+from .uniswap_get_position_service import UniswapGetPositionService
 
 
 class LiquidityRemovalService:

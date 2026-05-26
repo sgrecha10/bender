@@ -2,10 +2,10 @@ import time
 
 from web3 import Web3
 
-from core.clients.defi.approval_service import ApprovalService
-from core.clients.defi.blockchain_client import BlockchainClient
-from core.clients.defi.transaction_manager import TransactionManager
-from defi.models import BlockchainTransaction
+from .approval_service import ApprovalService
+from core.clients.blockchain.blockchain_client import BlockchainClient
+from core.clients.blockchain.transaction_manager import TransactionManager
+from liquidity_pools.models import BlockchainTransaction
 
 
 class LiquidityMintService:
