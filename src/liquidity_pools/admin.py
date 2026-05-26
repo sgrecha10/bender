@@ -167,7 +167,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'slippage_percent',
         'deadline_seconds',
         'status',
-        'error_message',
+        # 'error_message',
         'created_by',
         'created_at',
         'updated_at',
@@ -177,6 +177,6 @@ class SwapRequestAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
         if not change:
-            execute_swap_request_task(
+            execute_swap_request_task.delay(
                 swap_request_id=obj.id,
             )

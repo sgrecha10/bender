@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.conf import settings
+from eth_account.account import Account
 from web3 import Web3
 from web3.exceptions import TransactionNotFound
 from web3.types import HexBytes, HexStr, Hash32
@@ -8,9 +9,9 @@ from web3.types import HexBytes, HexStr, Hash32
 from bender.celery_entry import app
 from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.utils.value_utils import rpc_hex_to_int
-from .services.token_metadata_service import TokenMetadataService
+from liquidity_pools.containers.arbitrum import ArbitrumContainer
 from .interfaces import arbitrum
-from eth_account.account import Account
+from .services.token_metadata_service import TokenMetadataService
 
 
 @app.task(
@@ -34,8 +35,9 @@ def index_blockchain_transaction_task(
     """
     from .models import BlockchainTransaction
 
-    rpc_url = settings.RPC_DATA['arbitrum_rpc_url']
-    w3 = Web3(Web3.HTTPProvider(endpoint_uri=rpc_url))
+    w3 = Web3(Web3.HTTPProvider(
+        endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
+    )
 
     tx = w3.eth.get_transaction(transaction_hash=tx_hash)
     receipt = w3.eth.wait_for_transaction_receipt(transaction_hash=tx_hash)
@@ -110,4 +112,20 @@ def update_token_metadata_task(
 @app.task(bind=True)
 def execute_swap_request_task(self, swap_request_id: int):
     """Send SwapRequest to blockchain."""
-    print(swap_request_id)
+
+    from liquidity_pools.models import SwapRequest
+
+    swap_request = SwapRequest.objects.get(pk=swap_request_id)
+
+    container = ArbitrumContainer()
+
+    result = container.swap_service.swap(
+        amount_in=int(swap_request.amount_in),
+        slippage=swap_request.slippage_percent,
+        token_in=swap_request.token_in.address,
+        token_out=swap_request.token_out.address,
+        pool_fee=swap_request.fee,
+        deadline_seconds=swap_request.deadline_seconds,
+    )
+
+    print(result)

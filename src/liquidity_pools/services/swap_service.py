@@ -1,4 +1,5 @@
 import time
+from decimal import Decimal
 
 from hexbytes.main import HexBytes
 from web3 import Web3
@@ -28,10 +29,11 @@ class SwapService:
     def swap(
         self,
         amount_in: int,
-        slippage: float | int,
+        slippage: Decimal | float | int,
         token_in: str,
         token_out: str,
         pool_fee: int,
+        deadline_seconds: int,
     ):
         quoted_amount = self.uniswap_quoter_service.get_quote_exact_input_single(
             amount_in=amount_in,
@@ -56,7 +58,7 @@ class SwapService:
             'tokenOut': Web3.to_checksum_address(token_out),
             'fee': pool_fee,
             'recipient': self.blockchain_client.account.address,
-            'deadline': int(time.time()) + 600,
+            'deadline': int(time.time()) + deadline_seconds,
             'amountIn': amount_in,
             'amountOutMinimum': amount_out_minimum,  # для продакшена нельзя 0
             'sqrtPriceLimitX96': 0
