@@ -6,7 +6,11 @@ from web3.exceptions import TransactionNotFound
 from web3.types import HexBytes, HexStr, Hash32
 
 from bender.celery_entry import app
+from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.utils.value_utils import rpc_hex_to_int
+from .services.token_metadata_service import TokenMetadataService
+from .interfaces import arbitrum
+from eth_account.account import Account
 
 
 @app.task(
@@ -69,3 +73,35 @@ def index_blockchain_transaction_task(
     )
 
     return blockchain_transaction.tx_hash
+
+
+@app.task(bind=True)
+def update_token_metadata_task(
+    self,
+    token_address: str,
+):
+    """Retrieve and update token metadata."""
+    from liquidity_pools.models import ERC20Token
+
+    w3 = Web3(Web3.HTTPProvider(
+        endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
+    )
+    account = Account.from_key(
+        private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key']
+    )
+
+    blockchain_client = BlockchainClient(
+        w3=w3,
+        account=account,
+    )
+
+    service = TokenMetadataService(
+        blockchain_client=blockchain_client,
+        erc20_abi=arbitrum.ERC20_ABI,
+    )
+
+    token_metadata = service.get_token_metadata(token_address=token_address)
+
+    ERC20Token.objects.filter(pk=token_address).update(**token_metadata)
+
+    return token_metadata

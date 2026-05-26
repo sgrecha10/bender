@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import BlockchainTransaction, ERC20Token
 from core.utils.admin_utils import redirect_to_change_list
+from .tasks import update_token_metadata_task
 
 
 @admin.register(BlockchainTransaction)
@@ -115,7 +116,7 @@ class ERC20TokenAdmin(admin.ModelAdmin):
         'total_supply',
         'owner',
         'version',
-        'domain_separator',
+        # 'domain_separator',
         'created_at',
     )
 
@@ -135,16 +136,12 @@ class ERC20TokenAdmin(admin.ModelAdmin):
         'update_erc20token',
     )
 
-    @admin.action(description='Обновить')
+    @admin.action(description='Обновить выбранные ERC-20 Tokens')
     def update_erc20token(self, request, queryset):
-
         for row in queryset:
-            address = row.address
-
-
-
-        print('grecha')
-        result = 123
-        is_ok = True
-        message = f'Обновили {result} записей' if is_ok else result
-        return redirect_to_change_list(request, self.model, message, is_ok)
+            update_token_metadata_task.delay(
+                token_address=row.address,
+            )
+        count = queryset.count()
+        message = f'Запущено обновление {count} токенов.'
+        return redirect_to_change_list(request, self.model, message)

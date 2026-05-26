@@ -32,6 +32,7 @@ class TokenMetadataService:
 
         return {
             'address': token_address,
+            'chain_id': self.blockchain_client.w3.eth.chain_id,
             'name': self._safe_call(
                 contract_function=contract.functions.name,
             ),
