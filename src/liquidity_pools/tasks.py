@@ -12,6 +12,7 @@ from core.utils.value_utils import rpc_hex_to_int
 from liquidity_pools.containers.arbitrum import ArbitrumContainer
 from .interfaces import arbitrum
 from .services.token_metadata_service import TokenMetadataService
+from django.utils import timezone
 
 
 @app.task(
@@ -116,16 +117,30 @@ def execute_swap_request_task(self, swap_request_id: int):
     from liquidity_pools.models import SwapRequest
 
     swap_request = SwapRequest.objects.get(pk=swap_request_id)
+    swap_request.status = SwapRequest.Status.PROCESSING
+    swap_request.save(update_fields=['status', 'updated_at'])
 
     container = ArbitrumContainer()
 
-    result = container.swap_service.swap(
-        amount_in=int(swap_request.amount_in),
-        slippage=swap_request.slippage_percent,
-        token_in=swap_request.token_in.address,
-        token_out=swap_request.token_out.address,
-        pool_fee=swap_request.fee,
-        deadline_seconds=swap_request.deadline_seconds,
-    )
+    try:
+        container.swap_service.swap(
+            swap_request_id=swap_request_id,
+            amount_in=int(swap_request.amount_in),
+            slippage=swap_request.slippage_percent,
+            token_in=swap_request.token_in.address,
+            token_out=swap_request.token_out.address,
+            pool_fee=swap_request.fee,
+            deadline_seconds=swap_request.deadline_seconds,
+        )
+        swap_request.status = SwapRequest.Status.SUCCESS
+        swap_request.executed_at = timezone.now()
+    except Exception as e:
+        swap_request.status = SwapRequest.Status.FAILED
+        swap_request.error_message = str(e)
 
-    print(result)
+    swap_request.save(update_fields=[
+        'status',
+        'error_message',
+        'executed_at',
+        'updated_at',
+    ])

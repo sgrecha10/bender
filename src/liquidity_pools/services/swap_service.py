@@ -1,14 +1,16 @@
 import time
 from decimal import Decimal
 
-from hexbytes.main import HexBytes
+from liquidity_pools.exceptions import TransactionFailedError
 from web3 import Web3
 
-from .uniswap_quoter_service import UniswapQuoterService
-from liquidity_pools.models import BlockchainTransaction
-from .approval_service import ApprovalService
+
 from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.clients.blockchain.transaction_manager import TransactionManager
+from liquidity_pools.models import BlockchainTransaction
+from .approval_service import ApprovalService
+from .uniswap_quoter_service import UniswapQuoterService
+from liquidity_pools.models import SwapRequestTransaction
 
 
 class SwapService:
@@ -28,6 +30,7 @@ class SwapService:
 
     def swap(
         self,
+        swap_request_id: int,
         amount_in: int,
         slippage: Decimal | float | int,
         token_in: str,
@@ -35,6 +38,7 @@ class SwapService:
         pool_fee: int,
         deadline_seconds: int,
     ):
+
         quoted_amount = self.uniswap_quoter_service.get_quote_exact_input_single(
             amount_in=amount_in,
             token_in=token_in,
@@ -51,7 +55,14 @@ class SwapService:
             spender_address=self.router_contract.address,
             amount=amount_in,
         )
-        self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+        SwapRequestTransaction.objects.create(
+            swap_request_id=swap_request_id,
+            blockchain_transaction_id=tx_hash.hex(),
+        )
+        receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+
+        if receipt.get('status') != 1:
+            raise TransactionFailedError(tx_hash, receipt)
 
         params = {
             'tokenIn': Web3.to_checksum_address(token_in),
@@ -65,9 +76,18 @@ class SwapService:
         }
 
         contract_function = self.router_contract.functions.exactInputSingle(params)
-
-        return self.transaction_manager.execute(
+        tx_hash = self.transaction_manager.execute(
             contract_function=contract_function,
             tx_type=BlockchainTransaction.TransactionType.SWAP.value,
             gas=300000,
         )
+        SwapRequestTransaction.objects.create(
+            swap_request_id=swap_request_id,
+            blockchain_transaction_id=tx_hash.hex(),
+        )
+        receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+
+        if receipt.get('status') != 1:
+            raise TransactionFailedError(tx_hash, receipt)
+
+        return tx_hash
