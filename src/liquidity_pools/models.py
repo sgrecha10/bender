@@ -25,6 +25,50 @@ from django.db.models import Sum
 #     def __str__(self):
 #         return self.name
 
+class WalletAddress(models.Model):
+    address = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        verbose_name='Address',
+    )
+    label = models.CharField(
+        blank=True,
+        max_length=255,
+        verbose_name='Label',
+    )
+    encrypted_private_key = models.JSONField(
+        verbose_name='Encrypted Private Key',
+    )
+    chain_id = models.CharField(
+        max_length=32,
+        verbose_name='Chain ID',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Active',
+    )
+    last_used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Last Used At',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Updated At',
+    )
+
+    class Meta:
+        verbose_name = 'Wallet Address'
+        verbose_name_plural = 'Wallet Addresses'
+
+    def __str__(self):
+        return f'{self.label} |  {self.address[:6]}...{self.address[-4:]} | {self.chain_id}'
+
 
 class BlockchainTransaction(models.Model):
     """Logging."""
@@ -229,10 +273,15 @@ class SwapRequest(models.Model):
         SUCCESS = 'success', 'Success'
         FAILED = 'failed', 'Failed'
 
-    wallet_address = models.CharField(
-        max_length=42,
+    wallet_address = models.ForeignKey(
+        WalletAddress,
+        on_delete=models.CASCADE,
         verbose_name='Wallet Address',
     )
+    # wallet_address = models.CharField(
+    #     max_length=42,
+    #     verbose_name='Wallet Address',
+    # )
     token_in = models.ForeignKey(
         ERC20Token,
         on_delete=models.PROTECT,

@@ -1,6 +1,7 @@
 from django.contrib import admin
 
 from .models import (
+    WalletAddress,
     BlockchainTransaction,
     ERC20Token,
     SwapRequest,
@@ -217,7 +218,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'gas_used_total',
         'gas_cost_usdc_total',
         # 'created_by',
-        'created_at',
+        # 'created_at',
         # 'updated_at',
         'executed_at',
     )
@@ -263,3 +264,21 @@ class SwapRequestAdmin(admin.ModelAdmin):
             execute_swap_request_task.delay(
                 swap_request_id=obj.id,
             )
+
+
+@admin.register(WalletAddress)
+class WalletAddressAdmin(admin.ModelAdmin):
+    list_display = (
+        'address',
+        'label',
+        'chain_id',
+        'is_active',
+        'last_used_at',
+        'created_at',
+        'updated_at',
+    )
+    readonly_fields = (
+        'last_used_at',
+        'created_at',
+        'updated_at',
+    )
