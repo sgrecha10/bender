@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from django.db.models import Sum
 
 
 # class Chain(models.Model):
@@ -314,6 +315,14 @@ class SwapRequest(models.Model):
             f'{self.token_out} '
             f'({self.amount_in})'
         )
+
+    @property
+    def gas_used_total(self):
+        return self.blockchain_transaction.aggregate(sum=Sum('gas_used'))['sum']
+
+    @property
+    def gas_cost_usdc_total(self):
+        return self.blockchain_transaction.aggregate(sum=Sum('total_gas_cost_usdc'))['sum']
 
 
 class SwapRequestTransaction(models.Model):

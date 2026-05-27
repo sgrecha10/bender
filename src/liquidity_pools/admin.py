@@ -154,8 +154,55 @@ class ERC20TokenAdmin(admin.ModelAdmin):
         return redirect_to_change_list(request, self.model, message)
 
 
+class BlockchainTransactionInlineAdmin(admin.TabularInline):
+    classes = ('grp-collapse grp-open',)
+    model = SwapRequest.blockchain_transaction.through
+    extra = 0
+    fields = (
+        'blockchain_transaction',
+        'tx_type',
+        'status',
+        'nonce',
+        'gas_used',
+        'total_gas_cost_usdc',
+    )
+    readonly_fields = (
+        'blockchain_transaction',
+        'tx_type',
+        'status',
+        'nonce',
+        'gas_used',
+        'total_gas_cost_usdc',
+    )
+
+    def has_delete_permission(self, request, obj = ...):
+        return False
+
+    def has_add_permission(self, request, obj = None):
+        return False
+
+    def tx_type(self, obj):
+        return obj.blockchain_transaction.get_tx_type_display()
+
+    @admin.display(boolean=True)
+    def status(self, obj):
+        return obj.blockchain_transaction.status
+
+    def nonce(self, obj):
+        return obj.blockchain_transaction.nonce
+
+    def gas_used(self, obj):
+        return obj.blockchain_transaction.gas_used
+
+    def total_gas_cost_usdc(self, obj):
+        return obj.blockchain_transaction.total_gas_cost_usdc
+
+
 @admin.register(SwapRequest)
 class SwapRequestAdmin(admin.ModelAdmin):
+    inlines = (
+        BlockchainTransactionInlineAdmin,
+    )
     list_display = (
         'id',
         'wallet_address',
@@ -167,12 +214,46 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'slippage_percent',
         'deadline_seconds',
         'status',
-        # 'error_message',
         'created_by',
         'created_at',
         'updated_at',
         'executed_at',
     )
+    readonly_fields = (
+        'status',
+        'error_message',
+        'created_at',
+        'updated_at',
+        'executed_at',
+        'gas_used_total',
+        'gas_cost_usdc_total',
+    )
+    fieldsets = [
+        (None, {
+            'fields': [
+                'wallet_address',
+                'token_in',
+                'token_out',
+                'amount_in',
+                'amount_out_min',
+                'fee',
+                'slippage_percent',
+                'deadline_seconds',
+                'created_by',
+            ]
+        }),
+        ('Result', {
+            'fields': [
+                'gas_used_total',
+                'gas_cost_usdc_total',
+                'status',
+                'error_message',
+                'executed_at',
+                'updated_at',
+                'created_at',
+            ]
+        })
+    ]
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)
