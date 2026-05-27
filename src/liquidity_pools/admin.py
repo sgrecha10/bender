@@ -214,9 +214,11 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'slippage_percent',
         'deadline_seconds',
         'status',
-        'created_by',
+        'gas_used_total',
+        'gas_cost_usdc_total',
+        # 'created_by',
         'created_at',
-        'updated_at',
+        # 'updated_at',
         'executed_at',
     )
     readonly_fields = (

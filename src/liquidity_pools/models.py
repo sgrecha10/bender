@@ -217,7 +217,7 @@ class ERC20Token(models.Model):
         verbose_name_plural = 'ERC-20 Tokens'
 
     def __str__(self):
-        return f'{self.symbol} | {self.pk}'
+        return f'{self.symbol} | {self.pk[:6]}...{self.pk[-4:]}'
 
 
 class SwapRequest(models.Model):
