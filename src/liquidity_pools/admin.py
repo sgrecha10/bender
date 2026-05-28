@@ -280,8 +280,30 @@ class WalletAddressAdmin(admin.ModelAdmin):
         'updated_at',
     )
     readonly_fields = (
+        'address',
         'encrypted_private_key',
         'last_used_at',
         'created_at',
         'updated_at',
     )
+
+    def get_fields(self, request, obj=None):
+        if obj is None:
+            return (
+                'private_key',
+                'label',
+                'chain_id',
+                'is_active',
+            )
+
+        # редактирование
+        return (
+            'address',
+            'label',
+            'chain_id',
+            'is_active',
+            'encrypted_private_key',
+            'last_used_at',
+            'created_at',
+            'updated_at',
+        )

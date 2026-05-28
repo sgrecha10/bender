@@ -27,12 +27,7 @@ class WalletAdminForm(forms.ModelForm):
 
     class Meta:
         model = WalletAddress
-        fields = (
-            'private_key',
-            'chain_id',
-            'label',
-            'is_active',
-        )
+        fields = '__all__'
 
     def clean_private_key(self):
         key = self.cleaned_data['private_key'].strip()
