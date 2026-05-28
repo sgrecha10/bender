@@ -120,9 +120,10 @@ def execute_swap_request_task(self, swap_request_id: int):
     swap_request.status = SwapRequest.Status.PROCESSING
     swap_request.save(update_fields=['status', 'updated_at'])
 
-    container = ArbitrumContainer()
-
     try:
+        container = ArbitrumContainer(
+            wallet_address_id=swap_request.wallet_address_id,
+        )
         container.swap_service.swap(
             swap_request_id=swap_request_id,
             amount_in=int(swap_request.amount_in),
@@ -135,8 +136,12 @@ def execute_swap_request_task(self, swap_request_id: int):
         swap_request.status = SwapRequest.Status.SUCCESS
         swap_request.executed_at = timezone.now()
     except Exception as e:
+        # import traceback
         swap_request.status = SwapRequest.Status.FAILED
-        swap_request.error_message = str(e)
+        swap_request.error_message = (
+            # str(e) + '\n' + traceback.format_exc()
+            str(e)
+        )
 
     swap_request.save(update_fields=[
         'status',

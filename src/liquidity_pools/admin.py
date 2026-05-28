@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from core.utils.admin_utils import redirect_to_change_list
+from liquidity_pools.forms import WalletAdminForm
 from .models import (
     WalletAddress,
     BlockchainTransaction,
     ERC20Token,
     SwapRequest,
 )
-from core.utils.admin_utils import redirect_to_change_list
 from .tasks import (
     update_token_metadata_task,
     execute_swap_request_task,
@@ -268,6 +269,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
 
 @admin.register(WalletAddress)
 class WalletAddressAdmin(admin.ModelAdmin):
+    form = WalletAdminForm
     list_display = (
         'address',
         'label',
@@ -278,6 +280,7 @@ class WalletAddressAdmin(admin.ModelAdmin):
         'updated_at',
     )
     readonly_fields = (
+        'encrypted_private_key',
         'last_used_at',
         'created_at',
         'updated_at',

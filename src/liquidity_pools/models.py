@@ -28,7 +28,8 @@ from django.db.models import Sum
 class WalletAddress(models.Model):
     address = models.CharField(
         max_length=64,
-        unique=True,
+        blank=True,
+        # unique=True,
         db_index=True,
         verbose_name='Address',
     )
@@ -38,6 +39,7 @@ class WalletAddress(models.Model):
         verbose_name='Label',
     )
     encrypted_private_key = models.JSONField(
+        blank=True,
         verbose_name='Encrypted Private Key',
     )
     chain_id = models.CharField(
