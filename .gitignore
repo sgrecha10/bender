@@ -133,3 +133,5 @@ dmypy.json
 documentation.odt
 
 dump-*
+
+secrets*

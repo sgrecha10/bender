@@ -193,8 +193,7 @@ RPC_DATA = {
     'arbitrum_rpc_url': config('ARBITRUM_RPC_URL', default='https://arb1.arbitrum.io/rpc', cast=str),
 }
 
-# TODO NEED MOVE TO DOCKER SECRET
-MASTER_KEY = config('MASTER_KEY', default='', cast=str)
+MASTER_KEY = Path('/run/secrets/master_key').read_text().strip()
 
 LOGGING = {
     'version': 1,

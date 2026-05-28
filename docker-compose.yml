@@ -31,6 +31,8 @@ services:
     stdin_open: true
     environment:
       - FORCE_COLOR=1
+    secrets:
+      - master_key
 
   redis:
     container_name: ${COMPOSE_PROJECT_NAME}_redis
@@ -210,3 +212,7 @@ networks:
 volumes:
   benderdb:
   kafkadb:
+
+secrets:
+  master_key:
+    file: ./secrets/master_key

@@ -89,17 +89,8 @@ def update_token_metadata_task(
     w3 = Web3(Web3.HTTPProvider(
         endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
     )
-    account = Account.from_key(
-        private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key']
-    )
-
-    blockchain_client = BlockchainClient(
-        w3=w3,
-        account=account,
-    )
-
     service = TokenMetadataService(
-        blockchain_client=blockchain_client,
+        w3=w3,
         erc20_abi=arbitrum.ERC20_ABI,
     )
 

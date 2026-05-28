@@ -80,7 +80,7 @@ class ArbitrumContainer:
         )
 
         self.token_metadata_service = TokenMetadataService(
-            blockchain_client=self.blockchain_client,
+            w3=self.w3,
             erc20_abi=arbitrum.ERC20_ABI,
         )
 

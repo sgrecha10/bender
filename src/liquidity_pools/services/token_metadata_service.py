@@ -10,10 +10,10 @@ class TokenMetadataService:
 
     def __init__(
         self,
-        blockchain_client: BlockchainClient,
+        w3: Web3,
         erc20_abi,
     ):
-        self.blockchain_client = blockchain_client
+        self.w3 = w3
         self.erc20_abi = erc20_abi
 
     def get_token_metadata(
@@ -32,7 +32,7 @@ class TokenMetadataService:
 
         return {
             'address': token_address,
-            'chain_id': self.blockchain_client.w3.eth.chain_id,
+            'chain_id': self.w3.eth.chain_id,
             'name': self._safe_call(
                 contract_function=contract.functions.name,
             ),
@@ -63,7 +63,7 @@ class TokenMetadataService:
         self,
         token_address: ChecksumAddress,
     ) -> Contract | type[Contract]:
-        return self.blockchain_client.w3.eth.contract(
+        return self.w3.eth.contract(
             address=token_address,
             abi=self.erc20_abi,
         )
