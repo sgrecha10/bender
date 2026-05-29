@@ -212,7 +212,6 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'token_in',
         'token_out',
         'amount_in',
-        'amount_out_min',
         'fee',
         'slippage_percent',
         'deadline_seconds',
@@ -240,9 +239,8 @@ class SwapRequestAdmin(admin.ModelAdmin):
                 'token_in',
                 'token_out',
                 'amount_in',
-                'amount_out_min',
-                'fee',
                 'slippage_percent',
+                'fee',
                 'deadline_seconds',
                 'created_by',
             ]

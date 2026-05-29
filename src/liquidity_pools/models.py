@@ -343,12 +343,6 @@ class SwapRequest(models.Model):
         decimal_places=0,
         verbose_name='Amount In',
     )
-    amount_out_min = models.DecimalField(
-        max_digits=78,
-        decimal_places=0,
-        default=0,
-        verbose_name='Amount Out Min',
-    )
     fee = models.PositiveIntegerField(
         default=500,
         verbose_name='Fee',
