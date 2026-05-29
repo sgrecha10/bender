@@ -38,31 +38,33 @@ class SwapService:
         pool_fee: int,
         deadline_seconds: int,
     ):
-
         quoted_amount = self.uniswap_quoter_service.get_quote_exact_input_single(
             amount_in=amount_in,
             token_in=token_in,
             token_out=token_out,
             pool_fee=pool_fee,
         )
+        amount_out_minimum = int(quoted_amount * (1 - slippage))
 
-        amount_out_minimum = int(
-            quoted_amount * (1 - slippage)
-        )
-
-        tx_hash = self.approval_service.approve(
+        allowance_result = self.approval_service.allowance(
             token_address=token_in,
             spender_address=self.router_contract.address,
-            amount=amount_in,
+            owner_address=self.blockchain_client.account.address,
         )
-        SwapRequestTransaction.objects.create(
-            swap_request_id=swap_request_id,
-            blockchain_transaction_id=tx_hash.hex(),
-        )
-        receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+        if allowance_result < amount_in:
+            tx_hash = self.approval_service.approve(
+                token_address=token_in * 2,
+                spender_address=self.router_contract.address,
+                amount=amount_in,
+            )
+            SwapRequestTransaction.objects.create(
+                swap_request_id=swap_request_id,
+                blockchain_transaction_id=tx_hash.hex(),
+            )
+            receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
 
-        if receipt.get('status') != 1:
-            raise TransactionFailedError(tx_hash, receipt)
+            if receipt.get('status') != 1:
+                raise TransactionFailedError(tx_hash, receipt)
 
         params = {
             'tokenIn': Web3.to_checksum_address(token_in),

@@ -39,3 +39,26 @@ class ApprovalService:
             tx_type=BlockchainTransaction.TransactionType.APPROVE.value,
             gas=100000,
         )
+
+    def allowance(
+        self,
+        token_address,
+        spender_address,
+        owner_address,
+    ):
+        """
+
+        :param owner_address:
+        :param token_address:
+        :param spender:
+        :return:
+        """
+        token_contract = self.blockchain_client.w3.eth.contract(
+            address=Web3.to_checksum_address(token_address),
+            abi=self.erc20_abi,
+        )
+
+        return token_contract.functions.allowance(
+            owner=owner_address,
+            spender=spender_address,
+        ).call()
