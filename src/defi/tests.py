@@ -80,7 +80,7 @@ class UniswapNewServiceTest(TransactionTestCase):
         self.weth_token = "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1"
 
         self.w3 = Web3(Web3.HTTPProvider(
-            endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
+            endpoint_uri='')
         )
         self.account = Account.from_key(
             private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key']

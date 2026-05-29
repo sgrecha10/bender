@@ -131,7 +131,6 @@ class ERC20TokenAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = (
-        'chain',
         'name',
         'symbol',
         'decimals',
@@ -150,6 +149,7 @@ class ERC20TokenAdmin(admin.ModelAdmin):
     def update_erc20token(self, request, queryset):
         for row in queryset:
             update_token_metadata_task.delay(
+                chain_id=row.chain_id,
                 token_address=row.address,
             )
         count = queryset.count()

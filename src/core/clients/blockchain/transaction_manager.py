@@ -56,6 +56,7 @@ class TransactionManager:
         )
 
         self.transaction_indexer_task.delay(
+            chain_id=self.blockchain_client.w3.eth.chain_id,
             tx_hash=tx_hash.hex(),
             tx_type=tx_type,
         )

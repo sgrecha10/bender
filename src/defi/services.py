@@ -18,7 +18,7 @@ SwapService
 class UniswapService:
     def __init__(self) -> None:
         self.client = UniswapClient(
-            rpc_url=settings.RPC_DATA['arbitrum_rpc_url'],
+            rpc_url='',
             private_key=settings.WALLET_PRIVATE_KEYS['arbitrum_private_key'],
             router_address=arbitrum.ROUTER_ADDRESS,
             router_abi=arbitrum.ROUTER_ABI,

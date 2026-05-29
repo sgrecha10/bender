@@ -1,18 +1,15 @@
 from decimal import Decimal
 
-from django.conf import settings
-from eth_account.account import Account
-from web3 import Web3
+from django.utils import timezone
 from web3.exceptions import TransactionNotFound
 from web3.types import HexBytes, HexStr, Hash32
 
 from bender.celery_entry import app
-from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.utils.value_utils import rpc_hex_to_int
 from liquidity_pools.containers.arbitrum import ArbitrumContainer
+from liquidity_pools.services.w3_service import W3Service
 from .interfaces import arbitrum
 from .services.token_metadata_service import TokenMetadataService
-from django.utils import timezone
 
 
 @app.task(
@@ -24,11 +21,13 @@ from django.utils import timezone
 )
 def index_blockchain_transaction_task(
     self,
+    chain_id: int,
     tx_hash: Hash32 | HexBytes | HexStr,
     tx_type: str,
 ):
     """Logging to BlockchainTransaction.
 
+    :param chain_id:
     :param self:
     :param tx_hash:
     :param tx_type:
@@ -36,9 +35,7 @@ def index_blockchain_transaction_task(
     """
     from .models import BlockchainTransaction
 
-    w3 = Web3(Web3.HTTPProvider(
-        endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
-    )
+    w3 = W3Service(chain_id=chain_id)
 
     tx = w3.eth.get_transaction(transaction_hash=tx_hash)
     receipt = w3.eth.wait_for_transaction_receipt(transaction_hash=tx_hash)
@@ -81,14 +78,14 @@ def index_blockchain_transaction_task(
 @app.task(bind=True)
 def update_token_metadata_task(
     self,
+    chain_id: int,
     token_address: str,
 ):
     """Retrieve and update token metadata."""
     from liquidity_pools.models import ERC20Token
 
-    w3 = Web3(Web3.HTTPProvider(
-        endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
-    )
+    w3 = W3Service(chain_id=chain_id)
+
     service = TokenMetadataService(
         w3=w3,
         erc20_abi=arbitrum.ERC20_ABI,
