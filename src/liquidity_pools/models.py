@@ -423,3 +423,89 @@ class SwapRequestTransaction(models.Model):
         on_delete=models.CASCADE,
         unique=True,
     )
+
+
+class LiquidityRemovalRequest(models.Model):
+    """Liquidity removal request."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+
+    pool_token_id = models.PositiveBigIntegerField(
+        verbose_name='Pool Token ID',
+    )
+    removal_percentage = models.PositiveSmallIntegerField(
+        default=100,
+        verbose_name='Removal Percentage',
+    )
+    deadline_seconds = models.PositiveIntegerField(
+        default=600,
+        verbose_name='Deadline Seconds',
+    )
+    blockchain_transaction = models.ManyToManyField(
+        BlockchainTransaction,
+        through='LiquidityRemovalRequestTransaction',
+        related_name='liquidity_removal_request',
+        verbose_name='Blockchain Transactions',
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+        verbose_name='Status',
+    )
+    error_message = models.TextField(
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+    executed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Liquidity Removal Request'
+        verbose_name_plural = 'Liquidity Removal Requests'
+
+    def __str__(self):
+        return (
+            f'{self.pool_token_id} | {self.removal_percentage}'
+        )
+
+    @property
+    def gas_used_total(self):
+        return self.blockchain_transaction.aggregate(sum=Sum('gas_used'))['sum']
+
+    @property
+    def gas_cost_usdc_total(self):
+        return self.blockchain_transaction.aggregate(sum=Sum('total_gas_cost_usdc'))['sum']
+
+
+class LiquidityRemovalRequestTransaction(models.Model):
+    """M2M table for relation."""
+    liquidity_removal_request = models.ForeignKey(
+        LiquidityRemovalRequest,
+        on_delete=models.CASCADE,
+    )
+    blockchain_transaction = models.OneToOneField(
+        BlockchainTransaction,
+        on_delete=models.CASCADE,
+        unique=True,
+    )

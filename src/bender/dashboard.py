@@ -97,6 +97,7 @@ class CustomIndexDashboard(Dashboard):
                     'liquidity_pools.models.ERC20Token',
                     'liquidity_pools.models.BlockchainTransaction',
                     'liquidity_pools.models.SwapRequest',
+                    'liquidity_pools.models.LiquidityRemovalRequest',
                 ),
             )
         )

@@ -8,6 +8,7 @@ from .models import (
     ERC20Token,
     SwapRequest,
     Chain,
+    LiquidityRemovalRequest,
 )
 from .tasks import (
     update_token_metadata_task,
@@ -226,6 +227,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
     readonly_fields = (
         'status',
         'error_message',
+        'created_by',
         'created_at',
         'updated_at',
         'executed_at',
@@ -242,7 +244,6 @@ class SwapRequestAdmin(admin.ModelAdmin):
                 'slippage_percent',
                 'fee',
                 'deadline_seconds',
-                'created_by',
             ]
         }),
         ('Result', {
@@ -251,6 +252,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
                 'gas_cost_usdc_total',
                 'status',
                 'error_message',
+                'created_by',
                 'executed_at',
                 'updated_at',
                 'created_at',
@@ -259,6 +261,8 @@ class SwapRequestAdmin(admin.ModelAdmin):
     ]
 
     def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
         super().save_model(request, obj, form, change)
         if not change:
             execute_swap_request_task.delay(
@@ -326,4 +330,27 @@ class ChainAdmin(admin.ModelAdmin):
         'is_active',
         'updated_at',
         'created_at',
+    )
+
+
+@admin.register(LiquidityRemovalRequest)
+class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'pool_token_id',
+        'removal_percentage',
+        'deadline_seconds',
+        'status',
+        'created_by',
+        'created_at',
+        'updated_at',
+        'executed_at',
+    )
+    readonly_fields = (
+        'status',
+        'error_message',
+        'created_by',
+        'created_at',
+        'updated_at',
+        'executed_at',
     )

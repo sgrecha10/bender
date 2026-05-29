@@ -53,7 +53,7 @@ class SwapService:
         )
         if allowance_result < amount_in:
             tx_hash = self.approval_service.approve(
-                token_address=token_in * 2,
+                token_address=token_in,
                 spender_address=self.router_contract.address,
                 amount=amount_in,
             )

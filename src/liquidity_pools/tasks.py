@@ -124,8 +124,8 @@ def execute_swap_request_task(self, swap_request_id: int):
         swap_request.status = SwapRequest.Status.SUCCESS
         swap_request.executed_at = timezone.now()
     except Exception as e:
-        # import traceback
         swap_request.status = SwapRequest.Status.FAILED
+        # import traceback
         swap_request.error_message = (
             # str(e) + '\n' + traceback.format_exc()
             str(e)
