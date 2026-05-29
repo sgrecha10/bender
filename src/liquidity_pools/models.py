@@ -4,7 +4,7 @@ from django.db.models import Sum
 
 
 class Chain(models.Model):
-    chain_id = models.PositiveIntegerField(
+    id = models.PositiveIntegerField(
         primary_key=True,
         verbose_name='Chain ID',
     )
@@ -63,7 +63,7 @@ class Chain(models.Model):
         verbose_name_plural = 'Chains'
 
     def __str__(self):
-        return f'{self.name} ({self.chain_id})'
+        return f'{self.name} ({self.id})'
 
 
 class WalletAddress(models.Model):
@@ -83,7 +83,7 @@ class WalletAddress(models.Model):
         blank=True,
         verbose_name='Encrypted Private Key',
     )
-    chain_id = models.ForeignKey(
+    chain = models.ForeignKey(
         Chain,
         on_delete=models.CASCADE,
         verbose_name='Chain ID',
@@ -111,7 +111,7 @@ class WalletAddress(models.Model):
         verbose_name_plural = 'Wallet Addresses'
 
     def __str__(self):
-        return f'{self.label} |  {self.address[:6]}...{self.address[-4:]} | {self.chain_id}'
+        return f'{self.label} |  {self.address[:6]}...{self.address[-4:]} | {self.chain}'
 
 
 class BlockchainTransaction(models.Model):
@@ -135,7 +135,7 @@ class BlockchainTransaction(models.Model):
         primary_key=True,
         verbose_name='Transaction Hash',
     )
-    chain_id = models.ForeignKey(
+    chain = models.ForeignKey(
         Chain,
         on_delete=models.CASCADE,
         null=True,
@@ -258,7 +258,7 @@ class ERC20Token(models.Model):
         max_length=42,
         verbose_name='Address',
     )
-    chain_id = models.ForeignKey(
+    chain = models.ForeignKey(
         Chain,
         on_delete=models.CASCADE,
         null=True,

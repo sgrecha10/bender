@@ -20,7 +20,7 @@ class BlockchainTransactionAdmin(admin.ModelAdmin):
     list_display = (
         # 'tx_hash',
         'short_tx_hash',
-        'chain_id',
+        'chain',
         'tx_type',
         # 'ethereum_tx_type',
         'status',
@@ -43,7 +43,7 @@ class BlockchainTransactionAdmin(admin.ModelAdmin):
     readonly_fields = (
         'tx_hash',
         'short_tx_hash',
-        'chain_id',
+        'chain',
         'tx_type',
         'ethereum_tx_type',
         'status',
@@ -68,7 +68,7 @@ class BlockchainTransactionAdmin(admin.ModelAdmin):
         ('Main', {
             'fields': [
                 'tx_hash',
-                'chain_id',
+                'chain',
                 'tx_type',
                 'ethereum_tx_type',
                 'status',
@@ -119,7 +119,7 @@ class BlockchainTransactionAdmin(admin.ModelAdmin):
 class ERC20TokenAdmin(admin.ModelAdmin):
     list_display = (
         'address',
-        'chain_id',
+        'chain',
         'name',
         'symbol',
         'decimals',
@@ -131,7 +131,7 @@ class ERC20TokenAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = (
-        'chain_id',
+        'chain',
         'name',
         'symbol',
         'decimals',
@@ -274,7 +274,7 @@ class WalletAddressAdmin(admin.ModelAdmin):
     list_display = (
         'address',
         'label',
-        'chain_id',
+        'chain',
         'is_active',
         'last_used_at',
         'created_at',
@@ -293,7 +293,7 @@ class WalletAddressAdmin(admin.ModelAdmin):
             return (
                 'private_key',
                 'label',
-                'chain_id',
+                'chain',
                 'is_active',
             )
 
@@ -301,7 +301,7 @@ class WalletAddressAdmin(admin.ModelAdmin):
         return (
             'address',
             'label',
-            'chain_id',
+            'chain',
             'is_active',
             'encrypted_private_key',
             'last_used_at',
@@ -316,7 +316,7 @@ class ChainAdmin(admin.ModelAdmin):
         'slug': ('name',)
     }
     list_display = (
-        'chain_id',
+        'id',
         'name',
         'slug',
         'rpc_urls',

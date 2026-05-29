@@ -1,6 +1,3 @@
-from django.conf import settings
-from web3 import Web3
-
 from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.clients.blockchain.transaction_manager import TransactionManager
 from ..interfaces import arbitrum
@@ -12,16 +9,24 @@ from ..services.swap_service import SwapService
 from ..services.token_metadata_service import TokenMetadataService
 from ..services.uniswap_get_position_service import UniswapGetPositionService
 from ..services.uniswap_quoter_service import UniswapQuoterService
+from ..services.w3_service import W3Service
 
 
 class ArbitrumContainer:
-    def __init__(self, wallet_address_id: int):
-        self.w3 = Web3(Web3.HTTPProvider(
-            endpoint_uri=settings.RPC_DATA['arbitrum_rpc_url'])
-        )
-        self.account = AccountService(
+    def __init__(
+        self,
+        wallet_address_id: int,
+    ):
+        self.account_service = AccountService(
             wallet_address_id=wallet_address_id,
         )
+        self.account = self.account_service.get_account()
+        self.chain = self.account_service.get_chain()
+
+        self.w3 = W3Service(
+            chain_id=self.chain.id,
+        )
+
         self.blockchain_client = BlockchainClient(
             w3=self.w3,
             account=self.account,
