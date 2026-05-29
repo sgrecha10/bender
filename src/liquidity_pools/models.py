@@ -3,33 +3,74 @@ from django.conf import settings
 from django.db.models import Sum
 
 
-# class Chain(models.Model):
-#     chain_id = models.PositiveIntegerField(
-#         primary_key=True,
-#         verbose_name='Chain ID',
-#     )
-#     name = models.CharField(
-#         blank=True,
-#         max_length=66,
-#         verbose_name='Chain Name',
-#     )
-#     created_at = models.DateTimeField(
-#         auto_now_add=True,
-#         verbose_name='Created At',
-#     )
-#
-#     class Meta:
-#         verbose_name = 'Chain'
-#         verbose_name_plural = 'Chains'
-#
-#     def __str__(self):
-#         return self.name
+class Chain(models.Model):
+    chain_id = models.PositiveIntegerField(
+        primary_key=True,
+        verbose_name='Chain ID',
+    )
+    name = models.CharField(
+        max_length=64,
+        unique=True,
+        verbose_name='Chain Name',
+    )
+    slug = models.SlugField(
+        unique=True,
+        verbose_name='Slug',
+    )
+    rpc_urls = models.JSONField(
+        default=list,
+        verbose_name='RPC URLs',
+    )
+    ws_rpc_urls = models.JSONField(
+        blank=True,
+        null=True,
+        default=list,
+        verbose_name='Websocket RPC URLs',
+    )
+    explorer_url = models.URLField(
+        blank=True,
+        verbose_name='Explorer URL',
+    )
+    native_token_symbol = models.CharField(
+        max_length=16,
+        default='ETH',
+        verbose_name='Native Token Symbol',
+    )
+    native_token_decimals = models.PositiveSmallIntegerField(
+        default=18,
+        verbose_name='Native Token Decimals',
+    )
+    block_time = models.FloatField(
+        blank=True,
+        null=True,
+        help_text='Average block time in seconds',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Active',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Updated At',
+    )
+
+    class Meta:
+        verbose_name = 'Chain'
+        verbose_name_plural = 'Chains'
+
+    def __str__(self):
+        return f'{self.name} ({self.chain_id})'
+
 
 class WalletAddress(models.Model):
     address = models.CharField(
         max_length=64,
         blank=True,
-        # unique=True,
+        unique=True,
         db_index=True,
         verbose_name='Address',
     )
@@ -202,7 +243,7 @@ class BlockchainTransaction(models.Model):
 
     class Meta:
         verbose_name = 'Blockchain Transaction'
-        verbose_name_plural = 'Blockchain Transaction'
+        verbose_name_plural = 'Blockchain Transactions'
 
     def __str__(self):
         return self.tx_hash

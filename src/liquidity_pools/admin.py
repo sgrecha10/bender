@@ -7,6 +7,7 @@ from .models import (
     BlockchainTransaction,
     ERC20Token,
     SwapRequest,
+    Chain,
 )
 from .tasks import (
     update_token_metadata_task,
@@ -307,3 +308,24 @@ class WalletAddressAdmin(admin.ModelAdmin):
             'created_at',
             'updated_at',
         )
+
+
+@admin.register(Chain)
+class ChainAdmin(admin.ModelAdmin):
+    prepopulated_fields = {
+        'slug': ('name',)
+    }
+    list_display = (
+        'chain_id',
+        'name',
+        'slug',
+        'rpc_urls',
+        'ws_rpc_urls',
+        'explorer_url',
+        'native_token_symbol',
+        'native_token_decimals',
+        'block_time',
+        'is_active',
+        'updated_at',
+        'created_at',
+    )

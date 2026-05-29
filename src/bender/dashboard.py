@@ -92,6 +92,7 @@ class CustomIndexDashboard(Dashboard):
                 column=1,
                 collapsible=True,
                 models=(
+                    'liquidity_pools.models.Chain',
                     'liquidity_pools.models.WalletAddress',
                     'liquidity_pools.models.ERC20Token',
                     'liquidity_pools.models.BlockchainTransaction',
