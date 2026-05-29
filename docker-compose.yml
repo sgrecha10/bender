@@ -64,6 +64,8 @@ services:
     env_file:
       - ./.env
     command: celery -A bender.celery_entry worker -l info
+    secrets:
+      - master_key
 
   celerybeat:
     container_name: ${COMPOSE_PROJECT_NAME}_celerybeat
@@ -85,6 +87,8 @@ services:
     env_file:
       - ./.env
     entrypoint: celery -A bender.celery_entry beat
+    secrets:
+      - master_key
 
   postgres_db:
     container_name: ${COMPOSE_PROJECT_NAME}_postgres
@@ -172,6 +176,8 @@ services:
     ports:
       - "${FLOWER_PORT:-5555}:5555"
     command: celery -A bender.celery_entry flower --port=5555
+    secrets:
+      - master_key
 
   kafka:
     image: bitnami/kafka:3.4.1
