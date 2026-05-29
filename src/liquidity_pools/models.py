@@ -83,8 +83,9 @@ class WalletAddress(models.Model):
         blank=True,
         verbose_name='Encrypted Private Key',
     )
-    chain_id = models.CharField(
-        max_length=32,
+    chain_id = models.ForeignKey(
+        Chain,
+        on_delete=models.CASCADE,
         verbose_name='Chain ID',
     )
     is_active = models.BooleanField(
@@ -134,7 +135,9 @@ class BlockchainTransaction(models.Model):
         primary_key=True,
         verbose_name='Transaction Hash',
     )
-    chain_id = models.PositiveIntegerField(
+    chain_id = models.ForeignKey(
+        Chain,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         verbose_name='Chain ID',
@@ -255,7 +258,9 @@ class ERC20Token(models.Model):
         max_length=42,
         verbose_name='Address',
     )
-    chain_id = models.PositiveIntegerField(
+    chain_id = models.ForeignKey(
+        Chain,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         verbose_name='Chain ID',
@@ -321,10 +326,6 @@ class SwapRequest(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Wallet Address',
     )
-    # wallet_address = models.CharField(
-    #     max_length=42,
-    #     verbose_name='Wallet Address',
-    # )
     token_in = models.ForeignKey(
         ERC20Token,
         on_delete=models.PROTECT,
