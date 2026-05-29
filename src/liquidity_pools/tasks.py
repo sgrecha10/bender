@@ -154,6 +154,7 @@ def execute_liquidity_removal_request(self, liquidity_removal_request_id: int):
             wallet_address_id=liquidity_removal_request.wallet_address_id,
         )
         container.liquidity_removal_service.remove_liquidity(
+            liquidity_removal_request_id=liquidity_removal_request_id,
             token_id=liquidity_removal_request.pool_token_id,
             removal_percentage=liquidity_removal_request.removal_percentage,
             deadline_seconds=liquidity_removal_request.deadline_seconds,

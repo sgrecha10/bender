@@ -2,7 +2,8 @@ import time
 
 from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.clients.blockchain.transaction_manager import TransactionManager
-from liquidity_pools.models import BlockchainTransaction
+from liquidity_pools.exceptions import TransactionFailedError
+from liquidity_pools.models import BlockchainTransaction, LiquidityRemovalRequestTransaction
 from .uniswap_get_position_service import UniswapGetPositionService
 
 
@@ -23,6 +24,7 @@ class LiquidityRemovalService:
 
     def remove_liquidity(
         self,
+        liquidity_removal_request_id: int,
         token_id: int,
         removal_percentage: int,
         deadline_seconds: int,
@@ -36,11 +38,27 @@ class LiquidityRemovalService:
             liquidity=liquidity,
             deadline_seconds=deadline_seconds,
         )
-        self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
-
-        return self.collect_liquidity(
-            token_id=token_id,
+        LiquidityRemovalRequestTransaction.objects.create(
+            liquidity_removal_request_id=liquidity_removal_request_id,
+            blockchain_transaction_id=tx_hash.hex(),
         )
+        receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+
+        if receipt.get('status') != 1:
+            raise TransactionFailedError(tx_hash, receipt)
+
+        tx_hash = self.collect_liquidity(token_id=token_id)
+
+        LiquidityRemovalRequestTransaction.objects.create(
+            liquidity_removal_request_id=liquidity_removal_request_id,
+            blockchain_transaction_id=tx_hash.hex(),
+        )
+        receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+
+        if receipt.get('status') != 1:
+            raise TransactionFailedError(tx_hash, receipt)
+
+        return tx_hash
 
     def decrease_liquidity(
         self,

@@ -159,9 +159,8 @@ class ERC20TokenAdmin(admin.ModelAdmin):
         return redirect_to_change_list(request, self.model, message)
 
 
-class BlockchainTransactionInlineAdmin(admin.TabularInline):
+class BlockchainTransactionInlineBaseAdmin(admin.TabularInline):
     classes = ('grp-collapse grp-open',)
-    model = SwapRequest.blockchain_transaction.through
     extra = 0
     fields = (
         'blockchain_transaction',
@@ -203,10 +202,14 @@ class BlockchainTransactionInlineAdmin(admin.TabularInline):
         return obj.blockchain_transaction.total_gas_cost_usdc
 
 
+class SwapRequestBlockchainTransactionInlineAdmin(BlockchainTransactionInlineBaseAdmin):
+    model = SwapRequest.blockchain_transaction.through
+
+
 @admin.register(SwapRequest)
 class SwapRequestAdmin(admin.ModelAdmin):
     inlines = (
-        BlockchainTransactionInlineAdmin,
+        SwapRequestBlockchainTransactionInlineAdmin,
     )
     list_display = (
         'id',
@@ -220,7 +223,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'status',
         'gas_used_total',
         'gas_cost_usdc_total',
-        # 'created_by',
+        'created_by',
         # 'created_at',
         # 'updated_at',
         'executed_at',
@@ -334,8 +337,15 @@ class ChainAdmin(admin.ModelAdmin):
     )
 
 
+class LiquidityRemovalRequestBlockchainTransactionInlineAdmin(BlockchainTransactionInlineBaseAdmin):
+    model = LiquidityRemovalRequest.blockchain_transaction.through
+
+
 @admin.register(LiquidityRemovalRequest)
 class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
+    inlines = (
+        LiquidityRemovalRequestBlockchainTransactionInlineAdmin,
+    )
     list_display = (
         'id',
         'wallet_address',
@@ -343,6 +353,8 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
         'removal_percentage',
         'deadline_seconds',
         'status',
+        'gas_used_total',
+        'gas_cost_usdc_total',
         'created_by',
         'created_at',
         'updated_at',
@@ -350,12 +362,37 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         'status',
+        'gas_used_total',
+        'gas_cost_usdc_total',
         'error_message',
         'created_by',
         'created_at',
         'updated_at',
         'executed_at',
     )
+
+    fieldsets = [
+        (None, {
+            'fields': [
+                'wallet_address',
+                'pool_token_id',
+                'removal_percentage',
+                'deadline_seconds',
+            ]
+        }),
+        ('Result', {
+            'fields': [
+                'gas_used_total',
+                'gas_cost_usdc_total',
+                'status',
+                'error_message',
+                'created_by',
+                'executed_at',
+                'updated_at',
+                'created_at',
+            ]
+        })
+    ]
 
     def save_model(self, request, obj, form, change):
         if not change:
