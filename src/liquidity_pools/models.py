@@ -434,6 +434,11 @@ class LiquidityRemovalRequest(models.Model):
         SUCCESS = 'success', 'Success'
         FAILED = 'failed', 'Failed'
 
+    wallet_address = models.ForeignKey(
+        WalletAddress,
+        on_delete=models.CASCADE,
+        verbose_name='Wallet Address',
+    )
     pool_token_id = models.PositiveBigIntegerField(
         verbose_name='Pool Token ID',
     )

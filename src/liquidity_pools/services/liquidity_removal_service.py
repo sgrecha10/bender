@@ -25,6 +25,7 @@ class LiquidityRemovalService:
         self,
         token_id: int,
         removal_percentage: int,
+        deadline_seconds: int,
     ):
         position_data = self.uniswap_get_position_service.get_position(token_id=token_id)
         liquidity = position_data['liquidity']
@@ -33,6 +34,7 @@ class LiquidityRemovalService:
         tx_hash = self.decrease_liquidity(
             token_id=token_id,
             liquidity=liquidity,
+            deadline_seconds=deadline_seconds,
         )
         self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
 
@@ -44,6 +46,7 @@ class LiquidityRemovalService:
         self,
         token_id: int,
         liquidity: int,
+        deadline_seconds: int,
         amount0_min: int = 0,
         amount1_min: int = 0,
     ):
@@ -52,7 +55,7 @@ class LiquidityRemovalService:
             'liquidity': liquidity,
             'amount0Min': amount0_min,
             'amount1Min': amount1_min,
-            'deadline': int(time.time()) + 600,
+            'deadline': int(time.time()) + deadline_seconds,
         }
 
         contract_function = self.position_manager_contract.functions.decreaseLiquidity(params)

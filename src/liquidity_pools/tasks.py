@@ -137,3 +137,40 @@ def execute_swap_request_task(self, swap_request_id: int):
         'executed_at',
         'updated_at',
     ])
+
+
+@app.task(bind=True)
+def execute_liquidity_removal_request(self, liquidity_removal_request_id: int):
+    """Send LiquidityRemovalRequest to blockchain."""
+
+    from liquidity_pools.models import LiquidityRemovalRequest
+
+    liquidity_removal_request = LiquidityRemovalRequest.objects.get(pk=liquidity_removal_request_id)
+    liquidity_removal_request.status = LiquidityRemovalRequest.Status.PROCESSING
+    liquidity_removal_request.save(update_fields=['status', 'updated_at'])
+
+    try:
+        container = ArbitrumContainer(
+            wallet_address_id=liquidity_removal_request.wallet_address_id,
+        )
+        container.liquidity_removal_service.remove_liquidity(
+            token_id=liquidity_removal_request.pool_token_id,
+            removal_percentage=liquidity_removal_request.removal_percentage,
+            deadline_seconds=liquidity_removal_request.deadline_seconds,
+        )
+        liquidity_removal_request.status = LiquidityRemovalRequest.Status.SUCCESS
+        liquidity_removal_request.executed_at = timezone.now()
+    except Exception as e:
+        liquidity_removal_request.status = LiquidityRemovalRequest.Status.FAILED
+        # import traceback
+        liquidity_removal_request.error_message = (
+            # str(e) + '\n' + traceback.format_exc()
+            str(e)
+        )
+
+    liquidity_removal_request.save(update_fields=[
+        'status',
+        'error_message',
+        'executed_at',
+        'updated_at',
+    ])

@@ -13,6 +13,7 @@ from .models import (
 from .tasks import (
     update_token_metadata_task,
     execute_swap_request_task,
+    execute_liquidity_removal_request,
 )
 
 
@@ -337,6 +338,7 @@ class ChainAdmin(admin.ModelAdmin):
 class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
     list_display = (
         'id',
+        'wallet_address',
         'pool_token_id',
         'removal_percentage',
         'deadline_seconds',
@@ -354,3 +356,12 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
         'updated_at',
         'executed_at',
     )
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+        if not change:
+            execute_liquidity_removal_request.delay(
+                liquidity_removal_request_id=obj.id,
+            )
