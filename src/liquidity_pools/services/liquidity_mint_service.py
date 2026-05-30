@@ -1,11 +1,14 @@
 import time
+from decimal import Decimal
 
 from web3 import Web3
+from web3.contract import ContractConstructor, Contract
 
-from .approval_service import ApprovalService
 from core.clients.blockchain.blockchain_client import BlockchainClient
 from core.clients.blockchain.transaction_manager import TransactionManager
-from liquidity_pools.models import BlockchainTransaction
+from liquidity_pools.models import BlockchainTransaction, LiquidityMintRequestTransaction
+from .approval_service import ApprovalService
+from  liquidity_pools.exceptions import TransactionFailedError
 
 
 class LiquidityMintService:
@@ -31,57 +34,62 @@ class LiquidityMintService:
         self.position_manager_contract = position_manager_contract
         self.slot0_abi = slot0_abi
 
-    def mint(
+    def mint_liquidity(
         self,
+        liquidity_mint_request_id: int,
         token0: str,
         token1: str,
-        fee: int,
         pool_address: str,
         amount0_desired: int,
         amount1_desired: int,
         tick_width: int,
-        amount0_min: int = 0,
-        amount1_min: int = 0,
+        range_upper_limit: int,
+        range_lower_limit: int,
+        amount0_min: int,  # 0
+        amount1_min: int,  # 0
+        slippage_percent: Decimal | float | int,
+        deadline_seconds: int,
     ):
-
-        current_tick = self._get_current_tick(
-            pool_address=pool_address,
-        )
-
+        ### Вычисляем tick_lower, tick_upper
+        ## Сначала просто по tick_width вверх и вниз - проверим цену.
+        pool_contract = self._get_pool_contract(pool_address=pool_address)
+        slot0 = pool_contract.functions.slot0().call()
+        current_tick = slot0[1]
+        fee = pool_contract.functions.fee().call()
         tick_lower, tick_upper = self._calculate_range_ticks(
             current_tick=current_tick,
             fee=fee,
             width=tick_width,
         )
+        if tick_lower >= tick_upper:
+            raise ValueError('Invalid tick range')
 
-        tx_hash = self.approval_service.approve(
-            token_address=token0,
-            spender_address=self.position_manager_contract.address,
-            amount=amount0_desired,
-        )
-        self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+        ## Апрувим оба токена в кошельке
+        approve_input = [
+            (token0, amount0_desired),
+            (token1, amount1_desired),
+        ]
+        for token, amount_desired in approve_input:  # прикрутить алловансе!!!!!!!!!!!!!
+            tx_hash = self.approval_service.approve(
+                token_address=token,
+                spender_address=self.position_manager_contract.address,
+                amount=amount_desired,
+            )
+            LiquidityMintRequestTransaction.objects.create(
+                liquidity_mint_request_id=liquidity_mint_request_id,
+                blockchain_transaction_id=tx_hash.hex(),
+            )
+            receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+            if receipt.get('status') != 1:
+                raise TransactionFailedError(tx_hash, receipt)
 
-        tx_hash = self.approval_service.approve(
-            token_address=token1,
-            spender_address=self.position_manager_contract.address,
-            amount=amount1_desired,
-        )
-        self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
-
+        ## Выполняем минт
         token0 = Web3.to_checksum_address(token0)
         token1 = Web3.to_checksum_address(token1)
-
         if token0.lower() > token1.lower():
-            raise ValueError(
-                "token0 must be < token1"
-            )
+            raise ValueError('token0 must be < token1')
 
-        if tick_lower >= tick_upper:
-            raise ValueError(
-                'Invalid tick range'
-            )
-
-        return self._mint_liquidity(
+        tx_hash = self._mint_liquidity(
             token0=token0,
             token1=token1,
             fee=fee,
@@ -91,19 +99,27 @@ class LiquidityMintService:
             amount1_desired=amount1_desired,
             amount0_min=amount0_min,
             amount1_min=amount1_min,
+            deadline_seconds=deadline_seconds,
         )
+        LiquidityMintRequestTransaction.objects.create(
+            liquidity_mint_request_id=liquidity_mint_request_id,
+            blockchain_transaction_id=tx_hash.hex(),
+        )
+        receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+        if receipt.get('status') != 1:
+            raise TransactionFailedError(tx_hash, receipt)
 
-    def _get_current_tick(
+        return tx_hash
+
+    def _get_pool_contract(
         self,
         pool_address: str,
-    ) -> int:
-        """Retrieve current tick."""
-        pool_contract = self.blockchain_client.w3.eth.contract(
-            address=Web3.to_checksum_address(pool_address),
+    ) -> Contract | type[Contract]:
+        checksum_address_pool = Web3.to_checksum_address(pool_address)
+        return self.blockchain_client.w3.eth.contract(
+            address=checksum_address_pool,
             abi=self.slot0_abi,
         )
-        slot0 = pool_contract.functions.slot0().call()
-        return slot0[1]
 
     def _calculate_range_ticks(
         self,
@@ -143,6 +159,7 @@ class LiquidityMintService:
         amount1_desired: int,
         amount0_min: int,
         amount1_min: int,
+        deadline_seconds: int,
     ):
         params = (
             token0,
@@ -155,7 +172,7 @@ class LiquidityMintService:
             amount0_min,
             amount1_min,
             self.blockchain_client.account.address,
-            int(time.time()) + 600,
+            int(time.time()) + deadline_seconds,
         )
 
         contract_function = self.position_manager_contract.functions.mint(params)

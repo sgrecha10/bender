@@ -530,46 +530,59 @@ class LiquidityMintRequest(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Wallet Address',
     )
+    token0 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.PROTECT,
+        related_name='token0',
+        verbose_name='Token 0',
+    )
     token1 = models.ForeignKey(
         ERC20Token,
         on_delete=models.PROTECT,
         related_name='token1',
         verbose_name='Token 1',
     )
-    token2 = models.ForeignKey(
-        ERC20Token,
-        on_delete=models.PROTECT,
-        related_name='token2',
-        verbose_name='Token 2',
-    )
     fee = models.PositiveIntegerField(
-        default=500,
+        blank=True,
+        null=True,
         verbose_name='Fee',
     )
     pool_address = models.CharField(
         max_length=42,
         verbose_name='Pool Address',
     )
-    amount0_desired = models.PositiveBigIntegerField(
+    amount0_desired = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
         verbose_name='Amount0 Desired',
     )
-    amount1_desired = models.PositiveBigIntegerField(
+    amount1_desired = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
         verbose_name='Amount1 Desired',
     )
     tick_width = models.PositiveBigIntegerField(
         verbose_name='Tick Width',
     )
-    range_up = models.PositiveBigIntegerField(
-        verbose_name='Range Up',
+    range_upper_limit = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
+        verbose_name='Range Upper Limit',
     )
-    range_down = models.PositiveBigIntegerField(
-        verbose_name='Range Down',
+    range_lower_limit = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
+        verbose_name='Range Lower Limit',
     )
-    amount0_min = models.PositiveBigIntegerField(
+    amount0_min = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
         default=0,
         verbose_name='Amount0 Min',
     )
-    amount1_min = models.PositiveBigIntegerField(
+    amount1_min = models.DecimalField(
+        max_digits=78,
+        decimal_places=0,
         default=0,
         verbose_name='Amount1 Min',
     )
@@ -625,8 +638,8 @@ class LiquidityMintRequest(models.Model):
 
     def __str__(self):
         return (
-            f'{self.token1} '
-            f'| {self.token2} '
+            f'{self.token0} '
+            f'| {self.token1} '
             f'| {self.fee} '
             f'| {self.pool_address}'
         )

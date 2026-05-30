@@ -435,15 +435,15 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'wallet_address',
+        'token0',
         'token1',
-        'token2',
         'fee',
         'pool_address',
         'amount0_desired',
         'amount1_desired',
         'tick_width',
-        'range_up',
-        'range_down',
+        'range_upper_limit',
+        'range_lower_limit',
         'amount0_min',
         'amount1_min',
         'slippage_percent',
@@ -458,6 +458,7 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
     readonly_fields = (
         'status',
         'colored_status',
+        'fee',
         'gas_used_total',
         'gas_cost_usdc_total',
         'error_message',
@@ -470,15 +471,14 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
         (None, {
             'fields': [
                 'wallet_address',
+                'token0',
                 'token1',
-                'token2',
-                'fee',
                 'pool_address',
                 'amount0_desired',
                 'amount1_desired',
                 'tick_width',
-                'range_up',
-                'range_down',
+                'range_upper_limit',
+                'range_lower_limit',
                 'amount0_min',
                 'amount1_min',
                 'slippage_percent',
@@ -491,6 +491,7 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
                 'gas_cost_usdc_total',
                 # 'status',
                 'colored_status',
+                'fee',
                 'error_message',
                 'created_by',
                 'executed_at',
@@ -508,6 +509,9 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
             execute_liquidity_mint_request.delay(
                 liquidity_mint_request_id=obj.id,
             )
+            # execute_liquidity_mint_request(
+            #     liquidity_mint_request_id=obj.id,
+            # )
 
     @admin.display(description='Status')
     def colored_status(self, obj):

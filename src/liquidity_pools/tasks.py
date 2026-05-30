@@ -188,22 +188,32 @@ def execute_liquidity_mint_request(self, liquidity_mint_request_id: int):
     liquidity_mint_request.save(update_fields=['status', 'updated_at'])
 
     try:
-        # container = ArbitrumContainer(
-        #     wallet_address_id=liquidity_mint_request.wallet_address_id,
-        # )
-        # container.liquidity_removal_service.remove_liquidity(
-        #     liquidity_mint_request_id=liquidity_mint_request_id,
-        #
-        #     deadline_seconds=liquidity_mint_request.deadline_seconds,
-        # )
+        container = ArbitrumContainer(
+            wallet_address_id=liquidity_mint_request.wallet_address_id,
+        )
+        container.liquidity_mint_service.mint_liquidity(
+            liquidity_mint_request_id=liquidity_mint_request_id,
+            token0=liquidity_mint_request.token0.address,
+            token1=liquidity_mint_request.token1.address,
+            pool_address=liquidity_mint_request.pool_address,
+            amount0_desired=int(liquidity_mint_request.amount0_desired),
+            amount1_desired=int(liquidity_mint_request.amount1_desired),
+            tick_width=int(liquidity_mint_request.tick_width),
+            range_upper_limit=int(liquidity_mint_request.range_upper_limit),
+            range_lower_limit=int(liquidity_mint_request.range_lower_limit),
+            amount0_min=int(liquidity_mint_request.amount0_min),
+            amount1_min=int(liquidity_mint_request.amount1_min),
+            slippage_percent=liquidity_mint_request.slippage_percent,
+            deadline_seconds=liquidity_mint_request.deadline_seconds,
+        )
         liquidity_mint_request.status = LiquidityMintRequest.Status.SUCCESS
         liquidity_mint_request.executed_at = timezone.now()
     except Exception as e:
         liquidity_mint_request.status = LiquidityMintRequest.Status.FAILED
-        # import traceback
+        import traceback
         liquidity_mint_request.error_message = (
-            # str(e) + '\n' + traceback.format_exc()
-            str(e)
+            str(e) + '\n' + traceback.format_exc()
+            # str(e)
         )
 
     liquidity_mint_request.save(update_fields=[
