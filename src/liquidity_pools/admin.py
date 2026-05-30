@@ -1,6 +1,9 @@
 from django.contrib import admin
 
-from core.utils.admin_utils import redirect_to_change_list
+from core.utils.admin_utils import (
+    redirect_to_change_list,
+    colored_status_display,
+)
 from liquidity_pools.forms import WalletAdminForm
 from .models import (
     WalletAddress,
@@ -220,7 +223,8 @@ class SwapRequestAdmin(admin.ModelAdmin):
         'fee',
         'slippage_percent',
         'deadline_seconds',
-        'status',
+        # 'status',
+        'colored_status',
         'gas_used_total',
         'gas_cost_usdc_total',
         'created_by',
@@ -230,6 +234,7 @@ class SwapRequestAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         'status',
+        'colored_status',
         'error_message',
         'created_by',
         'created_at',
@@ -254,7 +259,8 @@ class SwapRequestAdmin(admin.ModelAdmin):
             'fields': [
                 'gas_used_total',
                 'gas_cost_usdc_total',
-                'status',
+                # 'status',
+                'colored_status',
                 'error_message',
                 'created_by',
                 'executed_at',
@@ -272,6 +278,10 @@ class SwapRequestAdmin(admin.ModelAdmin):
             execute_swap_request_task.delay(
                 swap_request_id=obj.id,
             )
+
+    @admin.display(description='Status')
+    def colored_status(self, obj):
+        return colored_status_display(obj)
 
 
 @admin.register(WalletAddress)
@@ -352,7 +362,8 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
         'pool_token_id',
         'removal_percentage',
         'deadline_seconds',
-        'status',
+        # 'status',
+        'colored_status',
         'gas_used_total',
         'gas_cost_usdc_total',
         'created_by',
@@ -362,6 +373,7 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
     )
     readonly_fields = (
         'status',
+        'colored_status',
         'gas_used_total',
         'gas_cost_usdc_total',
         'error_message',
@@ -384,7 +396,8 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
             'fields': [
                 'gas_used_total',
                 'gas_cost_usdc_total',
-                'status',
+                # 'status',
+                'colored_status',
                 'error_message',
                 'created_by',
                 'executed_at',
@@ -402,3 +415,7 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
             execute_liquidity_removal_request.delay(
                 liquidity_removal_request_id=obj.id,
             )
+
+    @admin.display(description='Status')
+    def colored_status(self, obj):
+        return colored_status_display(obj)
