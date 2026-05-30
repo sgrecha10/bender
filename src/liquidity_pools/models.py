@@ -514,3 +514,140 @@ class LiquidityRemovalRequestTransaction(models.Model):
         on_delete=models.CASCADE,
         unique=True,
     )
+
+
+class LiquidityMintRequest(models.Model):
+    """Liquidity mint request."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        PROCESSING = 'processing', 'Processing'
+        SUCCESS = 'success', 'Success'
+        FAILED = 'failed', 'Failed'
+
+    wallet_address = models.ForeignKey(
+        WalletAddress,
+        on_delete=models.CASCADE,
+        verbose_name='Wallet Address',
+    )
+    token1 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.PROTECT,
+        related_name='token1',
+        verbose_name='Token 1',
+    )
+    token2 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.PROTECT,
+        related_name='token2',
+        verbose_name='Token 2',
+    )
+    fee = models.PositiveIntegerField(
+        default=500,
+        verbose_name='Fee',
+    )
+    pool_address = models.CharField(
+        max_length=42,
+        verbose_name='Pool Address',
+    )
+    amount0_desired = models.PositiveBigIntegerField(
+        verbose_name='Amount0 Desired',
+    )
+    amount1_desired = models.PositiveBigIntegerField(
+        verbose_name='Amount1 Desired',
+    )
+    tick_width = models.PositiveBigIntegerField(
+        verbose_name='Tick Width',
+    )
+    range_up = models.PositiveBigIntegerField(
+        verbose_name='Range Up',
+    )
+    range_down = models.PositiveBigIntegerField(
+        verbose_name='Range Down',
+    )
+    amount0_min = models.PositiveBigIntegerField(
+        default=0,
+        verbose_name='Amount0 Min',
+    )
+    amount1_min = models.PositiveBigIntegerField(
+        default=0,
+        verbose_name='Amount1 Min',
+    )
+    slippage_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0.50,
+        verbose_name='Slippage Percent',
+    )
+
+    deadline_seconds = models.PositiveIntegerField(
+        default=600,
+        verbose_name='Deadline Seconds',
+    )
+    blockchain_transaction = models.ManyToManyField(
+        BlockchainTransaction,
+        through='LiquidityMintRequestTransaction',
+        related_name='liquidity_mint_request',
+        verbose_name='Blockchain Transactions',
+    )
+    status = models.CharField(
+        max_length=32,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+        verbose_name='Status',
+    )
+    error_message = models.TextField(
+        null=True,
+        blank=True,
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+    executed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        verbose_name = 'Liquidity Mint Request'
+        verbose_name_plural = 'Liquidity Mint Requests'
+
+    def __str__(self):
+        return (
+            f'{self.token1} '
+            f'| {self.token2} '
+            f'| {self.fee} '
+            f'| {self.pool_address}'
+        )
+
+    @property
+    def gas_used_total(self):
+        return self.blockchain_transaction.aggregate(sum=Sum('gas_used'))['sum']
+
+    @property
+    def gas_cost_usdc_total(self):
+        return self.blockchain_transaction.aggregate(sum=Sum('total_gas_cost_usdc'))['sum']
+
+
+class LiquidityMintRequestTransaction(models.Model):
+    """M2M table for relation."""
+    liquidity_mint_request = models.ForeignKey(
+        LiquidityMintRequest,
+        on_delete=models.CASCADE,
+    )
+    blockchain_transaction = models.OneToOneField(
+        BlockchainTransaction,
+        on_delete=models.CASCADE,
+        unique=True,
+    )

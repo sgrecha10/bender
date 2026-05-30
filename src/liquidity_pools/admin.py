@@ -6,17 +6,19 @@ from core.utils.admin_utils import (
 )
 from liquidity_pools.forms import WalletAdminForm
 from .models import (
-    WalletAddress,
-    BlockchainTransaction,
-    ERC20Token,
-    SwapRequest,
     Chain,
+    WalletAddress,
+    ERC20Token,
+    BlockchainTransaction,
+    SwapRequest,
     LiquidityRemovalRequest,
+    LiquidityMintRequest,
 )
 from .tasks import (
     update_token_metadata_task,
     execute_swap_request_task,
     execute_liquidity_removal_request,
+    execute_liquidity_mint_request,
 )
 
 
@@ -414,6 +416,97 @@ class LiquidityRemovalRequestAdmin(admin.ModelAdmin):
         if not change:
             execute_liquidity_removal_request.delay(
                 liquidity_removal_request_id=obj.id,
+            )
+
+    @admin.display(description='Status')
+    def colored_status(self, obj):
+        return colored_status_display(obj)
+
+
+class LiquidityMintRequestBlockchainTransactionInlineAdmin(BlockchainTransactionInlineBaseAdmin):
+    model = LiquidityMintRequest.blockchain_transaction.through
+
+
+@admin.register(LiquidityMintRequest)
+class LiquidityMintRequestAdmin(admin.ModelAdmin):
+    inlines = (
+        LiquidityMintRequestBlockchainTransactionInlineAdmin,
+    )
+    list_display = (
+        'id',
+        'wallet_address',
+        'token1',
+        'token2',
+        'fee',
+        'pool_address',
+        'amount0_desired',
+        'amount1_desired',
+        'tick_width',
+        'range_up',
+        'range_down',
+        'amount0_min',
+        'amount1_min',
+        'slippage_percent',
+        'deadline_seconds',
+        # 'status',
+        'colored_status',
+        'created_by',
+        # 'created_at',
+        # 'updated_at',
+        'executed_at',
+    )
+    readonly_fields = (
+        'status',
+        'colored_status',
+        'gas_used_total',
+        'gas_cost_usdc_total',
+        'error_message',
+        'created_by',
+        'created_at',
+        'updated_at',
+        'executed_at',
+    )
+    fieldsets = [
+        (None, {
+            'fields': [
+                'wallet_address',
+                'token1',
+                'token2',
+                'fee',
+                'pool_address',
+                'amount0_desired',
+                'amount1_desired',
+                'tick_width',
+                'range_up',
+                'range_down',
+                'amount0_min',
+                'amount1_min',
+                'slippage_percent',
+                'deadline_seconds',
+            ]
+        }),
+        ('Result', {
+            'fields': [
+                'gas_used_total',
+                'gas_cost_usdc_total',
+                # 'status',
+                'colored_status',
+                'error_message',
+                'created_by',
+                'executed_at',
+                'updated_at',
+                'created_at',
+            ]
+        })
+    ]
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+        if not change:
+            execute_liquidity_mint_request.delay(
+                liquidity_mint_request_id=obj.id,
             )
 
     @admin.display(description='Status')

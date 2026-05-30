@@ -175,3 +175,40 @@ def execute_liquidity_removal_request(self, liquidity_removal_request_id: int):
         'executed_at',
         'updated_at',
     ])
+
+
+@app.task(bind=True)
+def execute_liquidity_mint_request(self, liquidity_mint_request_id: int):
+    """Send LiquidityMintRequest to blockchain."""
+
+    from liquidity_pools.models import LiquidityMintRequest
+
+    liquidity_mint_request = LiquidityMintRequest.objects.get(pk=liquidity_mint_request_id)
+    liquidity_mint_request.status = LiquidityMintRequest.Status.PROCESSING
+    liquidity_mint_request.save(update_fields=['status', 'updated_at'])
+
+    try:
+        # container = ArbitrumContainer(
+        #     wallet_address_id=liquidity_mint_request.wallet_address_id,
+        # )
+        # container.liquidity_removal_service.remove_liquidity(
+        #     liquidity_mint_request_id=liquidity_mint_request_id,
+        #
+        #     deadline_seconds=liquidity_mint_request.deadline_seconds,
+        # )
+        liquidity_mint_request.status = LiquidityMintRequest.Status.SUCCESS
+        liquidity_mint_request.executed_at = timezone.now()
+    except Exception as e:
+        liquidity_mint_request.status = LiquidityMintRequest.Status.FAILED
+        # import traceback
+        liquidity_mint_request.error_message = (
+            # str(e) + '\n' + traceback.format_exc()
+            str(e)
+        )
+
+    liquidity_mint_request.save(update_fields=[
+        'status',
+        'error_message',
+        'executed_at',
+        'updated_at',
+    ])
