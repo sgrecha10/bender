@@ -1,8 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 from django.db.models import Sum
-
-import liquidity_pools
 
 
 class Chain(models.Model):
