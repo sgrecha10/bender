@@ -77,6 +77,11 @@ class SwapService:
         }
 
         contract_function = self.router_contract.functions.exactInputSingle(params)
+
+        # it is a checking
+        contract_function.call({'from': self.blockchain_client.account.address})
+        contract_function.estimate_gas({'from': self.blockchain_client.account.address})
+
         tx_hash = self.transaction_manager.execute(
             contract_function=contract_function,
             tx_type=BlockchainTransaction.TransactionType.SWAP.value,

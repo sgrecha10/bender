@@ -140,13 +140,9 @@ class LiquidityMintService:
 
         contract_function = self.position_manager_contract.functions.mint(params)
 
-        contract_function.call({
-            'from': self.blockchain_client.account.address
-        })
-
-        contract_function.estimate_gas({
-            'from': self.blockchain_client.account.address,
-        })
+        # it is a checking
+        contract_function.call({'from': self.blockchain_client.account.address})
+        contract_function.estimate_gas({'from': self.blockchain_client.account.address})
 
         return self.transaction_manager.execute(
             contract_function=contract_function,
