@@ -12,6 +12,10 @@ def code(apps, _):
         rpc_urls=[
             'https://arb1.arbitrum.io/rpc',
             'https://rpc.ankr.com/arbitrum',
+            'https://arb-mainnet.g.alchemy.com/public',
+        ],
+        ws_rpc_urls=[
+            'wss://arb-mainnet.g.alchemy.com/v2/'
         ],
         explorer_url='https://arbiscan.io/',
         native_token_symbol='ETH',
