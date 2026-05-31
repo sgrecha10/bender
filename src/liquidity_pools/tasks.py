@@ -257,13 +257,11 @@ def execute_liquidity_mint_request(self, liquidity_mint_request_id: int):
         )
         container.liquidity_mint_service.mint_liquidity(
             liquidity_mint_request_id=liquidity_mint_request_id,
-            token0=liquidity_mint_request.token0.address,
-            token1=liquidity_mint_request.token1.address,
-            pool_address=liquidity_mint_request.pool_address,
+            liquidity_pool=liquidity_mint_request.liquidity_pool,
             amount0_desired=int(liquidity_mint_request.amount0_desired),
             amount1_desired=int(liquidity_mint_request.amount1_desired),
-            range_upper_limit=liquidity_mint_request.range_upper_limit,
-            range_lower_limit=liquidity_mint_request.range_lower_limit,
+            range_upper_price=liquidity_mint_request.range_upper_price,
+            range_lower_price=liquidity_mint_request.range_lower_price,
             amount0_min=int(liquidity_mint_request.amount0_min),
             amount1_min=int(liquidity_mint_request.amount1_min),
             slippage_percent=liquidity_mint_request.slippage_percent,

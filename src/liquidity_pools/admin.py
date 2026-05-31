@@ -441,7 +441,7 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
         'amount0_desired',
         'amount1_desired',
         'range_upper_price',
-        'range_lower_print',
+        'range_lower_price',
         'amount0_min',
         'amount1_min',
         'slippage_percent',
@@ -472,7 +472,7 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
                 'amount0_desired',
                 'amount1_desired',
                 'range_upper_price',
-                'range_lower_print',
+                'range_lower_price',
                 'amount0_min',
                 'amount1_min',
                 'slippage_percent',
@@ -499,12 +499,12 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
         if not change:
-            execute_liquidity_mint_request.delay(
-                liquidity_mint_request_id=obj.id,
-            )
-            # execute_liquidity_mint_request(
+            # execute_liquidity_mint_request.delay(
             #     liquidity_mint_request_id=obj.id,
             # )
+            execute_liquidity_mint_request(
+                liquidity_mint_request_id=obj.id,
+            )
 
     @admin.display(description='Status')
     def colored_status(self, obj):

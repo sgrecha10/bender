@@ -591,28 +591,6 @@ class LiquidityMintRequest(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Liquidity Pool',
     )
-
-    # token0 = models.ForeignKey(
-    #     ERC20Token,
-    #     on_delete=models.PROTECT,
-    #     related_name='token0',
-    #     verbose_name='Token 0',
-    # )
-    # token1 = models.ForeignKey(
-    #     ERC20Token,
-    #     on_delete=models.PROTECT,
-    #     related_name='token1',
-    #     verbose_name='Token 1',
-    # )
-    # fee = models.PositiveIntegerField(
-    #     blank=True,
-    #     null=True,
-    #     verbose_name='Fee',
-    # )
-    # pool_address = models.CharField(
-    #     max_length=42,
-    #     verbose_name='Pool Address',
-    # )
     amount0_desired = models.DecimalField(
         max_digits=78,
         decimal_places=0,
@@ -626,13 +604,13 @@ class LiquidityMintRequest(models.Model):
     range_upper_price = models.DecimalField(
         max_digits=78,
         decimal_places=5,
-        verbose_name='Range Upper Limit',
+        verbose_name='Range Upper Price',
         help_text='Price in Token1',
     )
-    range_lower_print = models.DecimalField(
+    range_lower_price = models.DecimalField(
         max_digits=78,
         decimal_places=5,
-        verbose_name='Range Lower Limit',
+        verbose_name='Range Lower Price',
         help_text='Price in Token1',
     )
     amount0_min = models.DecimalField(
@@ -699,10 +677,7 @@ class LiquidityMintRequest(models.Model):
 
     def __str__(self):
         return (
-            f'{self.token0} '
-            f'| {self.token1} '
-            f'| {self.fee} '
-            f'| {self.pool_address}'
+            f'Mint | {self.liquidity_pool} '
         )
 
     @property
