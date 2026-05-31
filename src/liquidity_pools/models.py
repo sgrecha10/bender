@@ -2,6 +2,8 @@ from django.db import models
 from django.conf import settings
 from django.db.models import Sum
 
+import liquidity_pools
+
 
 class Chain(models.Model):
     id = models.PositiveIntegerField(
@@ -112,6 +114,122 @@ class WalletAddress(models.Model):
 
     def __str__(self):
         return f'{self.label} |  {self.address[:6]}...{self.address[-4:]} | {self.chain}'
+
+
+class ERC20Token(models.Model):
+    address = models.CharField(
+        primary_key=True,
+        max_length=42,
+        verbose_name='Address',
+    )
+    chain = models.ForeignKey(
+        Chain,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        verbose_name='Chain ID',
+    )
+    name = models.CharField(
+        null=True,
+        max_length=100,
+        verbose_name='Name',
+    )
+    symbol = models.CharField(
+        null=True,
+        max_length=50,
+        verbose_name='Symbol',
+    )
+    decimals = models.PositiveSmallIntegerField(
+        null=True,
+        verbose_name='Decimals',
+    )
+    total_supply = models.CharField(
+        null=True,
+        max_length=255,
+        verbose_name='Total Supply',
+    )
+    owner = models.CharField(
+        null=True,
+        max_length=42,
+        verbose_name='Owner',
+    )
+    version = models.CharField(
+        null=True,
+        max_length=50,
+        verbose_name='Version',
+    )
+    domain_separator = models.CharField(
+        null=True,
+        max_length=255,
+        verbose_name='Domain Separator',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+
+    class Meta:
+        verbose_name = 'ERC-20 Token'
+        verbose_name_plural = 'ERC-20 Tokens'
+
+    def __str__(self):
+        return f'{self.symbol} | {self.pk[:6]}...{self.pk[-4:]}'
+
+
+class LiquidityPool(models.Model):
+    address = models.CharField(
+        primary_key=True,
+        max_length=42,
+        verbose_name='Pool Address',
+    )
+    chain = models.ForeignKey(
+        Chain,
+        on_delete=models.CASCADE,
+        verbose_name='Chain',
+    )
+    token0 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='token0_pools',
+        verbose_name='Token0',
+    )
+    token1 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='token1_pools',
+        verbose_name='Token1',
+    )
+    fee = models.PositiveIntegerField(
+        null=True,
+        verbose_name='Fee',
+        help_text='100, 500, 3000, 10000',
+    )
+    tick_spacing = models.PositiveIntegerField(
+        null=True,
+        verbose_name='Tick Spacing',
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Updated At',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+
+    class Meta:
+        verbose_name = 'Liquidity Pool'
+        verbose_name_plural = 'Liquidity Pools'
+
+    def __str__(self):
+        return (
+            f'{self.address} '
+            f'| {self.token0} '
+            f'| {self.token1} '
+            f'| {self.fee} '
+        )
 
 
 class BlockchainTransaction(models.Model):
@@ -250,66 +368,6 @@ class BlockchainTransaction(models.Model):
 
     def __str__(self):
         return self.tx_hash
-
-
-class ERC20Token(models.Model):
-    address = models.CharField(
-        primary_key=True,
-        max_length=42,
-        verbose_name='Address',
-    )
-    chain = models.ForeignKey(
-        Chain,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        verbose_name='Chain ID',
-    )
-    name = models.CharField(
-        null=True,
-        max_length=100,
-        verbose_name='Name',
-    )
-    symbol = models.CharField(
-        null=True,
-        max_length=50,
-        verbose_name='Symbol',
-    )
-    decimals = models.PositiveSmallIntegerField(
-        null=True,
-        verbose_name='Decimals',
-    )
-    total_supply = models.CharField(
-        null=True,
-        max_length=255,
-        verbose_name='Total Supply',
-    )
-    owner = models.CharField(
-        null=True,
-        max_length=42,
-        verbose_name='Owner',
-    )
-    version = models.CharField(
-        null=True,
-        max_length=50,
-        verbose_name='Version',
-    )
-    domain_separator = models.CharField(
-        null=True,
-        max_length=255,
-        verbose_name='Domain Separator',
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Created At',
-    )
-
-    class Meta:
-        verbose_name = 'ERC-20 Token'
-        verbose_name_plural = 'ERC-20 Tokens'
-
-    def __str__(self):
-        return f'{self.symbol} | {self.pk[:6]}...{self.pk[-4:]}'
 
 
 class SwapRequest(models.Model):
@@ -530,27 +588,33 @@ class LiquidityMintRequest(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Wallet Address',
     )
-    token0 = models.ForeignKey(
-        ERC20Token,
-        on_delete=models.PROTECT,
-        related_name='token0',
-        verbose_name='Token 0',
+    liquidity_pool = models.ForeignKey(
+        LiquidityPool,
+        on_delete=models.CASCADE,
+        verbose_name='Liquidity Pool',
     )
-    token1 = models.ForeignKey(
-        ERC20Token,
-        on_delete=models.PROTECT,
-        related_name='token1',
-        verbose_name='Token 1',
-    )
-    fee = models.PositiveIntegerField(
-        blank=True,
-        null=True,
-        verbose_name='Fee',
-    )
-    pool_address = models.CharField(
-        max_length=42,
-        verbose_name='Pool Address',
-    )
+
+    # token0 = models.ForeignKey(
+    #     ERC20Token,
+    #     on_delete=models.PROTECT,
+    #     related_name='token0',
+    #     verbose_name='Token 0',
+    # )
+    # token1 = models.ForeignKey(
+    #     ERC20Token,
+    #     on_delete=models.PROTECT,
+    #     related_name='token1',
+    #     verbose_name='Token 1',
+    # )
+    # fee = models.PositiveIntegerField(
+    #     blank=True,
+    #     null=True,
+    #     verbose_name='Fee',
+    # )
+    # pool_address = models.CharField(
+    #     max_length=42,
+    #     verbose_name='Pool Address',
+    # )
     amount0_desired = models.DecimalField(
         max_digits=78,
         decimal_places=0,
@@ -561,17 +625,17 @@ class LiquidityMintRequest(models.Model):
         decimal_places=0,
         verbose_name='Amount1 Desired',
     )
-    range_upper_limit = models.DecimalField(
+    range_upper_price = models.DecimalField(
         max_digits=78,
         decimal_places=5,
         verbose_name='Range Upper Limit',
-        help_text='Price in USD',
+        help_text='Price in Token1',
     )
-    range_lower_limit = models.DecimalField(
+    range_lower_print = models.DecimalField(
         max_digits=78,
         decimal_places=5,
         verbose_name='Range Lower Limit',
-        help_text='Price in USD',
+        help_text='Price in Token1',
     )
     amount0_min = models.DecimalField(
         max_digits=78,
@@ -663,59 +727,3 @@ class LiquidityMintRequestTransaction(models.Model):
         on_delete=models.CASCADE,
         unique=True,
     )
-
-
-class LiquidityPool(models.Model):
-    address = models.CharField(
-        primary_key=True,
-        max_length=42,
-        verbose_name='Pool Address',
-    )
-    chain = models.ForeignKey(
-        Chain,
-        on_delete=models.CASCADE,
-        verbose_name='Chain',
-    )
-    token0 = models.ForeignKey(
-        ERC20Token,
-        on_delete=models.CASCADE,
-        null=True,
-        related_name='token0_pools',
-        verbose_name='Token0',
-    )
-    token1 = models.ForeignKey(
-        ERC20Token,
-        on_delete=models.CASCADE,
-        null=True,
-        related_name='token1_pools',
-        verbose_name='Token1',
-    )
-    fee = models.PositiveIntegerField(
-        null=True,
-        verbose_name='Fee',
-        help_text='100, 500, 3000, 10000',
-    )
-    tick_spacing = models.PositiveIntegerField(
-        null=True,
-        verbose_name='Tick Spacing',
-    )
-    updated_at = models.DateTimeField(
-        auto_now=True,
-        verbose_name='Updated At',
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Created At',
-    )
-
-    class Meta:
-        verbose_name = 'Liquidity Pool'
-        verbose_name_plural = 'Liquidity Pools'
-
-    def __str__(self):
-        return (
-            f'{self.address} '
-            f'| {self.token0} '
-            f'| {self.token1} '
-            f'| {self.fee} '
-        )

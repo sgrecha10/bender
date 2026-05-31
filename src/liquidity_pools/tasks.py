@@ -11,12 +11,17 @@ from liquidity_pools.services.w3_service import W3Service
 from .interfaces import arbitrum
 from .services.token_metadata_service import TokenMetadataService
 from .services.liquidity_pool_metadata_service import LiquidityPoolMetadataService
+from requests.exceptions import ConnectionError
+from http.client import RemoteDisconnected
+
 
 
 @app.task(
     bind=True,
     autoretry_for=(
         TransactionNotFound,
+        ConnectionError,
+        RemoteDisconnected,
     ),
     retry_kwargs={'max_retries': 10, 'countdown': 1},
 )
@@ -76,7 +81,14 @@ def index_blockchain_transaction_task(
     return blockchain_transaction.tx_hash
 
 
-@app.task(bind=True)
+@app.task(
+    bind=True,
+    autoretry_for=(
+        ConnectionError,
+        RemoteDisconnected,
+    ),
+    retry_kwargs={'max_retries': 10, 'countdown': 1},
+)
 def update_token_metadata_task(
     self,
     chain_id: int,
@@ -99,7 +111,14 @@ def update_token_metadata_task(
     return token_metadata
 
 
-@app.task(bind=True)
+@app.task(
+    bind=True,
+    autoretry_for=(
+        ConnectionError,
+        RemoteDisconnected,
+    ),
+    retry_kwargs={'max_retries': 10, 'countdown': 1},
+)
 def update_liquidity_pool_task(
     self,
     chain_id: int,
@@ -122,7 +141,14 @@ def update_liquidity_pool_task(
     return pool_metadata
 
 
-@app.task(bind=True)
+@app.task(
+    bind=True,
+    autoretry_for=(
+        ConnectionError,
+        RemoteDisconnected,
+    ),
+    retry_kwargs={'max_retries': 10, 'countdown': 1},
+)
 def execute_swap_request_task(self, swap_request_id: int):
     """Send SwapRequest to blockchain."""
 
@@ -163,7 +189,14 @@ def execute_swap_request_task(self, swap_request_id: int):
     ])
 
 
-@app.task(bind=True)
+@app.task(
+    bind=True,
+    autoretry_for=(
+        ConnectionError,
+        RemoteDisconnected,
+    ),
+    retry_kwargs={'max_retries': 10, 'countdown': 1},
+)
 def execute_liquidity_removal_request(self, liquidity_removal_request_id: int):
     """Send LiquidityRemovalRequest to blockchain."""
 
@@ -201,7 +234,14 @@ def execute_liquidity_removal_request(self, liquidity_removal_request_id: int):
     ])
 
 
-@app.task(bind=True)
+@app.task(
+    bind=True,
+    autoretry_for=(
+        ConnectionError,
+        RemoteDisconnected,
+    ),
+    retry_kwargs={'max_retries': 10, 'countdown': 1},
+)
 def execute_liquidity_mint_request(self, liquidity_mint_request_id: int):
     """Send LiquidityMintRequest to blockchain."""
 
