@@ -53,8 +53,12 @@ class TransactionManager:
 
         BlockchainTransaction.objects.create(
             tx_hash=tx_hash.hex(),
+            chain_id=self.blockchain_client.w3.eth.chain_id,
+            tx_type=tx_type,
         )
 
+        # тут дублируется chain_id, tx_type
+        # оставил что бы эта таска могла создавать транзакции (не знаю, надо ли это, подумать)
         self.transaction_indexer_task.delay(
             chain_id=self.blockchain_client.w3.eth.chain_id,
             tx_hash=tx_hash.hex(),

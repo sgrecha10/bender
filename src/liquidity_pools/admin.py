@@ -1,4 +1,5 @@
 from django.contrib import admin
+from hexbytes import HexBytes
 
 from core.utils.admin_utils import (
     redirect_to_change_list,
@@ -16,6 +17,7 @@ from .models import (
     LiquidityPool,
 )
 from .tasks import (
+    index_blockchain_transaction_task,
     update_token_metadata_task,
     update_liquidity_pool_task,
     execute_swap_request_task,
@@ -119,9 +121,25 @@ class BlockchainTransactionAdmin(admin.ModelAdmin):
     ordering = ('-created_at',)
     search_fields = ('tx_hash',)
 
+    actions = (
+        'update_blockchain_transaction_receipt',
+    )
+
     @admin.display(description='Transaction hash')
     def short_tx_hash(self, obj):
         return f'{obj.tx_hash[:6]}...{obj.tx_hash[-4:]}'
+
+    @admin.action(description='Обновить выбранные BlockchainTransactions')
+    def update_blockchain_transaction_receipt(self, request, queryset):
+        for row in queryset:
+            index_blockchain_transaction_task.delay(
+                chain_id=row.chain_id,
+                tx_hash=HexBytes(row.tx_hash),
+                tx_type=row.tx_type,
+            )
+        count = queryset.count()
+        message = f'Запущено обновление {count} транзакций.'
+        return redirect_to_change_list(request, self.model, message)
 
 
 @admin.register(ERC20Token)
@@ -499,12 +517,12 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
         if not change:
-            # execute_liquidity_mint_request.delay(
-            #     liquidity_mint_request_id=obj.id,
-            # )
-            execute_liquidity_mint_request(
+            execute_liquidity_mint_request.delay(
                 liquidity_mint_request_id=obj.id,
             )
+            # execute_liquidity_mint_request(
+            #     liquidity_mint_request_id=obj.id,
+            # )
 
     @admin.display(description='Status')
     def colored_status(self, obj):

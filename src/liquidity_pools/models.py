@@ -240,6 +240,7 @@ class BlockchainTransaction(models.Model):
         COLLECT = 'collect', 'Collect'
         APPROVE = 'approve', 'Approve'
         DECREASE_LIQUIDITY = 'decrease_liquidity', 'Decrease Liquidity'
+        UNKNOWN = 'unknown', 'Unknown'
 
     class EthereumTxType(models.IntegerChoices):
         LEGACY = 0, 'legacy'
