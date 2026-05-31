@@ -172,6 +172,9 @@ class ERC20Token(models.Model):
 
     def __str__(self):
         return f'{self.symbol} | {self.pk[:6]}...{self.pk[-4:]}'
+        # return (
+        #     f'{self.symbol} ({self.chain.name})'
+        # )
 
 
 class LiquidityPool(models.Model):
@@ -223,12 +226,11 @@ class LiquidityPool(models.Model):
 
     def __str__(self):
         return (
-            f'{self.address} '
-            f'| {self.token0} '
-            f'| {self.token1} '
-            f'| {self.fee} '
+            f'{self.token0.symbol} '
+            f'/ {self.token1.symbol} '
+            f'- {self.fee / 10000}% '
+            f'| {self.address[:6]}...{self.address[-4:]}'
         )
-
 
 class BlockchainTransaction(models.Model):
     """Logging."""
@@ -631,6 +633,12 @@ class LiquidityMintRequest(models.Model):
         decimal_places=2,
         default=0.50,
         verbose_name='Slippage Percent',
+        help_text=(
+            'Не использую. Но можно прикрутить так: выбирать меньшее значение из amount0_desired/amount1_desired,'
+            ' применяешь значение из этого поля и заполняешь соответствующее поле amount0_min/amount1_min. '
+            'Во втором поле amount_min ставим 0. Получается страховка от ситуации, когда цена сильно уехала после '
+            'отпарвки транзакции. Не уверен что это нужно сейчас.'
+        ),
     )
 
     deadline_seconds = models.PositiveIntegerField(
