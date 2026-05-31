@@ -561,18 +561,17 @@ class LiquidityMintRequest(models.Model):
         decimal_places=0,
         verbose_name='Amount1 Desired',
     )
-    tick_width = models.PositiveBigIntegerField(
-        verbose_name='Tick Width',
-    )
     range_upper_limit = models.DecimalField(
         max_digits=78,
-        decimal_places=0,
+        decimal_places=5,
         verbose_name='Range Upper Limit',
+        help_text='Price in USD',
     )
     range_lower_limit = models.DecimalField(
         max_digits=78,
-        decimal_places=0,
+        decimal_places=5,
         verbose_name='Range Lower Limit',
+        help_text='Price in USD',
     )
     amount0_min = models.DecimalField(
         max_digits=78,

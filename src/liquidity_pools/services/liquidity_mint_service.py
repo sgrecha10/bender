@@ -1,5 +1,6 @@
 import time
 from decimal import Decimal
+from math import log
 
 from web3 import Web3
 from web3.contract import ContractConstructor, Contract
@@ -42,52 +43,73 @@ class LiquidityMintService:
         pool_address: str,
         amount0_desired: int,
         amount1_desired: int,
-        tick_width: int,
-        range_upper_limit: int,
-        range_lower_limit: int,
+        range_upper_limit: Decimal | float,
+        range_lower_limit: Decimal | float,
+
         amount0_min: int,  # 0
         amount1_min: int,  # 0
         slippage_percent: Decimal | float | int,
         deadline_seconds: int,
     ):
         ### Вычисляем tick_lower, tick_upper
-        ## Сначала просто по tick_width вверх и вниз - проверим цену.
         pool_contract = self._get_pool_contract(pool_address=pool_address)
         slot0 = pool_contract.functions.slot0().call()
         current_tick = slot0[1]
         fee = pool_contract.functions.fee().call()
-        tick_lower, tick_upper = self._calculate_range_ticks(
-            current_tick=current_tick,
-            fee=fee,
-            width=tick_width,
+
+        tick_lower, tick_upper = self._calculate_ticks(
+            lower_price=range_lower_limit,
+            upper_price=range_upper_limit,
+            tick_spacing=self.TICK_SPACING[fee],
         )
+
+        print('ticks_not work:')
+        print(tick_lower, tick_upper)
+
+        # tick_lower, tick_upper = self._calculate_range_ticks(
+        #     current_tick=current_tick,
+        #     fee=fee,
+        #     width=1000,
+        # )
         if tick_lower >= tick_upper:
             raise ValueError('Invalid tick range')
+
+        # print('ticks:')
+        # print(tick_lower, tick_upper)
 
         ## Апрувим оба токена в кошельке
         approve_input = [
             (token0, amount0_desired),
             (token1, amount1_desired),
         ]
-        for token, amount_desired in approve_input:  # прикрутить алловансе!!!!!!!!!!!!!
-            tx_hash = self.approval_service.approve(
+        for token, amount_desired in approve_input:
+            allowance_result = self.approval_service.allowance(
                 token_address=token,
                 spender_address=self.position_manager_contract.address,
-                amount=amount_desired,
+                owner_address=self.blockchain_client.account.address,
             )
-            LiquidityMintRequestTransaction.objects.create(
-                liquidity_mint_request_id=liquidity_mint_request_id,
-                blockchain_transaction_id=tx_hash.hex(),
-            )
-            receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
-            if receipt.get('status') != 1:
-                raise TransactionFailedError(tx_hash, receipt)
+            # print('allowance_result', allowance_result)
+            if allowance_result < amount_desired:
+                tx_hash = self.approval_service.approve(
+                    token_address=token,
+                    spender_address=self.position_manager_contract.address,
+                    amount=amount_desired,
+                )
+                LiquidityMintRequestTransaction.objects.create(
+                    liquidity_mint_request_id=liquidity_mint_request_id,
+                    blockchain_transaction_id=tx_hash.hex(),
+                )
+                receipt = self.blockchain_client.wait_for_receipt(tx_hash=tx_hash)
+                if receipt.get('status') != 1:
+                    raise TransactionFailedError(tx_hash, receipt)
 
         ## Выполняем минт
         token0 = Web3.to_checksum_address(token0)
         token1 = Web3.to_checksum_address(token1)
         if token0.lower() > token1.lower():
             raise ValueError('token0 must be < token1')
+
+        print('we are here!')
 
         tx_hash = self._mint_liquidity(
             token0=token0,
@@ -177,8 +199,54 @@ class LiquidityMintService:
 
         contract_function = self.position_manager_contract.functions.mint(params)
 
+        # Проверка логики контракта
+        res_1 = contract_function.call({
+            'from': self.blockchain_client.account.address
+        })
+
+        res_2 = contract_function.estimate_gas({
+            'from': self.blockchain_client.account.address,
+        })
+
+        print('anna')
+        print(res_1)
+        print(res_2)
+        # return
+
+
         return self.transaction_manager.execute(
             contract_function=contract_function,
             tx_type=BlockchainTransaction.TransactionType.MINT.value,
             gas=1500000,
         )
+
+    def _price_to_tick(
+        self,
+        price: Decimal | float,
+        token0_decimals: int,
+        token1_decimals: int,
+    ) -> int:
+        price_internal = (
+            float(price) * 10 ** (token1_decimals - token0_decimals)
+        )
+
+        return int(log(price_internal) / log(1.0001))
+
+    def _calculate_ticks(
+        self,
+        lower_price: Decimal | float,
+        upper_price: Decimal | float,
+        tick_spacing: int,
+    ) -> tuple[int, int]:
+        tick_lower = self._price_to_tick(lower_price, 18, 6)
+        tick_upper = self._price_to_tick(upper_price, 18, 6)
+
+        tick_lower = (
+            tick_lower // tick_spacing
+        ) * tick_spacing
+
+        tick_upper = (
+            tick_upper // tick_spacing
+        ) * tick_spacing
+
+        return tick_lower, tick_upper
