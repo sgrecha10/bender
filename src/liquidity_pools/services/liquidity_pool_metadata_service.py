@@ -1,7 +1,6 @@
 from web3 import Web3
 
 
-
 class LiquidityPoolMetadataService:
     def __init__(
         self,
@@ -14,7 +13,7 @@ class LiquidityPoolMetadataService:
     def get_liquidity_pool_metadata(
         self,
         pool_address,
-    ):
+    ) -> dict:
         pool_address_checksum = Web3.to_checksum_address(
             value=pool_address,
         )
@@ -33,6 +32,6 @@ class LiquidityPoolMetadataService:
         return {
             'fee': fee,
             'tick_spacing': tick_spacing,
-            'token0_address': token0_address,
-            'token1_address': token1_address,
+            'token0': token0_address,
+            'token1': token1_address,
         }
