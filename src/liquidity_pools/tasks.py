@@ -10,6 +10,7 @@ from liquidity_pools.containers.arbitrum import ArbitrumContainer
 from liquidity_pools.services.w3_service import W3Service
 from .interfaces import arbitrum
 from .services.token_metadata_service import TokenMetadataService
+from .services.liquidity_pool_metadata_service import LiquidityPoolMetadataService
 
 
 @app.task(
@@ -96,6 +97,29 @@ def update_token_metadata_task(
     ERC20Token.objects.filter(pk=token_address).update(**token_metadata)
 
     return token_metadata
+
+
+@app.task(bind=True)
+def update_liquidity_pool_task(
+    self,
+    chain_id: int,
+    pool_address: str,
+):
+    """Retrieve and update token metadata."""
+    from liquidity_pools.models import LiquidityPool
+
+    w3 = W3Service(chain_id=chain_id)
+
+    service = LiquidityPoolMetadataService(
+        w3=w3,
+        slot0_abi=arbitrum.SLOT0_ABI,
+    )
+
+    pool_metadata = service.get_liquidity_pool_metadata(pool_address=pool_address)
+
+    LiquidityPool.objects.filter(pk=pool_address).update(**pool_metadata)
+
+    return pool_metadata
 
 
 @app.task(bind=True)

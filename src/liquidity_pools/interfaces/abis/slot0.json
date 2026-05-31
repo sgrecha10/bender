@@ -54,5 +54,26 @@
         ],
         "stateMutability": "view",
         "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "tickSpacing",
+        "outputs": [{"type": "int24"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "token0",
+        "outputs": [{"type": "address"}],
+        "stateMutability": "view",
+        "type": "function",
+    },
+    {
+        "inputs": [],
+        "name": "token1",
+        "outputs": [{"type": "address"}],
+        "stateMutability": "view",
+        "type": "function",
     }
 ]

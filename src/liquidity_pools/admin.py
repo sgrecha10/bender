@@ -17,6 +17,7 @@ from .models import (
 )
 from .tasks import (
     update_token_metadata_task,
+    update_liquidity_pool_task,
     execute_swap_request_task,
     execute_liquidity_removal_request,
     execute_liquidity_mint_request,
@@ -538,3 +539,18 @@ class LiquidityPoolAdmin(admin.ModelAdmin):
         'updated_at',
         'created_at',
     )
+
+    actions = (
+        'update_liquidity_pool',
+    )
+
+    @admin.action(description='Обновить выбранные Liquidity Pools')
+    def update_liquidity_pool(self, request, queryset):
+        for row in queryset:
+            update_liquidity_pool_task.delay(
+                chain_id=row.chain_id,
+                pool_address=row.address,
+            )
+        count = queryset.count()
+        message = f'Запущено обновление {count} пулов.'
+        return redirect_to_change_list(request, self.model, message)
