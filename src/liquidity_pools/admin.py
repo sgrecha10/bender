@@ -13,6 +13,7 @@ from .models import (
     SwapRequest,
     LiquidityRemovalRequest,
     LiquidityMintRequest,
+    LiquidityPool,
 )
 from .tasks import (
     update_token_metadata_task,
@@ -514,3 +515,26 @@ class LiquidityMintRequestAdmin(admin.ModelAdmin):
     @admin.display(description='Status')
     def colored_status(self, obj):
         return colored_status_display(obj)
+
+
+@admin.register(LiquidityPool)
+class LiquidityPoolAdmin(admin.ModelAdmin):
+    list_display = (
+        'address',
+        'chain',
+        'token0',
+        'token1',
+        'fee',
+        'tick_spacing',
+        'updated_at',
+        'created_at',
+    )
+
+    readonly_fields = (
+        'token0',
+        'token1',
+        'fee',
+        'tick_spacing',
+        'updated_at',
+        'created_at',
+    )

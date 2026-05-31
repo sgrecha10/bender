@@ -663,3 +663,59 @@ class LiquidityMintRequestTransaction(models.Model):
         on_delete=models.CASCADE,
         unique=True,
     )
+
+
+class LiquidityPool(models.Model):
+    address = models.CharField(
+        primary_key=True,
+        max_length=42,
+        verbose_name='Pool Address',
+    )
+    chain = models.ForeignKey(
+        Chain,
+        on_delete=models.CASCADE,
+        verbose_name='Chain',
+    )
+    token0 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='token0_pools',
+        verbose_name='Token0',
+    )
+    token1 = models.ForeignKey(
+        ERC20Token,
+        on_delete=models.CASCADE,
+        null=True,
+        related_name='token1_pools',
+        verbose_name='Token1',
+    )
+    fee = models.PositiveIntegerField(
+        null=True,
+        verbose_name='Fee',
+        help_text='100, 500, 3000, 10000',
+    )
+    tick_spacing = models.PositiveIntegerField(
+        null=True,
+        verbose_name='Tick Spacing',
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Updated At',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+
+    class Meta:
+        verbose_name = 'Liquidity Pool'
+        verbose_name_plural = 'Liquidity Pools'
+
+    def __str__(self):
+        return (
+            f'{self.address} '
+            f'| {self.token0} '
+            f'| {self.token1} '
+            f'| {self.fee} '
+        )

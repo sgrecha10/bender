@@ -99,6 +99,7 @@ class CustomIndexDashboard(Dashboard):
                     'liquidity_pools.models.SwapRequest',
                     'liquidity_pools.models.LiquidityRemovalRequest',
                     'liquidity_pools.models.LiquidityMintRequest',
+                    'liquidity_pools.models.LiquidityPool',
                 ),
             )
         )
