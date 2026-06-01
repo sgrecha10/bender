@@ -18,3 +18,4 @@ POSITION_MANAGER_ABI = json.loads((BASE_DIR / 'abis/position_manager.json').read
 
 SLOT0_ABI = json.loads((BASE_DIR / 'abis/slot0.json').read_text())
 ERC20_ABI = json.loads((BASE_DIR / 'abis/erc20.json').read_text())
+POOL_ABI = json.loads((BASE_DIR / 'abis/pool.json').read_text())  # а не нужно ли сюда добавть и SLOT0_ABI?
