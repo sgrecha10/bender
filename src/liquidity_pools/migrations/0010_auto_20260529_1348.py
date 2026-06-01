@@ -10,8 +10,8 @@ def code(apps, _):
         name='Arbitrum One',
         slug='arbitrum',
         rpc_urls=[
-            'https://arb1.arbitrum.io/rpc',
-            'https://rpc.ankr.com/arbitrum',
+            # 'https://arb1.arbitrum.io/rpc',
+            # 'https://rpc.ankr.com/arbitrum',
             'https://arb-mainnet.g.alchemy.com/public',
         ],
         ws_rpc_urls=[

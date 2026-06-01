@@ -711,8 +711,8 @@ class LiquidityMintRequestTransaction(models.Model):
     )
 
 
-class PoolTick(models.Model):
-    pool = models.ForeignKey(
+class LiquidityPoolTick(models.Model):
+    liquidity_pool = models.ForeignKey(
         LiquidityPool,
         on_delete=models.CASCADE,
     )
@@ -729,19 +729,18 @@ class PoolTick(models.Model):
         null=True,
         verbose_name='Liquidity',
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Created At',
+    block_timestamp = models.DateTimeField(
+        verbose_name='Block Timestamp',
     )
 
     class Meta:
-        verbose_name = 'Pool Tick'
-        verbose_name_plural = 'Pool Ticks'
+        verbose_name = 'Liquidity Pool Tick'
+        verbose_name_plural = 'Liquidity Pool Ticks'
         indexes = [
             models.Index(
-                fields=('pool', 'created_at'),
+                fields=('liquidity_pool', 'block_timestamp'),
             ),
         ]
 
     def __str__(self):
-        return f'Pool Tick | {self.id}'
+        return f'Liquidity Pool Tick | {self.id}'

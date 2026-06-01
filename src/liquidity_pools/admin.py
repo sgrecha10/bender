@@ -16,7 +16,7 @@ from .models import (
     LiquidityMintRequest,
     LiquidityPool,
 
-    PoolTick,
+    LiquidityPoolTick,
 )
 from .tasks import (
     index_blockchain_transaction_task,
@@ -571,15 +571,15 @@ class LiquidityPoolAdmin(admin.ModelAdmin):
         return redirect_to_change_list(request, self.model, message)
 
 
-@admin.register(PoolTick)
-class PoolTickAdmin(admin.ModelAdmin):
+@admin.register(LiquidityPoolTick)
+class LiquidityPoolTickAdmin(admin.ModelAdmin):
     list_display = (
         'id',
-        'pool',
+        'liquidity_pool',
         'liquidity',
         'tick',
-        'created_at',
+        'block_timestamp',
     )
     readonly_fields = (
-        'created_at',
+        'block_timestamp',
     )

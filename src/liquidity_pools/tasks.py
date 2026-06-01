@@ -1,5 +1,7 @@
+from datetime import datetime
 from decimal import Decimal
 
+from django.contrib.gis.db.backends.postgis.pgraster import chunk
 from django.utils import timezone
 from web3.exceptions import TransactionNotFound
 from web3.types import HexBytes, HexStr, Hash32
@@ -11,8 +13,10 @@ from liquidity_pools.services.w3_service import W3Service
 from .interfaces import arbitrum
 from .services.token_metadata_service import TokenMetadataService
 from .services.liquidity_pool_metadata_service import LiquidityPoolMetadataService
+from .services.pool_history_service import PoolHistoryLoaderService, PoolHistoryService
 from requests.exceptions import ConnectionError
 from http.client import RemoteDisconnected
+import time
 
 
 
@@ -283,3 +287,151 @@ def execute_liquidity_mint_request(self, liquidity_mint_request_id: int):
         'executed_at',
         'updated_at',
     ])
+
+
+@app.task(bind=True)
+def get_pool_historical_block_ticks(self, liquidity_pool_address: str):
+    from liquidity_pools.models import LiquidityPool, LiquidityPoolTick
+
+    liquidity_pool = LiquidityPool.objects.get(pk=liquidity_pool_address)
+
+    w3 = W3Service(chain_id=liquidity_pool.chain_id)
+
+    service = PoolHistoryService(
+        w3=w3,
+        pool_address=liquidity_pool.address,
+        slot0=arbitrum.SLOT0_ABI,
+    )
+
+    # =================================================
+    start_date = datetime(year=2026, month=5, day=27, hour=0, minute=0, second=0)
+    end_date = datetime(year=2026, month=5, day=29, hour=0, minute=0, second=0)
+
+    interval = 60  # minutes
+    chunk_size = 10 # количество запросов до паузы
+    delay = 0.5  # задержка между чанками, сек.
+    # =================================================
+
+    start_block_number = service.find_block_by_timestamp(
+        target_timestamp=int(start_date.timestamp()),
+    )
+    end_block_number = service.find_block_by_timestamp(
+        target_timestamp=int(end_date.timestamp()),
+    )
+
+    # start_block_number = 467_372_633
+    # end_block_number = 467_717_657
+
+    step = int(interval * 60 / liquidity_pool.chain.block_time)
+    chunk_size = chunk_size * step
+
+    while start_block_number < end_block_number:
+        finish_block_number = start_block_number + chunk_size
+        if finish_block_number > end_block_number:
+            finish_block_number= end_block_number
+
+        rows = []
+        for block_number in range(
+            start_block_number,
+            finish_block_number,
+            step
+        ):
+            print('for - block_number', block_number)
+            tick = service.get_tick(block_number=block_number)
+            block_timestamp = service.get_block_datetime(block_number=block_number)
+            rows.append({
+                'block_number': block_number,
+                'tick': tick,
+                'block_timestamp': block_timestamp,
+            })
+
+        LiquidityPoolTick.objects.bulk_create(
+            [
+                LiquidityPoolTick(
+                    liquidity_pool_id=liquidity_pool.address,
+                    block_number=row['block_number'],
+                    tick=row['tick'],
+                    block_timestamp=row['block_timestamp'],
+                )
+                for row in rows
+            ],
+            ignore_conflicts=True,
+        )
+
+        start_block_number = finish_block_number
+        print('while - start_block_number', start_block_number)
+        time.sleep(delay)
+
+
+
+
+
+
+
+
+
+# @app.task(
+#     bind=True,
+#     autoretry_for=(
+#         ConnectionError,
+#         RemoteDisconnected,
+#     ),
+#     retry_kwargs={'max_retries': 10, 'countdown': 1},
+# )
+# def get_pool_historical_ticks(self, liquidity_pool_address: str):
+#     """Не используем."""
+#     from liquidity_pools.models import LiquidityPool, LiquidityPoolTick
+#
+#     # =================================================
+#     start_date = datetime(year=2026, month=5, day=28, hour=0, minute=0, second=0)
+#     end_date = datetime(year=2026, month=5, day=29, hour=0, minute=0, second=0)
+#     chunk_size = 128
+#     # =================================================
+#
+#     liquidity_pool = LiquidityPool.objects.get(pk=liquidity_pool_address)
+#
+#     w3 = W3Service(chain_id=liquidity_pool.chain_id)
+#
+#     service = PoolHistoryLoaderService(
+#         w3=w3,
+#         pool_address=liquidity_pool.address,
+#         pool_abi=arbitrum.POOL_ABI,
+#     )
+#
+#     start_block_number = service.find_block_by_timestamp(
+#         target_timestamp=int(start_date.timestamp()),
+#     )
+#     # start_block_number = 12_000
+#
+#     end_block_number = service.find_block_by_timestamp(
+#         target_timestamp=int(end_date.timestamp()),
+#     )
+#     # end_block_number = start_block_number + 1000
+#
+#     print('Calculated block numbers.')
+#     print('start_block_number:', start_block_number)
+#     print('end_block_number:', end_block_number)
+#
+#     while start_block_number < end_block_number:
+#         rows = service.load(
+#             from_block=start_block_number,
+#             to_block=start_block_number + chunk_size,
+#         )
+#
+#         LiquidityPoolTick.objects.bulk_create(
+#             [
+#                 LiquidityPoolTick(
+#                     liquidity_pool_id=liquidity_pool.address,
+#                     block_number=row['block_number'],
+#                     tick=row['tick'],
+#                     liquidity=row['liquidity'],
+#                     block_timestamp=row['block_timestamp'],
+#                 )
+#                 for row in rows
+#             ],
+#             ignore_conflicts=True,
+#         )
+#
+#         start_block_number += chunk_size
+#         print('start_block_number:', start_block_number)
+#         time.sleep(0.5)

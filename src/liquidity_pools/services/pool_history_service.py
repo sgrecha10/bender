@@ -20,6 +20,9 @@ SWAP_TOPIC = Web3.to_hex(
 
 
 class PoolHistoryLoaderService:
+    """Получаем тики/дату через логи свопов.
+    НЕ ИСПОЛЬЗУЕМ.
+    """
     def __init__(
         self,
         w3: Web3,
@@ -70,8 +73,75 @@ class PoolHistoryLoaderService:
                     'block_number': block_number,
                     'liquidity': event['args']['liquidity'],
                     'tick': event['args']['tick'],
-                    'created_at': blocks_cache[block_number],
+                    'block_timestamp': blocks_cache[block_number],
                 }
             )
 
         return result
+
+    def find_block_by_timestamp(
+        self,
+        target_timestamp: int,
+    ) -> int:
+        left = 1
+        right = self.w3.eth.block_number
+
+        while left <= right:
+            mid = (left + right) // 2
+
+            block = self.w3.eth.get_block(mid)
+
+            if block['timestamp'] < target_timestamp:
+                left = mid + 1
+            else:
+                right = mid - 1
+
+        return left
+
+
+class PoolHistoryService:
+    """Получаем тики/дату для блока."""
+    def __init__(
+        self,
+        w3: Web3,
+        pool_address: str,
+        slot0: list,
+    ):
+        self.w3 = w3
+        self.pool_address = pool_address
+        self.slot0 = slot0
+        self.pool_contract = self.w3.eth.contract(
+            address=Web3.to_checksum_address(value=self.pool_address),
+            abi=self.slot0,
+        )
+
+    def get_tick(self, block_number: int):
+        pool_contract = self.pool_contract
+        slot0 = pool_contract.functions.slot0().call(block_identifier=block_number)
+        return slot0 and slot0[1]
+
+    def get_block_datetime(
+        self,
+        block_number: int,
+    ) -> datetime:
+        block = self.w3.eth.get_block(block_number)
+        return datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
+
+    def find_block_by_timestamp(
+        self,
+        target_timestamp: int,
+    ) -> int:
+        left = 1
+        right = self.w3.eth.block_number
+
+        while left <= right:
+            mid = (left + right) // 2
+
+            block = self.w3.eth.get_block(mid)
+
+            if block['timestamp'] < target_timestamp:
+                left = mid + 1
+            else:
+                right = mid - 1
+
+        return left

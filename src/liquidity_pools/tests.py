@@ -15,7 +15,7 @@ from .services.token_metadata_service import TokenMetadataService
 from .services.uniswap_get_position_service import UniswapGetPositionService
 from .services.uniswap_quoter_service import UniswapQuoterService
 # from .tasks import index_blockchain_transaction_task
-from liquidity_pools.services.pool_history_service import PoolHistoryLoaderService
+from liquidity_pools.services.pool_history_service import PoolHistoryLoaderService, PoolHistoryService
 from liquidity_pools.services.w3_service import W3Service
 from .models import Chain
 
