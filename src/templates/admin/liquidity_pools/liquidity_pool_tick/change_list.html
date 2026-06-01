@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+<li>
+    <a href="{{ load_history_url }}">
+        Загрузить исторические данные
+    </a>
+</li>
+
+{{ block.super }}
+{% endblock %}

@@ -290,7 +290,15 @@ def execute_liquidity_mint_request(self, liquidity_mint_request_id: int):
 
 
 @app.task(bind=True)
-def get_pool_historical_block_ticks(self, liquidity_pool_address: str):
+def get_pool_historical_block_ticks(
+    self,
+    liquidity_pool_address: str,
+    start_datetime_timestamp: int,
+    end_datetime_timestamp: int,
+    interval_minutes: int,
+    chunk_size=10,  # количество запросов до паузы
+    delay = 0.5,  # задержка между чанками, сек.
+):
     from liquidity_pools.models import LiquidityPool, LiquidityPoolTick
 
     liquidity_pool = LiquidityPool.objects.get(pk=liquidity_pool_address)
@@ -303,26 +311,10 @@ def get_pool_historical_block_ticks(self, liquidity_pool_address: str):
         slot0=arbitrum.SLOT0_ABI,
     )
 
-    # =================================================
-    start_date = datetime(year=2026, month=5, day=27, hour=0, minute=0, second=0)
-    end_date = datetime(year=2026, month=5, day=29, hour=0, minute=0, second=0)
+    start_block_number = service.find_block_by_timestamp(start_datetime_timestamp)
+    end_block_number = service.find_block_by_timestamp(end_datetime_timestamp)
 
-    interval = 60  # minutes
-    chunk_size = 10 # количество запросов до паузы
-    delay = 0.5  # задержка между чанками, сек.
-    # =================================================
-
-    start_block_number = service.find_block_by_timestamp(
-        target_timestamp=int(start_date.timestamp()),
-    )
-    end_block_number = service.find_block_by_timestamp(
-        target_timestamp=int(end_date.timestamp()),
-    )
-
-    # start_block_number = 467_372_633
-    # end_block_number = 467_717_657
-
-    step = int(interval * 60 / liquidity_pool.chain.block_time)
+    step = int(interval_minutes * 60 / liquidity_pool.chain.block_time)
     chunk_size = chunk_size * step
 
     while start_block_number < end_block_number:

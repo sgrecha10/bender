@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.contrib.admin.helpers import AdminForm
+from django.shortcuts import render, redirect
+from django.urls import path
 from hexbytes import HexBytes
 
 from core.utils.admin_utils import (
@@ -6,6 +9,8 @@ from core.utils.admin_utils import (
     colored_status_display,
 )
 from liquidity_pools.forms import WalletAdminForm
+from liquidity_pools.tasks import get_pool_historical_block_ticks
+from .forms import LiquidityPoolTickForm
 from .models import (
     Chain,
     WalletAddress,
@@ -573,6 +578,9 @@ class LiquidityPoolAdmin(admin.ModelAdmin):
 
 @admin.register(LiquidityPoolTick)
 class LiquidityPoolTickAdmin(admin.ModelAdmin):
+    change_list_template = (
+        'admin/liquidity_pools/liquidity_pool_tick/change_list.html'
+    )
     list_display = (
         'id',
         'liquidity_pool',
@@ -583,3 +591,84 @@ class LiquidityPoolTickAdmin(admin.ModelAdmin):
     readonly_fields = (
         'block_timestamp',
     )
+
+    def get_urls(self):
+        urls = super().get_urls()
+
+        custom_urls = [
+            path(
+                "load-history/",
+                self.admin_site.admin_view(
+                    self.load_history_view
+                ),
+                name="load-history",
+            ),
+        ]
+        return custom_urls + urls
+
+    def load_history_view(self, request):
+        form = LiquidityPoolTickForm(request.POST or None)
+
+        if request.method == "POST" and form.is_valid():
+            cleaned_data = form.cleaned_data
+
+            get_pool_historical_block_ticks.delay(
+                liquidity_pool_address=cleaned_data['liquidity_pool'].address,
+                start_datetime_timestamp=int(cleaned_data['start_datetime'].timestamp()),
+                end_datetime_timestamp=int(cleaned_data['end_datetime'].timestamp()),
+                interval_minutes=cleaned_data['interval_minutes'],
+            )
+
+            self.message_user(
+                request,
+                'Задача поставлена в очередь.'
+            )
+            return redirect('admin:liquidity_pools_liquiditypooltick_changelist')
+
+        fieldsets = (
+            (
+                None,
+                {
+                    'fields': (
+                        'liquidity_pool',
+                        'start_datetime',
+                        'end_datetime',
+                        'interval_minutes',
+                    )
+                },
+            ),
+        )
+
+        admin_form = AdminForm(form, fieldsets, {})
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Загрузка исторических данных',
+            'adminform': admin_form,
+            'opts': self.model._meta,
+            'change': False,
+            'add': True,
+            'has_view_permission': True,
+            'has_add_permission': True,
+            'has_change_permission': True,
+            'has_delete_permission': False,
+            'save_as': False,
+            'show_save': True,
+        }
+
+        return render(
+            request,
+            'admin/liquidity_pools/liquidity_pool_tick/load_history.html',
+            context,
+        )
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        from django.urls import reverse
+        extra_context["load_history_url"] = (
+            reverse("admin:load-history")
+        )
+
+        return super().changelist_view(
+            request,
+            extra_context=extra_context,
+        )

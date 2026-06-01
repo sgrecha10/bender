@@ -1,10 +1,12 @@
 import re
 
 from django import forms
+from django.contrib.admin.widgets import AdminSplitDateTime
 from django.core.exceptions import ValidationError
+from django.forms import SplitDateTimeField
 from eth_account import Account
 
-from .models import WalletAddress
+from .models import WalletAddress, LiquidityPool
 from .services.cryptography_service import CryptographyService
 
 
@@ -66,3 +68,16 @@ class WalletAdminForm(forms.ModelForm):
             instance.save()
 
         return instance
+
+
+class LiquidityPoolTickForm(forms.Form):
+    liquidity_pool = forms.ModelChoiceField(
+        queryset=LiquidityPool.objects.all(),
+        label='Liquidity Pool',
+    )
+    start_datetime = SplitDateTimeField(widget=AdminSplitDateTime())
+    end_datetime = SplitDateTimeField(widget=AdminSplitDateTime())
+    interval_minutes = forms.IntegerField(
+        initial=5,
+        min_value=1,
+    )
