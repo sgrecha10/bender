@@ -15,6 +15,8 @@ from .models import (
     LiquidityRemovalRequest,
     LiquidityMintRequest,
     LiquidityPool,
+
+    PoolTick,
 )
 from .tasks import (
     index_blockchain_transaction_task,
@@ -567,3 +569,17 @@ class LiquidityPoolAdmin(admin.ModelAdmin):
         count = queryset.count()
         message = f'Запущено обновление {count} пулов.'
         return redirect_to_change_list(request, self.model, message)
+
+
+@admin.register(PoolTick)
+class PoolTickAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'pool',
+        'liquidity',
+        'tick',
+        'created_at',
+    )
+    readonly_fields = (
+        'created_at',
+    )

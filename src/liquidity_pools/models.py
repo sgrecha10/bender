@@ -709,3 +709,39 @@ class LiquidityMintRequestTransaction(models.Model):
         on_delete=models.CASCADE,
         unique=True,
     )
+
+
+class PoolTick(models.Model):
+    pool = models.ForeignKey(
+        LiquidityPool,
+        on_delete=models.CASCADE,
+    )
+    block_number = models.BigIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='Block Number',
+    )
+    tick = models.IntegerField(
+        verbose_name='Tick',
+    )
+    liquidity =models.PositiveBigIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='Liquidity',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created At',
+    )
+
+    class Meta:
+        verbose_name = 'Pool Tick'
+        verbose_name_plural = 'Pool Ticks'
+        indexes = [
+            models.Index(
+                fields=('pool', 'created_at'),
+            ),
+        ]
+
+    def __str__(self):
+        return f'Pool Tick | {self.id}'
