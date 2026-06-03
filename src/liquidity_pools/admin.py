@@ -8,6 +8,7 @@ from core.utils.admin_utils import (
     redirect_to_change_list,
     colored_status_display,
 )
+from indicators.models import StandardDeviation
 from liquidity_pools.forms import WalletAdminForm
 from liquidity_pools.tasks import get_pool_historical_block_ticks
 from .forms import LiquidityPoolTickForm
@@ -22,6 +23,7 @@ from .models import (
     LiquidityPool,
 
     LiquidityPoolTick,
+    Strategy,
 )
 from .tasks import (
     index_blockchain_transaction_task,
@@ -672,3 +674,67 @@ class LiquidityPoolTickAdmin(admin.ModelAdmin):
             request,
             extra_context=extra_context,
         )
+
+
+@admin.register(Strategy)
+class StrategyAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'name',
+        'liquidity_pool',
+        'interval',
+        'std_window_size',
+        'std_source',
+        'z_score_upper',
+        'z_score_lower',
+        'time_horizon',
+        'updated_at',
+        'created_at',
+    )
+
+    readonly_fields = (
+        'updated_at',
+        'created_at',
+    )
+
+    fieldsets = (
+        (
+            None,
+            {
+                'fields': (
+                    'name',
+                    'description',
+                    'liquidity_pool',
+                    'interval',
+                )
+            },
+        ),
+        (
+            'Standard Deviation',
+            {
+                'fields': (
+                    'std_window_size',
+                    'std_source',
+                )
+            }
+        ),
+        (
+            'Range Price',
+            {
+                'fields': (
+                    'z_score_upper',
+                    'z_score_lower',
+                    'time_horizon',
+                )
+            }
+        ),
+        (
+            'Metadata',
+            {
+                'fields': (
+                    'updated_at',
+                    'created_at',
+                )
+            }
+        )
+    )

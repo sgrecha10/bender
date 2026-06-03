@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Sum
 
+from liquidity_pools.constants import Interval
+
 
 class Chain(models.Model):
     id = models.PositiveIntegerField(
@@ -744,3 +746,74 @@ class LiquidityPoolTick(models.Model):
 
     def __str__(self):
         return f'Liquidity Pool Tick | {self.id}'
+
+
+class Strategy(models.Model):
+
+    class StdSource(models.TextChoices):
+        CLOSE_TO_CLOSE = 'close_to_close', 'Realized volatility'
+        PARKINSON = 'parkinson', 'Parkinson volatility'
+
+    name = models.CharField(
+        max_length=255,
+        verbose_name='Name',
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name='Description',
+    )
+    liquidity_pool = models.ForeignKey(
+        LiquidityPool,
+        on_delete=models.CASCADE,
+        verbose_name='Liquidity Pool',
+    )
+    interval = models.CharField(
+        max_length=50,
+        choices=Interval.choices,
+        default=Interval.DAY_1,
+        verbose_name='Interval',
+    )
+    std_window_size = models.PositiveIntegerField(
+        default=7,
+        verbose_name='Window Size',
+    )
+    std_source = models.CharField(
+        max_length=50,
+        choices=StdSource.choices,
+        default=StdSource.CLOSE_TO_CLOSE,
+        verbose_name='Source',
+    )
+    z_score_upper = models.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        verbose_name='Z-Score Upper',
+    )
+    z_score_lower = models.DecimalField(
+        max_digits=2,
+        decimal_places=1,
+        verbose_name='Z-Score Upper',
+    )
+    time_horizon = models.CharField(
+        max_length=50,
+        choices=Interval.choices,
+        default=Interval.DAY_1,
+        verbose_name='Time Horizon',
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Updated at',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Created at',
+    )
+
+    class Meta:
+        verbose_name = 'Strategy'
+        verbose_name_plural = 'Strategies'
+
+    def __str__(self):
+        return (
+            f'{self.pk} | {self.name} '
+        )

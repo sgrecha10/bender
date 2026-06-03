@@ -14,7 +14,7 @@ class Interval(TextChoices):
     HOUR_8 = '8h'
     HOUR_12 = '12h'
     DAY_1 = '1D'
-    DAY_3 = '3d'
+    DAY_3 = '3D'
     WEEK_1 = '1W'
     MONTH_1 = '1M'
     YEAR_1 = '1A'
@@ -29,6 +29,7 @@ MAP_MINUTE_COUNT = {
     Interval.HOUR_8: 60 * 8,
     Interval.HOUR_12: 60 * 12,
     Interval.DAY_1: 60 * 24,
+    Interval.DAY_3: 60 * 24 * 3,
     Interval.WEEK_1: 60 * 24 * 7,
     Interval.MONTH_1: 60 * 24 * 30,
     Interval.YEAR_1: 60 * 24 * 365,

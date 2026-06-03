@@ -102,6 +102,8 @@ class CustomIndexDashboard(Dashboard):
                     'liquidity_pools.models.LiquidityPool',
 
                     'liquidity_pools.models.PoolTick',
+
+                    'liquidity_pools.models.Strategy',
                 ),
             )
         )
