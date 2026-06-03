@@ -1,6 +1,4 @@
 from decimal import Decimal
-import numpy as np
-from decimal import Decimal
 
 import numpy as np
 
@@ -10,15 +8,17 @@ from liquidity_pools.constants import MAP_MINUTE_COUNT
 class RangePriceService:
     def __init__(
         self,
-        k: int,
-        t: int,
+        z_score_upper: float | Decimal,
+        z_score_lower: float | Decimal,
+        time_horizon: str,
         interval: str,
     ):
         # k = 1 → ~68% вероятности остаться в диапазоне;
         # k = 2 → ~95%;
         # k = 3 → ~99.7%.
-        self.k = k  # коэффициент количества стандартных отклонений
-        self.t = t  # 60 * 24 горизонт планирования в минутах
+        self.z_score_upper = float(z_score_upper)
+        self.z_score_lower = float(z_score_lower)
+        self.time_horizon = time_horizon
         self.interval = interval
 
     def get_values_by_price(
@@ -33,10 +33,10 @@ class RangePriceService:
         periods_per_year = 365 * 24 * 60 / interval_minutes
         sigma_annual = sigma * np.sqrt(periods_per_year)
 
-        t_annual = self.t / (365 * 24 * 60)
+        t_annual = MAP_MINUTE_COUNT[self.time_horizon] / (365 * 24 * 60)
 
-        upper = price * np.exp(self.k * sigma_annual * np.sqrt(t_annual))
-        lower = price * np.exp(-self.k * sigma_annual * np.sqrt(t_annual))
+        upper = price * np.exp(self.z_score_upper * sigma_annual * np.sqrt(t_annual))
+        lower = price * np.exp(-self.z_score_lower * sigma_annual * np.sqrt(t_annual))
 
         return lower, upper
 

@@ -1,104 +1,60 @@
-import urllib.parse
-from typing import Optional
-
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.views import View
 from pandas import DataFrame
 from plotly.subplots import make_subplots
 
-from indicators.models import (
-    MovingAverage,
-    StandardDeviation,
-    BollingerBands,
-)
-from liquidity_pools.models import LiquidityPoolTick
-from market_data.models import Kline, ExchangeInfo
-from strategies.models import Strategy, StrategyResult
-from market_data.constants import Interval
-from decimal import Decimal
-from datetime import datetime, timedelta, timezone
-from market_data.constants import MAP_MINUTE_COUNT
-from arbitrations.models import Arbitration, ArbitrationDeal
-from django.db.models import Case, Value, When, Q, F, DecimalField
-from market_data.constants import AllowedInterval
-from copy import copy
-import pytz
-from liquidity_pools.services.standard_deviation_service import StandardDeviationService
+from liquidity_pools.models import LiquidityPoolTick, Strategy
 from liquidity_pools.services.pool_strategy_service import PoolStrategyService
+from liquidity_pools.services.standard_deviation_service import StandardDeviationService
 
 
 class ChartView(View):
     template_name = 'market_data/chart.html'
 
-    interval = Interval.DAY_1.value
+    def dispatch(self, request, *args, **kwargs):
+        self.strategy = Strategy.objects.get(pk=1)
+        return super().dispatch(request, *args, **kwargs)
 
+    def _get_pool_tick_df(
+        self,
+    ) -> DataFrame:
+        liquidity_pool = self.strategy.liquidity_pool
 
-    # SEPARATE_ROW_INDICATORS = (
-    #     'volume',
-    #     'standard_deviations',
-    #     # 'moving_averages',
-    # )
-
-    def _get_pool_tick_df(self) -> DataFrame:
-        data = list(
-            LiquidityPoolTick.objects.all()
-            .order_by('block_timestamp')
-            .values(
-                'block_timestamp',
-                'tick',
-            )
+        liquidity_pool_tick_qs = LiquidityPoolTick.objects.filter(
+            liquidity_pool=liquidity_pool,
+        ).order_by(
+            'block_timestamp',
+        ).values(
+            'block_timestamp',
+            'tick',
         )
+        df = pd.DataFrame(liquidity_pool_tick_qs)
 
-        df = pd.DataFrame(data)
+        df['block_timestamp'] = pd.to_datetime(df['block_timestamp'])
+        df = df.set_index('block_timestamp')
 
-        df['block_timestamp'] = pd.to_datetime(
-            df['block_timestamp']
-        )
+        token0_decimal = liquidity_pool.token0.decimals
+        token1_decimal = liquidity_pool.token1.decimals
 
-        df = df.set_index(
-            'block_timestamp'
-        )
-        # candles = (
-        #     df['tick']
-        #     .resample('5min')
-        #     .ohlc()
-        # )
+        df['price'] = (1.0001 ** df['tick']) * 10 ** (token0_decimal - token1_decimal)
+        candles = df['price'].resample(self.strategy.interval).ohlc()
 
-        df['price'] = (1.0001 ** df['tick']) * 10 ** (18 - 6)
-
-        candles = (
-            df['price']
-            .resample(self.interval)
-            .ohlc()
-            # .rename(
-            #     columns={
-            #         'open': 'open_price',
-            #         'high': 'high_price',
-            #         'low': 'low_price',
-            #         'close': 'close_price',
-            #     }
-            # )
-        )
         return candles
 
     def get(self, request, *args, **kwargs):
-        """Show chart"""
-        # df = self._get_kline_df()
+        """Show strategy chart."""
         df = self._get_pool_tick_df()
-
         context = {
-            'title': 'some_title',
+            'title': 'Strategy',
             'chart': self._get_chart(
                 df=df,
-                subtitle='Subtitle here',
+                subtitle=self.strategy.name,
             ),
-            'opts': Kline._meta,
+            'opts': Strategy._meta,
         }
-
         return render(request, self.template_name, context=context)
 
     def _get_chart(
@@ -113,62 +69,12 @@ class ChartView(View):
         row_count = 5  # инструмент + невидимый инструмент для слайдера + слайдер
         row_titles = [subtitle, '', '']  # название
 
-        # if volume and 'volume' in self.SEPARATE_ROW_INDICATORS:
-        #     row_count += 1
-        #     volume_row_number = row_count
-        #     row_titles.append('Volume')
-        # else:
-        #     volume_row_number = 1
-        #
-        # if standard_deviations and 'standard_deviations' in self.SEPARATE_ROW_INDICATORS:
-        #     standard_deviations_count = len(standard_deviations)
-        #     standard_deviation_row_number = []
-        #     for i in range(standard_deviations_count):
-        #         row_count += 1
-        #         standard_deviation_row_number.append(row_count)
-        #         standard_deviation_codename = StandardDeviation.objects.get(pk=standard_deviations[i]).codename
-        #         row_titles.append(standard_deviation_codename)
-        # else:
-        #     standard_deviations_count = len(standard_deviations)
-        #     standard_deviation_row_number = []
-        #     for i in range(standard_deviations_count):
-        #         standard_deviation_row_number.append(1)
-        #
-        # if moving_averages and 'moving_averages' in self.SEPARATE_ROW_INDICATORS:
-        #     moving_averages_count = len(moving_averages)
-        #     moving_averages_row_number = []
-        #     for i in range(moving_averages_count):
-        #         row_count += 1
-        #         moving_averages_row_number.append(row_count)
-        #         moving_average_codename = MovingAverage.objects.get(pk=moving_averages[i]).codename
-        #         row_titles.append(moving_average_codename)
-        # else:
-        #     moving_averages_count = len(moving_averages)
-        #     moving_averages_row_number = []
-        #     for i in range(moving_averages_count):
-        #         moving_averages_row_number.append(1)
-        #
-        # if bollinger_bands and 'bollinger_bands' in self.SEPARATE_ROW_INDICATORS:
-        #     row_count += 1
-        #     bollinger_bands_row_number = row_count
-        #     row_titles.append(bollinger_bands.codename)
-        # else:
-        #     bollinger_bands_row_number = 1
-        #
-        # if strategy and 'strategy' in self.SEPARATE_ROW_INDICATORS:
-        #     row_count += 1
-        #     strategy_row_number = row_count
-        #     row_titles.append(strategy.codename)
-        # else:
-        #     strategy_row_number = 1
-
         fig = make_subplots(
             rows=row_count, cols=1,
             shared_xaxes=True,
             vertical_spacing=0.02,
             row_titles=row_titles,
             row_heights=self._get_subplots_row_heights(rows=row_count),
-            # row_heights=4,
         )
         candlestick_trace = self._get_candlestick_trace(df, subtitle)
         fig.add_trace(candlestick_trace, row=1, col=1)
@@ -179,28 +85,6 @@ class ChartView(View):
         strategy_df = self._get_pool_strategy_data(df)
         fig.add_trace(self._get_line_trace(strategy_df, 'lower_price'), row=1, col=1)
         fig.add_trace(self._get_line_trace(strategy_df, 'upper_price'), row=1, col=1)
-
-        # if volume:
-        #     fig.add_trace(self._get_volume_trace(df), row=volume_row_number, col=1)
-
-        # if standard_deviation_qs := StandardDeviation.objects.filter(pk__in=standard_deviations):
-        #     for i, sd in enumerate(standard_deviation_qs):
-        #         fig.add_trace(self._get_standard_deviation_trace(df, sd), row=standard_deviation_row_number[i], col=1)
-        #
-        # if bollinger_bands:
-        #     bollinger_trace_tuple = self._get_bollinger_bands_trace(df, bollinger_bands)
-        #     fig.add_trace(bollinger_trace_tuple[0], row=bollinger_bands_row_number, col=1)
-        #     fig.add_trace(bollinger_trace_tuple[1], row=bollinger_bands_row_number, col=1)
-        #     fig.add_trace(bollinger_trace_tuple[2], row=bollinger_bands_row_number, col=1)
-        #
-        # if moving_average_qs := MovingAverage.objects.filter(pk__in=moving_averages):
-        #     for i, ma in enumerate(moving_average_qs):
-        #         fig.add_trace(self._get_moving_average_trace(df, ma), row=moving_averages_row_number[i], col=1)
-        #
-        # if strategy:
-        #     strategy_result_tuple = self._get_strategy_result_trace(df, strategy)
-        #     fig.add_trace(strategy_result_tuple[0], row=strategy_row_number, col=1)
-        #     fig.add_trace(strategy_result_tuple[1], row=strategy_row_number, col=1)
 
         fig.update_layout(
             # autosize=False,
@@ -279,18 +163,18 @@ class ChartView(View):
             },
         )
 
-
     def _get_pool_strategy_data(
         self,
         df: pd.DataFrame,
     ):
         strategy_service = PoolStrategyService(
             df=df,
-            interval=self.interval,
-            window_size=2,
-            source=StandardDeviationService.PARKINSON,
-            k=1,
-            t=1 * 60 * 24,  # 1d
+            interval=self.strategy.interval,
+            window_size=self.strategy.std_window_size,
+            source=self.strategy.std_source,
+            z_score_upper=self.strategy.z_score_upper,
+            z_score_lower=self.strategy.z_score_lower,
+            time_horizon=self.strategy.time_horizon,
         )
 
         lower_price_column_name = 'lower_price'
@@ -309,18 +193,6 @@ class ChartView(View):
             strategy_df.loc[index, upper_price_column_name] = upper_price
 
         return strategy_df
-
-
-        # return go.Scatter(
-        #     x=strategy_df.index,
-        #     y=strategy_df[upper_price_column_name],
-        #     mode='markers',
-        #     name=upper_price_column_name,
-        #     marker={
-        #         # 'color': list(np.random.choice(range(256), size=3)),
-        #         'color': 'orange',
-        #     },
-        # )
 
     def _get_line_trace(self, df: pd.DataFrame, column_name: str):
         return go.Scatter(

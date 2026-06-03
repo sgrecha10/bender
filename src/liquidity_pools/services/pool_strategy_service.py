@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Hashable, Optional
 
 import pandas as pd
@@ -14,15 +15,17 @@ class PoolStrategyService:
         interval: str,
         window_size: int,
         source: str,
-        k: int,
-        t: int,
+        z_score_upper: float | Decimal,
+        z_score_lower: float | Decimal,
+        time_horizon: str,
     ):
         self.df = df
         self.interval = interval
         self.window_size = window_size
         self.source = source
-        self.k = k  # надо придумать две разные k, вверх и вниз
-        self.t = t
+        self.z_score_upper = z_score_upper
+        self.z_score_lower = z_score_lower
+        self.time_horizon = time_horizon
 
         self.standard_deviation_service = StandardDeviationService(
             df=self.df,
@@ -30,8 +33,9 @@ class PoolStrategyService:
             source=self.source,
         )
         self.range_price_service = RangePriceService(
-            k=self.k,
-            t=self.t,
+            z_score_upper=self.z_score_upper,
+            z_score_lower=self.z_score_lower,
+            time_horizon=self.time_horizon,
             interval=self.interval,
         )
 
