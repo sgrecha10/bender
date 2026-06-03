@@ -24,4 +24,5 @@ urlpatterns = [
     path('streams/', include('streams.urls')),
     path('market_data/', include('market_data.urls')),
     path('arbitrations/', include('arbitrations.urls')),
+    path('liquidity-pools/', include('liquidity_pools.urls')),
 ]

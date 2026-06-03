@@ -296,8 +296,8 @@ def get_pool_historical_block_ticks(
     start_datetime_timestamp: int,
     end_datetime_timestamp: int,
     interval_minutes: int,
-    chunk_size=10,  # количество запросов до паузы
-    delay = 0.5,  # задержка между чанками, сек.
+    chunk_size=1,  # количество запросов до паузы
+    delay = 0.8,  # задержка между чанками, сек.
 ):
     from liquidity_pools.models import LiquidityPool, LiquidityPoolTick
 
