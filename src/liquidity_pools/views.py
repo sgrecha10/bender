@@ -1,6 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
+from django.http import Http404
 from django.shortcuts import render
 from django.views import View
 from pandas import DataFrame
@@ -12,10 +13,15 @@ from liquidity_pools.services.standard_deviation_service import StandardDeviatio
 
 
 class ChartView(View):
-    template_name = 'market_data/chart.html'
+    template_name = 'liquidity_pools/chart.html'
 
     def dispatch(self, request, *args, **kwargs):
-        self.strategy = Strategy.objects.get(pk=1)
+        strategy_id = request.GET.get('strategy_id')
+        try:
+            self.strategy = Strategy.objects.get(pk=strategy_id)
+        except Strategy.DoesNotExist:
+            raise Http404('Strategy does not exist')
+
         return super().dispatch(request, *args, **kwargs)
 
     def _get_pool_tick_df(
@@ -80,11 +86,10 @@ class ChartView(View):
         fig.add_trace(candlestick_trace, row=1, col=1)
         fig.add_trace(candlestick_trace, row=2, col=1)
 
-        fig.add_trace(self._get_standard_deviation_trace(df), row=4, col=1)
-
         strategy_df = self._get_pool_strategy_data(df)
         fig.add_trace(self._get_line_trace(strategy_df, 'lower_price'), row=1, col=1)
         fig.add_trace(self._get_line_trace(strategy_df, 'upper_price'), row=1, col=1)
+        fig.add_trace(self._get_range_trace(strategy_df, 'lower_price', 'upper_price'), row=4, col=1)
 
         fig.update_layout(
             # autosize=False,
@@ -103,9 +108,6 @@ class ChartView(View):
             yaxis2_visible=False,
             # xaxis2_visible=False,
         )
-        # fig.update_xaxes(
-        #     rangeslider_yaxis=dict(range=[1, 0])  # Указываем диапазон по оси Y, можно изменить по необходимости
-        # )
 
         return pio.to_html(fig, include_plotlyjs=False, full_html=False)
 
@@ -136,33 +138,6 @@ class ChartView(View):
         extra_item_thickness = round((1 - first_item_thickness - slider_thickness - 0.001) / prepared_rows, 3)
         return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
 
-    def _get_standard_deviation_trace(
-        self,
-        df: pd.DataFrame,
-    ):
-        standard_deviation_service = StandardDeviationService(
-            df=df,
-            window_size=3,
-            source=StandardDeviationService.PARKINSON,
-        )
-        column_name = 'std'
-        standard_deviation_df = pd.DataFrame(columns=[column_name])
-        for index, row in df.iterrows():
-            standard_deviation_df.loc[index, column_name] = standard_deviation_service.get_sigma_by_index(
-                index=index,
-            )
-
-        return go.Scatter(
-            x=standard_deviation_df.index,
-            y=standard_deviation_df[column_name],
-            mode='markers',
-            name=column_name,
-            marker={
-                # 'color': list(np.random.choice(range(256), size=3)),
-                'color': 'orange',
-            },
-        )
-
     def _get_pool_strategy_data(
         self,
         df: pd.DataFrame,
@@ -175,6 +150,7 @@ class ChartView(View):
             z_score_upper=self.strategy.z_score_upper,
             z_score_lower=self.strategy.z_score_lower,
             time_horizon=self.strategy.time_horizon,
+            entering_trade_condition=self.strategy.entering_trade_condition,
         )
 
         lower_price_column_name = 'lower_price'
@@ -199,4 +175,18 @@ class ChartView(View):
             x=df.index,
             y=df[column_name],
             name=column_name,
+        )
+
+    def _get_range_trace(self, strategy_df, column_name_lower, column_name_upper):
+        column_name = 'price_range'
+        strategy_df[column_name] = strategy_df[column_name_upper] - strategy_df[column_name_lower]
+
+        return go.Bar(
+            x=strategy_df.index,
+            y=strategy_df[column_name],
+            name=column_name,
+            marker={
+                # 'color': list(np.random.choice(range(256), size=3)),
+                'color': 'orange',
+            },
         )

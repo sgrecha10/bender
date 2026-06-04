@@ -4,6 +4,7 @@ from typing import Hashable, Optional
 
 import pandas as pd
 
+from liquidity_pools.models import Strategy
 from liquidity_pools.services.range_price_service import RangePriceService
 from liquidity_pools.services.standard_deviation_service import StandardDeviationService
 
@@ -18,6 +19,7 @@ class PoolStrategyService:
         z_score_upper: float | Decimal,
         z_score_lower: float | Decimal,
         time_horizon: str,
+        entering_trade_condition: str,
     ):
         self.df = df
         self.interval = interval
@@ -26,6 +28,7 @@ class PoolStrategyService:
         self.z_score_upper = z_score_upper
         self.z_score_lower = z_score_lower
         self.time_horizon = time_horizon
+        self.entering_trade_condition = entering_trade_condition
 
         self.standard_deviation_service = StandardDeviationService(
             df=self.df,
@@ -52,7 +55,8 @@ class PoolStrategyService:
         if not sigma:
             return None, None
 
-        price = self.df.loc[index, 'open']  # тут возможны разные варианты
+        if self.entering_trade_condition == Strategy.EnteringTradeCondition.OPEN_PRICE.value:
+            price = self.df.loc[index, 'open']  # тут возможны разные варианты
 
         lower_price, upper_price = self.range_price_service.get_values_by_price(
             price=price,

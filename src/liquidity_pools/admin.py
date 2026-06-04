@@ -2,13 +2,14 @@ from django.contrib import admin
 from django.contrib.admin.helpers import AdminForm
 from django.shortcuts import render, redirect
 from django.urls import path
+from django.urls import reverse
+from django.utils.html import format_html
 from hexbytes import HexBytes
 
 from core.utils.admin_utils import (
     redirect_to_change_list,
     colored_status_display,
 )
-from indicators.models import StandardDeviation
 from liquidity_pools.forms import WalletAdminForm
 from liquidity_pools.tasks import get_pool_historical_block_ticks
 from .forms import LiquidityPoolTickForm
@@ -688,6 +689,7 @@ class StrategyAdmin(admin.ModelAdmin):
         'z_score_upper',
         'z_score_lower',
         'time_horizon',
+        'chart_button',
         'updated_at',
         'created_at',
     )
@@ -729,6 +731,14 @@ class StrategyAdmin(admin.ModelAdmin):
             }
         ),
         (
+            'Entering Trade Condition',
+            {
+                'fields': (
+                    'entering_trade_condition',
+                )
+            }
+        ),
+        (
             'Metadata',
             {
                 'fields': (
@@ -736,5 +746,22 @@ class StrategyAdmin(admin.ModelAdmin):
                     'created_at',
                 )
             }
-        )
+        ),
+        (
+            'Backtesting Settings',
+            {
+                'fields': (
+                    'closing_trade_condition',
+                ),
+                'classes': ('grp-collapse', 'grp-open'),
+            },
+        ),
     )
+
+    @admin.display(description='Chart')
+    def chart_button(self, obj):
+        url = reverse('liquidity_pools:chart') + f'?strategy_id={obj.pk}'
+        return format_html(
+            '<a class="grp-button1" target="_blank" href="{}">Chart</a>',
+            url,
+        )

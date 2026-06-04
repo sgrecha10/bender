@@ -754,6 +754,13 @@ class Strategy(models.Model):
         CLOSE_TO_CLOSE = 'close_to_close', 'Realized volatility'
         PARKINSON = 'parkinson', 'Parkinson volatility'
 
+    class EnteringTradeCondition(models.TextChoices):
+        OPEN_PRICE = 'open_price', 'Candle open price'
+
+    class ClosingTradeCondition(models.TextChoices):
+        BETTER_ORDER = 'better_order', 'Better, upper limit first'
+        WORSE_ORDER = 'worse_order', 'Worse, lower limit first'
+
     name = models.CharField(
         max_length=255,
         verbose_name='Name',
@@ -791,13 +798,26 @@ class Strategy(models.Model):
     z_score_lower = models.DecimalField(
         max_digits=2,
         decimal_places=1,
-        verbose_name='Z-Score Upper',
+        verbose_name='Z-Score Lower',
     )
     time_horizon = models.CharField(
         max_length=50,
         choices=Interval.choices,
         default=Interval.DAY_1,
         verbose_name='Time Horizon',
+    )
+    entering_trade_condition = models.CharField(
+        max_length=50,
+        choices=EnteringTradeCondition.choices,
+        default=EnteringTradeCondition.OPEN_PRICE,
+        verbose_name='Entering Trade Condition',
+    )
+    closing_trade_condition = models.CharField(
+        max_length=50,
+        choices=ClosingTradeCondition.choices,
+        default=ClosingTradeCondition.WORSE_ORDER,
+        verbose_name='Closing Trade Condition',
+        help_text='Если свеча пересекает обе границы, какое пересечение считать первым7',
     )
 
     updated_at = models.DateTimeField(
