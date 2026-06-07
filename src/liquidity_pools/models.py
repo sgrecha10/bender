@@ -812,6 +812,11 @@ class Strategy(models.Model):
         default=EnteringTradeCondition.OPEN_PRICE,
         verbose_name='Entering Trade Condition',
     )
+    maximum_range_width = models.PositiveIntegerField(
+        blank=True,
+        null=True,
+        verbose_name='Maximum Range Width',
+    )
     closing_trade_condition = models.CharField(
         max_length=50,
         choices=ClosingTradeCondition.choices,

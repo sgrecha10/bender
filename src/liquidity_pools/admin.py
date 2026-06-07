@@ -735,6 +735,7 @@ class StrategyAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'entering_trade_condition',
+                    'maximum_range_width',
                 )
             }
         ),

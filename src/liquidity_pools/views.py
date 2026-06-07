@@ -89,7 +89,7 @@ class ChartView(View):
         strategy_df = self._get_pool_strategy_data(df)
         fig.add_trace(self._get_line_trace(strategy_df, 'lower_price'), row=1, col=1)
         fig.add_trace(self._get_line_trace(strategy_df, 'upper_price'), row=1, col=1)
-        fig.add_trace(self._get_range_trace(strategy_df, 'lower_price', 'upper_price'), row=4, col=1)
+        fig.add_trace(self._get_range_width_trace(strategy_df, 'lower_price', 'upper_price'), row=4, col=1)
 
         fig.update_layout(
             # autosize=False,
@@ -177,8 +177,8 @@ class ChartView(View):
             name=column_name,
         )
 
-    def _get_range_trace(self, strategy_df, column_name_lower, column_name_upper):
-        column_name = 'price_range'
+    def _get_range_width_trace(self, strategy_df, column_name_lower, column_name_upper):
+        column_name = 'range_width'
         strategy_df[column_name] = strategy_df[column_name_upper] - strategy_df[column_name_lower]
 
         return go.Bar(

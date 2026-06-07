@@ -47,6 +47,8 @@ class PoolStrategyService:
         index: datetime | Hashable,
     ) -> Optional[tuple]:
         current_pos = self.df.index.get_loc(index)
+        if current_pos == 0:
+            return None, None
         previous_index = self.df.index[current_pos - 1]
 
         sigma = self.standard_deviation_service.get_sigma_by_index(
