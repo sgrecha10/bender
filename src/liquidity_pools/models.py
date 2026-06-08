@@ -842,3 +842,68 @@ class Strategy(models.Model):
         return (
             f'{self.pk} | {self.name} '
         )
+
+
+class StrategyPosition(models.Model):
+
+    class StatusChoice(models.TextChoices):
+        OPEN = 'open', 'Open'
+        CLOSED_BY_RANGE = 'closed_by_range', 'Closed by range'
+        CLOSED_FOR_REBALANCING = 'closed_for_rebalancing', 'Closed for rebalancing'
+        CLOSED_MANUAL = 'closed_manual', 'Closed manual'
+
+    strategy = models.ForeignKey(
+        Strategy,
+        on_delete=models.CASCADE,
+        verbose_name='Strategy',
+    )
+    liquidity_pool = models.ForeignKey(
+        LiquidityPool,
+        on_delete=models.CASCADE,
+        verbose_name='Liquidity Pool',
+    )
+    opened_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Opened at',
+    )
+    closed_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Closed at',
+    )
+    entry_price = models.DecimalField(
+        max_digits=30,
+        decimal_places=18,
+        verbose_name='Entry Price',
+    )
+    exit_price = models.DecimalField(
+        blank=True,
+        null=True,
+        max_digits=30,
+        decimal_places=18,
+        verbose_name='Exit Price',
+    )
+    lower_price = models.DecimalField(
+        max_digits=30,
+        decimal_places=18,
+        verbose_name='Lower Price',
+    )
+    upper_price = models.DecimalField(
+        max_digits=30,
+        decimal_places=18,
+        verbose_name='Upper Price',
+    )
+    status = models.CharField(
+        max_length=50,
+        choices=StatusChoice.choices,
+        default=StatusChoice.OPEN,
+        verbose_name='Status',
+    )
+
+    class Meta:
+        verbose_name = 'Strategy Position'
+        verbose_name_plural = 'Strategy Positions'
+
+    def __str__(self):
+        return f'{self.pk}'

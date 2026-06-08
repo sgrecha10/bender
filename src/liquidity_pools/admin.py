@@ -25,6 +25,7 @@ from .models import (
 
     LiquidityPoolTick,
     Strategy,
+    StrategyPosition,
 )
 from .tasks import (
     index_blockchain_transaction_task,
@@ -766,3 +767,20 @@ class StrategyAdmin(admin.ModelAdmin):
             '<a class="grp-button1" target="_blank" href="{}">Chart</a>',
             url,
         )
+
+
+@admin.register(StrategyPosition)
+class StrategyPositionAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'strategy',
+        'liquidity_pool',
+        'opened_at',
+        'closed_at',
+        'entry_price',
+        'exit_price',
+        'lower_price',
+        'upper_price',
+        'status',
+    )
+    readonly_fields = list_display
