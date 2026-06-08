@@ -13,24 +13,24 @@ class StandardDeviationService:
     """Стандартное отклонение."""
     def __init__(
         self,
-        df: pd.DataFrame,
         window_size: int,
         source: str,
     ) -> None:
-        self.df = df
         self.window_size = window_size
         self.source = source
 
     def get_sigma_by_index(
         self,
         index: datetime | Hashable,
+        df: pd.DataFrame,
     ) -> Optional[float | Decimal]:
         """Возвращает значение sigma (волательность на текущий таймфрейм)
          рассчитанное на переданный index (open_time) включительно
 
+        :param df:
         :param index: datetime
         """
-        window_df = self.df.loc[:index].tail(self.window_size)
+        window_df = df.loc[:index].tail(self.window_size)
 
         if len(window_df) < self.window_size:
             return

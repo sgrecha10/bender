@@ -1,63 +1,30 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-from django.http import Http404
 from django.shortcuts import render
 from django.views import View
 from pandas import DataFrame
 from plotly.subplots import make_subplots
 
-from liquidity_pools.models import LiquidityPoolTick, Strategy
-from liquidity_pools.services.pool_strategy_service import PoolStrategyService
-from liquidity_pools.services.standard_deviation_service import StandardDeviationService
+from liquidity_pools.models import Strategy
+from liquidity_pools.services.backtesting_service import BacktestingService
 
 
 class ChartView(View):
     template_name = 'liquidity_pools/chart.html'
 
-    def dispatch(self, request, *args, **kwargs):
-        strategy_id = request.GET.get('strategy_id')
-        try:
-            self.strategy = Strategy.objects.get(pk=strategy_id)
-        except Strategy.DoesNotExist:
-            raise Http404('Strategy does not exist')
-
-        return super().dispatch(request, *args, **kwargs)
-
-    def _get_pool_tick_df(
-        self,
-    ) -> DataFrame:
-        liquidity_pool = self.strategy.liquidity_pool
-
-        liquidity_pool_tick_qs = LiquidityPoolTick.objects.filter(
-            liquidity_pool=liquidity_pool,
-        ).order_by(
-            'block_timestamp',
-        ).values(
-            'block_timestamp',
-            'tick',
-        )
-        df = pd.DataFrame(liquidity_pool_tick_qs)
-
-        df['block_timestamp'] = pd.to_datetime(df['block_timestamp'])
-        df = df.set_index('block_timestamp')
-
-        token0_decimal = liquidity_pool.token0.decimals
-        token1_decimal = liquidity_pool.token1.decimals
-
-        df['price'] = (1.0001 ** df['tick']) * 10 ** (token0_decimal - token1_decimal)
-        candles = df['price'].resample(self.strategy.interval).ohlc()
-
-        return candles
-
     def get(self, request, *args, **kwargs):
         """Show strategy chart."""
-        df = self._get_pool_tick_df()
+        strategy_id = request.GET.get('strategy_id')
+        service = BacktestingService(strategy_id=strategy_id)
+
+        df = service.get_backtesting_df()
+
         context = {
             'title': 'Strategy',
             'chart': self._get_chart(
                 df=df,
-                subtitle=self.strategy.name,
+                subtitle=service.strategy.name,
             ),
             'opts': Strategy._meta,
         }
@@ -72,7 +39,7 @@ class ChartView(View):
         """
         1. Определяем количество необходимых строк. 1 - всегда инструмент, 2, 3 - всегда пустые (для слайдера)
         """
-        row_count = 5  # инструмент + невидимый инструмент для слайдера + слайдер
+        row_count = 4  # инструмент + невидимый инструмент для слайдера + слайдер
         row_titles = [subtitle, '', '']  # название
 
         fig = make_subplots(
@@ -80,16 +47,24 @@ class ChartView(View):
             shared_xaxes=True,
             vertical_spacing=0.02,
             row_titles=row_titles,
-            row_heights=self._get_subplots_row_heights(rows=row_count),
+            row_heights=[0.7, 0.001, 0.15, 0.15],
         )
         candlestick_trace = self._get_candlestick_trace(df, subtitle)
         fig.add_trace(candlestick_trace, row=1, col=1)
         fig.add_trace(candlestick_trace, row=2, col=1)
 
-        strategy_df = self._get_pool_strategy_data(df)
-        fig.add_trace(self._get_line_trace(strategy_df, 'lower_price'), row=1, col=1)
-        fig.add_trace(self._get_line_trace(strategy_df, 'upper_price'), row=1, col=1)
-        fig.add_trace(self._get_range_width_trace(strategy_df, 'lower_price', 'upper_price'), row=4, col=1)
+        if 'lower_price' in df.columns and 'upper_price' in df.columns:
+            fig.add_trace(self._get_line_trace(df, 'lower_price'), row=1, col=1)
+            fig.add_trace(self._get_line_trace(df, 'upper_price'), row=1, col=1)
+
+        if 'range_width' in df.columns:
+            fig.add_trace(self._get_bar_trace(df, 'range_width'), row=4, col=1)
+
+        if 'entry_price' in df.columns:
+            fig.add_trace(self._get_position_entry_price_trace(df), row=1, col=1)
+
+        if 'exit_price' in df.columns:
+            fig.add_trace(self._get_position_exit_price_trace(df), row=1, col=1)
 
         fig.update_layout(
             # autosize=False,
@@ -121,55 +96,6 @@ class ChartView(View):
             name=symbol,
         )
 
-    def _get_subplots_row_heights(self, rows: int = 3, slider_thickness: float = 0.1) -> list:
-        first_item_map = [0.9, 0.8, 0.7, 0.6]
-        prepared_rows = rows - 3
-
-        try:
-            first_item_thickness = first_item_map[prepared_rows]
-        except IndexError:
-            first_item_thickness = 0.5
-
-        row_heights = [first_item_thickness, 0.001, slider_thickness]
-
-        if not prepared_rows:
-            return row_heights
-
-        extra_item_thickness = round((1 - first_item_thickness - slider_thickness - 0.001) / prepared_rows, 3)
-        return [*row_heights, *[extra_item_thickness for _ in range(prepared_rows)]]
-
-    def _get_pool_strategy_data(
-        self,
-        df: pd.DataFrame,
-    ):
-        strategy_service = PoolStrategyService(
-            df=df,
-            interval=self.strategy.interval,
-            window_size=self.strategy.std_window_size,
-            source=self.strategy.std_source,
-            z_score_upper=self.strategy.z_score_upper,
-            z_score_lower=self.strategy.z_score_lower,
-            time_horizon=self.strategy.time_horizon,
-            entering_trade_condition=self.strategy.entering_trade_condition,
-        )
-
-        lower_price_column_name = 'lower_price'
-        upper_price_column_name = 'upper_price'
-        strategy_df = pd.DataFrame(
-            columns=[
-                lower_price_column_name,
-                upper_price_column_name,
-            ]
-        )
-
-        for index, row in df.iterrows():
-            lower_price, upper_price = strategy_service.get_data_by_index(index=index)
-
-            strategy_df.loc[index, lower_price_column_name] = lower_price
-            strategy_df.loc[index, upper_price_column_name] = upper_price
-
-        return strategy_df
-
     def _get_line_trace(self, df: pd.DataFrame, column_name: str):
         return go.Scatter(
             x=df.index,
@@ -177,16 +103,40 @@ class ChartView(View):
             name=column_name,
         )
 
-    def _get_range_width_trace(self, strategy_df, column_name_lower, column_name_upper):
-        column_name = 'range_width'
-        strategy_df[column_name] = strategy_df[column_name_upper] - strategy_df[column_name_lower]
-
+    def _get_bar_trace(self, df: pd.DataFrame, column_name: str):
         return go.Bar(
-            x=strategy_df.index,
-            y=strategy_df[column_name],
+            x=df.index,
+            y=df[column_name],
             name=column_name,
             marker={
-                # 'color': list(np.random.choice(range(256), size=3)),
                 'color': 'orange',
             },
+        )
+
+    def _get_position_entry_price_trace(self, df: pd.DataFrame):
+        return go.Scatter(
+            x=df.index,
+            y=df['entry_price'],
+            mode='markers+text',
+            marker={
+                'color': 'green',   # green, orange
+                'symbol': 'triangle-up',  # triangle-down, triangle-up, diamond
+                'size': 11,
+            },
+            # text=df['open'],
+            # textposition='top center',
+        )
+
+    def _get_position_exit_price_trace(self, df: pd.DataFrame):
+        return go.Scatter(
+            x=df.index,
+            y=df['entry_price'],
+            mode='markers+text',
+            marker={
+                'color': 'red',   # green, orange
+                'symbol': 'triangle-down',  # triangle-down, triangle-up, diamond
+                'size': 11,
+            },
+            # text=df['open'],
+            # textposition='top center',
         )
