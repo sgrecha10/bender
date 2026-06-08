@@ -774,7 +774,6 @@ class StrategyPositionAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'strategy',
-        'liquidity_pool',
         'opened_at',
         'closed_at',
         'entry_price',

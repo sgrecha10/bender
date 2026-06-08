@@ -857,11 +857,6 @@ class StrategyPosition(models.Model):
         on_delete=models.CASCADE,
         verbose_name='Strategy',
     )
-    liquidity_pool = models.ForeignKey(
-        LiquidityPool,
-        on_delete=models.CASCADE,
-        verbose_name='Liquidity Pool',
-    )
     opened_at = models.DateTimeField(
         blank=True,
         null=True,
