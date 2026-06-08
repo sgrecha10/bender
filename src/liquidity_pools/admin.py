@@ -753,7 +753,7 @@ class StrategyAdmin(admin.ModelAdmin):
             'Backtesting Settings',
             {
                 'fields': (
-                    'closing_trade_condition',
+                    'intrabar_price_path',
                 ),
                 'classes': ('grp-collapse', 'grp-open'),
             },

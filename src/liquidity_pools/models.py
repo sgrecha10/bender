@@ -757,9 +757,9 @@ class Strategy(models.Model):
     class EnteringTradeCondition(models.TextChoices):
         OPEN_PRICE = 'open_price', 'Candle open price'
 
-    class ClosingTradeCondition(models.TextChoices):
-        BETTER_ORDER = 'better_order', 'Better, upper limit first'
-        WORSE_ORDER = 'worse_order', 'Worse, lower limit first'
+    class IntrabarPricePath(models.TextChoices):
+        OHLC = 'ohlc', 'Better, high first'
+        OLHC = 'olhc', 'Worse, low first'
 
     name = models.CharField(
         max_length=255,
@@ -817,12 +817,11 @@ class Strategy(models.Model):
         null=True,
         verbose_name='Maximum Range Width',
     )
-    closing_trade_condition = models.CharField(
+    intrabar_price_path = models.CharField(
         max_length=50,
-        choices=ClosingTradeCondition.choices,
-        default=ClosingTradeCondition.WORSE_ORDER,
-        verbose_name='Closing Trade Condition',
-        help_text='Если свеча пересекает обе границы, какое пересечение считать первым7',
+        choices=IntrabarPricePath.choices,
+        default=IntrabarPricePath.OHLC,
+        verbose_name='Intrabar Price Path',
     )
 
     updated_at = models.DateTimeField(
