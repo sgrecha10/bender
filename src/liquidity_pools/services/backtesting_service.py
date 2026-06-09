@@ -1,11 +1,9 @@
-from decimal import Decimal
-from typing import Hashable
-
 import pandas as pd
 
-from liquidity_pools.management.commands import backtesting
-from liquidity_pools.models import Strategy, LiquidityPoolTick, StrategyPosition
+from liquidity_pools.models import Strategy, StrategyPosition
 from liquidity_pools.services.pool_strategy_service import PoolStrategyService
+from django.db.models import Sum, F, DecimalField, Avg, ExpressionWrapper, Value, Case, When, Count
+
 
 
 class BacktestingService:
@@ -19,8 +17,6 @@ class BacktestingService:
 
         self.df = self.service.get_base_df()
 
-        StrategyPosition.objects.filter(strategy_id=self.strategy_id).delete()
-
     def run_backtesting(
         self,
     ) -> None:
@@ -28,6 +24,9 @@ class BacktestingService:
 
         Предварительно обогощает df аппер/ловер ценой диапаона.
         """
+
+        StrategyPosition.objects.filter(strategy_id=self.strategy_id).delete()
+
         for index, row in self.df.iterrows():
             #  Определяем, в каком порядке обходим свечу
             if self.strategy.intrabar_price_path == Strategy.IntrabarPricePath.OHLC:
@@ -44,52 +43,85 @@ class BacktestingService:
                     df=self.df,
                 )
 
+        strategy_position = StrategyPosition.objects.filter(
+            strategy_id=self.strategy_id,
+        ).exclude(
+            status=StrategyPosition.StatusChoice.OPEN,
+        ).aggregate(
+            pnl_absolute=Sum(
+                F('exit_price') - F('entry_price'),
+                output_field=DecimalField(
+                    max_digits=30,
+                    decimal_places=18,
+                ),
+            ),
+            pnl_percent=Avg(
+                ExpressionWrapper(
+                    F('exit_price') / F('entry_price') - Value(1),
+                    output_field=DecimalField(
+                        max_digits=30,
+                        decimal_places=18,
+                    ),
+                ),
+            ),
+            win_rate=Avg(
+                Case(
+                    When(
+                        exit_price__gt=F('entry_price'),
+                        then=Value(1),
+                    ),
+                    default=Value(0),
+                )
+            ),
+            positions_count=Count('id'),
+        )
+
+        print('==========================================================================')
+        print('pnl_absolute', strategy_position['pnl_absolute'])
+        print('pnl_percent', round(strategy_position['pnl_percent'] * 100, 3))
+        print('win_rate', round(strategy_position['win_rate'] * 100, 2))
+        print('positions_count', strategy_position['positions_count'])
+        print('==========================================================================')
+
 
     def get_backtesting_df(
         self,
     ) -> pd.DataFrame:
         """Возвращает датафрейм для графика."""
 
+        lower_price_column_name = 'lower_price'
+        upper_price_column_name = 'upper_price'
+        range_width_column_name = 'range_width'
+
+        self.df[lower_price_column_name] = None
+        self.df[upper_price_column_name] = None
+        self.df[range_width_column_name] = None
+
+        for index, row in self.df.iterrows():
+            lower_price, upper_price = self.service.get_range_price_by_index(
+                index=index,
+                price=row['open'],
+                df=self.df,
+            )
+            if not lower_price and not upper_price:
+                continue
+
+            self.df.loc[index, lower_price_column_name] = lower_price
+            self.df.loc[index, upper_price_column_name] = upper_price
+            self.df.loc[index, range_width_column_name] = upper_price - lower_price
+
+        strategy_position_qs = StrategyPosition.objects.filter(strategy_id=self.strategy_id)
+
+        for row in strategy_position_qs:
+            if row.opened_at:
+                index = row.opened_at
+                self.df.loc[index, 'entry_price'] = row.entry_price
+
+            if row.closed_at:
+                index = row.closed_at
+                self.df.loc[index, 'exit_price'] = row.exit_price
 
         return self.df
-
-
-
-
-    # def add_range_price_to_df(
-    #     self,
-    #     df: pd.DataFrame,
-    # ) -> pd.DataFrame:
-    #     """Обогащает df верхней/нижней ценой интервала."""
-    #
-    #     lower_price_column_name = 'lower_price'
-    #     upper_price_column_name = 'upper_price'
-    #
-    #     df[lower_price_column_name] = None
-    #     df[upper_price_column_name] = None
-    #
-    #     for index, row in df.iterrows():
-    #         lower_price, upper_price = self.service.get_range_price_by_index(
-    #             index=index,
-    #             price=row['open'],  #  ВРЕМЕННОЕ РЕШЕНИЕ
-    #             df=df,
-    #         )
-    #         df.loc[index, lower_price_column_name] = lower_price
-    #         df.loc[index, upper_price_column_name] = upper_price
-    #
-    #     return df
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

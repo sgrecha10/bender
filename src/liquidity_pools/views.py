@@ -18,6 +18,8 @@ class ChartView(View):
         strategy_id = request.GET.get('strategy_id')
         service = BacktestingService(strategy_id=strategy_id)
 
+        service.run_backtesting()  # запускаем и пересчитываем при каждом отображении
+
         df = service.get_backtesting_df()
 
         context = {
@@ -117,26 +119,26 @@ class ChartView(View):
         return go.Scatter(
             x=df.index,
             y=df['entry_price'],
-            mode='markers+text',
+            mode='markers+text',  # markers+text
             marker={
                 'color': 'green',   # green, orange
                 'symbol': 'triangle-up',  # triangle-down, triangle-up, diamond
                 'size': 11,
             },
-            # text=df['open'],
+            # text=df['entry_price'],
             # textposition='top center',
         )
 
     def _get_position_exit_price_trace(self, df: pd.DataFrame):
         return go.Scatter(
             x=df.index,
-            y=df['entry_price'],
+            y=df['exit_price'],
             mode='markers+text',
             marker={
                 'color': 'red',   # green, orange
                 'symbol': 'triangle-down',  # triangle-down, triangle-up, diamond
                 'size': 11,
             },
-            # text=df['open'],
+            # text=df['exit_price'],
             # textposition='top center',
         )
