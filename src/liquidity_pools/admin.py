@@ -754,6 +754,7 @@ class StrategyAdmin(admin.ModelAdmin):
             {
                 'fields': (
                     'intrabar_price_path',
+                    'is_recalculated_by_chart_update',
                 ),
                 'classes': ('grp-collapse', 'grp-open'),
             },

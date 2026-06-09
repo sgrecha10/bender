@@ -16,9 +16,12 @@ class ChartView(View):
     def get(self, request, *args, **kwargs):
         """Show strategy chart."""
         strategy_id = request.GET.get('strategy_id')
+        strategy = Strategy.objects.get(pk=strategy_id)
         service = BacktestingService(strategy_id=strategy_id)
 
-        service.run_backtesting()  # запускаем и пересчитываем при каждом отображении
+        if strategy.is_recalculated_by_chart_update:
+            # пересчитывать при каждом отображении графика
+            service.run_backtesting()
 
         df = service.get_backtesting_df()
 

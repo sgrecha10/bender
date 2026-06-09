@@ -823,6 +823,10 @@ class Strategy(models.Model):
         default=IntrabarPricePath.OHLC,
         verbose_name='Intrabar Price Path',
     )
+    is_recalculated_by_chart_update = models.BooleanField(
+        default=False,
+        verbose_name='Recalculated by Chart Update',
+    )
 
     updated_at = models.DateTimeField(
         auto_now=True,
