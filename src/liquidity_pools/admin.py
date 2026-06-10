@@ -588,13 +588,18 @@ class LiquidityPoolTickAdmin(admin.ModelAdmin):
     list_display = (
         'id',
         'liquidity_pool',
+        'block_number',
         'liquidity',
         'tick',
         'block_timestamp',
     )
-    readonly_fields = (
-        'block_timestamp',
-    )
+    readonly_fields = list_display + ('price',)
+
+    @admin.display(description='Price')
+    def price(self, obj):
+        token0_decimal = obj.liquidity_pool.token0.decimals
+        token1_decimal = obj.liquidity_pool.token1.decimals
+        return (1.0001 ** obj.tick) * 10 ** (token0_decimal - token1_decimal)
 
     def get_urls(self):
         urls = super().get_urls()
@@ -735,7 +740,6 @@ class StrategyAdmin(admin.ModelAdmin):
             'Entering Trade Condition',
             {
                 'fields': (
-                    'entering_trade_condition',
                     'maximum_range_width',
                 )
             }

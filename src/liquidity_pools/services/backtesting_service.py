@@ -1,5 +1,8 @@
 import pandas as pd
-from django.db.models import Sum, F, DecimalField, Avg, ExpressionWrapper, Value, Case, When, Count
+from django.db.models import (
+    Sum, F, DecimalField, Avg, ExpressionWrapper,
+    Value, Case, When, Count, Min, Max,
+)
 
 from liquidity_pools.models import Strategy, StrategyPosition, LiquidityPoolTick
 from liquidity_pools.services.pool_strategy_service import PoolStrategyService
@@ -43,20 +46,21 @@ class BacktestingService:
         token1_decimal = self.strategy.liquidity_pool.token1.decimals
 
         for row in liquidity_pool_tick_qs:
-            timestamp = row['block_timestamp']
+            tick_timestamp = row['block_timestamp']
             tick = row['tick']
             price = (1.0001 ** tick) * 10 ** (token0_decimal - token1_decimal)
 
-            print(timestamp, tick, price)
+            print(tick_timestamp, tick, price)
 
             self.service.make_trade(
                 price=price,
                 df=self.df,
-                index=timestamp,
+                tick_timestamp=tick_timestamp,
             )
 
         # ниже расчет результата бектестинга
-        self.backtesting_result()
+        # вызываем в чарте, а не здесь
+        # self.backtesting_result()
 
     def get_rich_ohlc_df(self) -> pd.DataFrame:
         """Возвращает свечи с выбранным interval, и range_prices, price_width."""
@@ -135,12 +139,46 @@ class BacktestingService:
                 )
             ),
             positions_count=Count('id'),
+            total_position_duration=Sum(
+                F('closed_at') - F('opened_at')
+            ),
+            average_position_duration=Avg(
+                F('closed_at') - F('opened_at')
+            ),
+            first_opened_at=Min('opened_at'),
+            last_closed_at=Max('closed_at'),
+            average_range_width=Avg(
+                F('upper_price') - F('lower_price')
+            ),
         )
+
+        backtest_duration = strategy_position['last_closed_at'] - strategy_position['first_opened_at']
+        if backtest_duration:
+            market_exposure = strategy_position['total_position_duration'] / backtest_duration
+        else:
+            market_exposure = 0
 
         print('==========================================================================')
         print('strategy.name', self.strategy.name)
+        print('interval, windows_size, source, z-upper, z-lower, t-horizon, max_range_width')
+        print(
+            self.strategy.interval,
+            self.strategy.std_window_size,
+            self.strategy.std_source,
+            self.strategy.z_score_upper,
+            self.strategy.z_score_lower,
+            self.strategy.time_horizon,
+            self.strategy.maximum_range_width
+        )
+        print('------------')
         print('pnl_absolute', strategy_position['pnl_absolute'])
-        print('pnl_percent', strategy_position['pnl_percent'] and round(strategy_position['pnl_percent'] * 100, 3))
-        print('win_rate', strategy_position['win_rate'] and round(strategy_position['win_rate'] * 100, 2))
+        print('pnl_percent, %', strategy_position['pnl_percent'] and round(strategy_position['pnl_percent'] * 100, 3))
+        print('win_rate, %', strategy_position['win_rate'] and round(strategy_position['win_rate'] * 100, 2))
         print('positions_count', strategy_position['positions_count'])
+        print('-------------')
+        print('total_position_duration', strategy_position['total_position_duration'])
+        print('average_position_duration', strategy_position['average_position_duration'])
+        print('backtest_duration', backtest_duration)
+        print('market_exposure, %', round(market_exposure * 100, 2))
+        print('average_range_width', strategy_position['average_range_width'])
         print('==========================================================================')

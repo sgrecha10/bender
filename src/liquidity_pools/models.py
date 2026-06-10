@@ -754,13 +754,6 @@ class Strategy(models.Model):
         CLOSE_TO_CLOSE = 'close_to_close', 'Realized volatility'
         PARKINSON = 'parkinson', 'Parkinson volatility'
 
-    class EnteringTradeCondition(models.TextChoices):
-        OPEN_PRICE = 'open_price', 'Candle open price'
-
-    class IntrabarPricePath(models.TextChoices):
-        OHLC = 'ohlc', 'Better, high first'
-        OLHC = 'olhc', 'Worse, low first'
-
     name = models.CharField(
         max_length=255,
         verbose_name='Name',
@@ -806,17 +799,13 @@ class Strategy(models.Model):
         default=Interval.DAY_1,
         verbose_name='Time Horizon',
     )
-    entering_trade_condition = models.CharField(
-        max_length=50,
-        choices=EnteringTradeCondition.choices,
-        default=EnteringTradeCondition.OPEN_PRICE,
-        verbose_name='Entering Trade Condition',
-    )
+
     maximum_range_width = models.PositiveIntegerField(
         blank=True,
         null=True,
         verbose_name='Maximum Range Width',
     )
+
     is_recalculated_by_chart_update = models.BooleanField(
         default=False,
         verbose_name='Recalculated by Chart Update',

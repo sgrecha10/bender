@@ -22,6 +22,8 @@ class ChartView(View):
             # пересчитывать при каждом отображении графика
             service.run_backtesting()
 
+        service.backtesting_result()
+
         context = {
             'title': 'Strategy',
             'chart': self._get_chart(

@@ -2,17 +2,17 @@ from django.db.models import TextChoices
 
 
 class Interval(TextChoices):
-    # MINUTE_1 = '1min'
-    # MINUTE_3 = '3m'
-    MINUTE_5 = '5m'
-    MINUTE_15 = '15m'
-    MINUTE_30 = '30m'
-    HOUR_1 = '1h'
-    HOUR_2 = '2h'
-    HOUR_4 = '4h'
-    HOUR_6 = '6h'
-    HOUR_8 = '8h'
-    HOUR_12 = '12h'
+    MINUTE_1 = '1min'
+    MINUTE_3 = '3min'
+    MINUTE_5 = '5min'
+    MINUTE_15 = '15min'
+    MINUTE_30 = '30min'
+    HOUR_1 = '1H'
+    HOUR_2 = '2H'
+    HOUR_4 = '4H'
+    HOUR_6 = '6H'
+    HOUR_8 = '8H'
+    HOUR_12 = '12H'
     DAY_1 = '1D'
     DAY_3 = '3D'
     WEEK_1 = '1W'
@@ -21,7 +21,11 @@ class Interval(TextChoices):
 
 
 MAP_MINUTE_COUNT = {
+    Interval.MINUTE_1: 1,
+    Interval.MINUTE_3: 3,
     Interval.MINUTE_5: 5,
+    Interval.MINUTE_15: 15,
+    Interval.MINUTE_30: 30,
     Interval.HOUR_1: 60,
     Interval.HOUR_2: 60 * 2,
     Interval.HOUR_4: 60 * 4,
