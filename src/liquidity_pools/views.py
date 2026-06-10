@@ -3,7 +3,6 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from django.shortcuts import render
 from django.views import View
-from pandas import DataFrame
 from plotly.subplots import make_subplots
 
 from liquidity_pools.models import Strategy
@@ -23,13 +22,10 @@ class ChartView(View):
             # пересчитывать при каждом отображении графика
             service.run_backtesting()
 
-        df = service.get_backtesting_df()
-
         context = {
             'title': 'Strategy',
             'chart': self._get_chart(
-                df=df,
-                subtitle=service.strategy.name,
+                service=service,
             ),
             'opts': Strategy._meta,
         }
@@ -37,13 +33,12 @@ class ChartView(View):
 
     def _get_chart(
         self,
-        df: DataFrame,
-        subtitle: str,
+        service: BacktestingService,
     ) -> go.Figure:
+        ohlc_df = service.get_rich_ohlc_df()
+        backtesting_df = service.get_backtesting_df()
+        subtitle = service.strategy.name
 
-        """
-        1. Определяем количество необходимых строк. 1 - всегда инструмент, 2, 3 - всегда пустые (для слайдера)
-        """
         row_count = 4  # инструмент + невидимый инструмент для слайдера + слайдер
         row_titles = [subtitle, '', '']  # название
 
@@ -54,22 +49,20 @@ class ChartView(View):
             row_titles=row_titles,
             row_heights=[0.7, 0.001, 0.15, 0.15],
         )
-        candlestick_trace = self._get_candlestick_trace(df, subtitle)
+        candlestick_trace = self._get_candlestick_trace(ohlc_df, subtitle)
         fig.add_trace(candlestick_trace, row=1, col=1)
         fig.add_trace(candlestick_trace, row=2, col=1)
 
-        if 'lower_price' in df.columns and 'upper_price' in df.columns:
-            fig.add_trace(self._get_line_trace(df, 'lower_price'), row=1, col=1)
-            fig.add_trace(self._get_line_trace(df, 'upper_price'), row=1, col=1)
+        if 'lower_price' in ohlc_df.columns and 'upper_price' in ohlc_df.columns:
+            fig.add_trace(self._get_line_trace(ohlc_df, 'lower_price'), row=1, col=1)
+            fig.add_trace(self._get_line_trace(ohlc_df, 'upper_price'), row=1, col=1)
 
-        if 'range_width' in df.columns:
-            fig.add_trace(self._get_bar_trace(df, 'range_width'), row=4, col=1)
+        if 'range_width' in ohlc_df.columns:
+            fig.add_trace(self._get_bar_trace(ohlc_df, 'range_width'), row=4, col=1)
 
-        if 'entry_price' in df.columns:
-            fig.add_trace(self._get_position_entry_price_trace(df), row=1, col=1)
-
-        if 'exit_price' in df.columns:
-            fig.add_trace(self._get_position_exit_price_trace(df), row=1, col=1)
+        if not backtesting_df.empty:
+            fig.add_trace(self._get_position_entry_price_trace(backtesting_df), row=1, col=1)
+            fig.add_trace(self._get_position_exit_price_trace(backtesting_df), row=1, col=1)
 
         fig.update_layout(
             # autosize=False,
