@@ -25,20 +25,16 @@ class BacktestingService:
         """
         StrategyPosition.objects.filter(strategy_id=self.strategy_id).delete()
 
+        filters = {}
+        if self.strategy.block_timestamp_start:
+            filters["block_timestamp__gte"] = self.strategy.block_timestamp_start
+        if self.strategy.block_timestamp_end:
+            filters["block_timestamp__lte"] = self.strategy.block_timestamp_end
+
         liquidity_pool_tick_qs = LiquidityPoolTick.objects.filter(
             liquidity_pool=self.strategy.liquidity_pool,
-        )
-
-        if self.strategy.block_timestamp_start:
-            liquidity_pool_tick_qs = liquidity_pool_tick_qs.filter(
-                block_timestamp__gte=self.strategy.block_timestamp_start,
-            )
-        if self.strategy.block_timestamp_end:
-            liquidity_pool_tick_qs = liquidity_pool_tick_qs.filter(
-                block_timestamp__lte=self.strategy.block_timestamp_end,
-            )
-
-        liquidity_pool_tick_qs = liquidity_pool_tick_qs.values(
+            **filters
+        ).values(
             'block_timestamp',
             'tick',
         ).order_by('block_timestamp')
