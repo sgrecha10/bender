@@ -817,15 +817,21 @@ class Strategy(models.Model):
         null=True,
         verbose_name='Maximum Range Width',
     )
-    intrabar_price_path = models.CharField(
-        max_length=50,
-        choices=IntrabarPricePath.choices,
-        default=IntrabarPricePath.OHLC,
-        verbose_name='Intrabar Price Path',
-    )
     is_recalculated_by_chart_update = models.BooleanField(
         default=False,
         verbose_name='Recalculated by Chart Update',
+    )
+    block_timestamp_start = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Block Timestamp Start',
+        help_text='If null, backtest using all tick data.'
+    )
+    block_timestamp_end = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name='Block Timestamp End',
+        help_text='If null, backtest using all tick data.'
     )
 
     updated_at = models.DateTimeField(

@@ -708,7 +708,6 @@ class StrategyAdmin(admin.ModelAdmin):
                     'name',
                     'description',
                     'liquidity_pool',
-                    'interval',
                 )
             },
         ),
@@ -716,6 +715,7 @@ class StrategyAdmin(admin.ModelAdmin):
             'Standard Deviation',
             {
                 'fields': (
+                    'interval',
                     'std_window_size',
                     'std_source',
                 )
@@ -753,8 +753,9 @@ class StrategyAdmin(admin.ModelAdmin):
             'Backtesting Settings',
             {
                 'fields': (
-                    'intrabar_price_path',
                     'is_recalculated_by_chart_update',
+                    'block_timestamp_start',
+                    'block_timestamp_end',
                 ),
                 'classes': ('grp-collapse', 'grp-open'),
             },
