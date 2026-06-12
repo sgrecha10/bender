@@ -25,7 +25,7 @@ from .models import (
 
     LiquidityPoolTick,
     Strategy,
-    StrategyPosition,
+    StrategyPosition, StrategyCheck,
 )
 from .tasks import (
     index_blockchain_transaction_task,
@@ -683,8 +683,22 @@ class LiquidityPoolTickAdmin(admin.ModelAdmin):
         )
 
 
+class StrategyCheckInline(admin.TabularInline):
+    model = StrategyCheck
+    fields = (
+        'tick_data_complete',
+        'updated_at',
+    )
+    readonly_fields = fields
+    can_delete = False
+    extra = 0
+
+
 @admin.register(Strategy)
 class StrategyAdmin(admin.ModelAdmin):
+    inlines = (
+        StrategyCheckInline,
+    )
     list_display = (
         'id',
         'name',
@@ -703,6 +717,8 @@ class StrategyAdmin(admin.ModelAdmin):
     readonly_fields = (
         'updated_at',
         'created_at',
+
+        # 'tick_data_complete',
     )
 
     fieldsets = (
@@ -744,6 +760,15 @@ class StrategyAdmin(admin.ModelAdmin):
                 )
             }
         ),
+        # (
+        #     'Strategy Check',
+        #     {
+        #         'fields': (
+        #             'tick_data_complete',
+        #             # 'created_at',
+        #         )
+        #     }
+        # ),
         (
             'Metadata',
             {
@@ -773,6 +798,11 @@ class StrategyAdmin(admin.ModelAdmin):
             '<a class="grp-button1" target="_blank" href="{}">Chart</a>',
             url,
         )
+
+    # @admin.display(boolean=True, description='Tick Data is Complete')
+    # def tick_data_complete(self, obj):
+    #     return getattr(obj.strategycheck, 'tick_data_complete', False)
+
 
 
 @admin.register(StrategyPosition)

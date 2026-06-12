@@ -20,3 +20,6 @@ RUN apt-get update && \
   cd ../ && rm -rf librdkafka
 RUN python -m pip install --upgrade pip
 RUN pip install -r /app/requirements.txt --no-cache-dir
+
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh

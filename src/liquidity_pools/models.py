@@ -900,3 +900,27 @@ class StrategyPosition(models.Model):
 
     def __str__(self):
         return f'{self.pk}'
+
+
+class StrategyCheck(models.Model):
+    strategy = models.OneToOneField(
+        Strategy,
+        on_delete=models.CASCADE,
+        verbose_name='Strategy',
+    )
+    tick_data_complete = models.BooleanField(
+        default=False,
+        verbose_name='Tick Data is Complete',
+        help_text='For the current windows_size and interval',
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+        verbose_name='Updated at',
+    )
+
+    class Meta:
+        verbose_name = 'Strategy Check'
+        verbose_name_plural = 'Strategy Checks'
+
+    def __str__(self):
+        return f'{self.pk}'

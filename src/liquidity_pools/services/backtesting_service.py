@@ -152,6 +152,9 @@ class BacktestingService:
             ),
         )
 
+        if not (strategy_position['last_closed_at'] and strategy_position['first_opened_at']):
+            return
+
         backtest_duration = strategy_position['last_closed_at'] - strategy_position['first_opened_at']
         if backtest_duration:
             market_exposure = strategy_position['total_position_duration'] / backtest_duration

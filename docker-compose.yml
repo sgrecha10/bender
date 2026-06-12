@@ -17,7 +17,7 @@ services:
       - "8000:8000"
     expose:
       - "8000"
-    command: python3 manage.py runserver 0.0.0.0:8000
+    command: python3 manage.py reset_strategy_check
     depends_on:
       - postgres_db
       - redis
