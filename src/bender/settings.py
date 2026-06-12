@@ -189,6 +189,8 @@ ALCHEMY_CLIENT = {
     'token': config('ALCHEMY_CLIENT_TOKEN', default='', cast=str),
 }
 
+STRATEGY_ID = config('STRATEGY_ID', default='', cast=str)
+
 MASTER_KEY = Path('/run/secrets/master_key').read_text().strip()
 
 LOGGING = {

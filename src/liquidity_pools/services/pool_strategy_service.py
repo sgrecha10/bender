@@ -35,12 +35,22 @@ class PoolStrategyService:
             interval=self.strategy.interval,
         )
 
-    def get_base_df(self) -> pd.DataFrame:
+    def get_base_df(
+        self,
+        start_date: datetime | None = None,
+    ) -> pd.DataFrame:
         """Получить базовый DataFrame ohlc."""
         liquidity_pool = self.strategy.liquidity_pool
 
+        filters = {
+            'liquidity_pool': liquidity_pool,
+        }
+
+        if start_date:
+            filters['block_timestamp__gte'] = start_date
+
         liquidity_pool_tick_qs = LiquidityPoolTick.objects.filter(
-            liquidity_pool=liquidity_pool,
+            **filters
         ).values(
             'block_timestamp',
             'tick',

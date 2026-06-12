@@ -1,8 +1,12 @@
-from datetime import datetime
+import time
 from decimal import Decimal
+from http.client import RemoteDisconnected
+from datetime import timedelta
 
-from django.contrib.gis.db.backends.postgis.pgraster import chunk
+from django.conf import settings
 from django.utils import timezone
+from liquidity_pools.constants import MAP_MINUTE_COUNT
+from requests.exceptions import ConnectionError
 from web3.exceptions import TransactionNotFound
 from web3.types import HexBytes, HexStr, Hash32
 
@@ -11,13 +15,9 @@ from core.utils.value_utils import rpc_hex_to_int
 from liquidity_pools.containers.arbitrum import ArbitrumContainer
 from liquidity_pools.services.w3_service import W3Service
 from .interfaces import arbitrum
-from .services.token_metadata_service import TokenMetadataService
 from .services.liquidity_pool_metadata_service import LiquidityPoolMetadataService
-from .services.pool_history_service import PoolHistoryLoaderService, PoolHistoryService
-from requests.exceptions import ConnectionError
-from http.client import RemoteDisconnected
-import time
 
+from .services.token_metadata_service import TokenMetadataService
 
 
 @app.task(
@@ -300,6 +300,7 @@ def get_pool_historical_block_ticks(
     delay = 0.8,  # задержка между чанками, сек.
 ):
     from liquidity_pools.models import LiquidityPool, LiquidityPoolTick
+    from .services.pool_history_service import PoolHistoryService
 
     liquidity_pool = LiquidityPool.objects.get(pk=liquidity_pool_address)
 
@@ -330,7 +331,8 @@ def get_pool_historical_block_ticks(
         ):
             print('for - block_number', block_number)
             tick = service.get_tick(block_number=block_number)
-            block_timestamp = service.get_block_datetime(block_number=block_number)
+            block = service.get_block(block_number=block_number)
+            block_timestamp = service.get_block_datetime(block=block)
             rows.append({
                 'block_number': block_number,
                 'tick': tick,
@@ -355,11 +357,65 @@ def get_pool_historical_block_ticks(
         time.sleep(delay)
 
 
+@app.task(bind=True)
+def periodic_trade_task(self):
+    """Периодическая торговая таска.
 
+    Получает текущую цену из пула, проверяет и выполняет торговые действия, заполняет исторические данные.
+    """
+    from liquidity_pools.models import Strategy, LiquidityPoolTick
+    from liquidity_pools.services.pool_strategy_service import PoolStrategyService
+    from liquidity_pools.services.pool_history_service import PoolHistoryService
 
+    if not (strategy_id := settings.STRATEGY_ID):
+        return
 
+    strategy = Strategy.objects.get(pk=strategy_id)
+    service = PoolStrategyService(strategy_id=strategy.id)
 
+    liquidity_pool = strategy.liquidity_pool
 
+    w3 = W3Service(chain_id=liquidity_pool.chain_id)
+
+    pool_history_service = PoolHistoryService(
+        w3=w3,
+        pool_address=liquidity_pool.address,
+        slot0=arbitrum.SLOT0_ABI,
+    )
+
+    # добавляем тик в бд
+    tick = pool_history_service.get_tick()
+    block = pool_history_service.get_block()
+    block_timestamp = pool_history_service.get_block_datetime(block=block)
+    block_number = pool_history_service.get_block_number(block=block)
+
+    LiquidityPoolTick.objects.create(
+        liquidity_pool_id=liquidity_pool.address,
+        block_number=block_number,
+        tick=tick,
+        block_timestamp=block_timestamp,
+    )
+
+    token0_decimal = liquidity_pool.token0.decimals
+    token1_decimal = liquidity_pool.token1.decimals
+
+    price = (1.0001 ** tick) * 10 ** (token0_decimal - token1_decimal)
+
+    now = timezone.now()
+
+    interval = strategy.interval
+    interval_minutes = MAP_MINUTE_COUNT[interval] * strategy.std_window_size
+
+    df_start_date = now - timedelta(minutes=interval_minutes)
+    df = service.get_base_df(start_date=df_start_date)
+
+    service.make_trade(
+        price=price,
+        df=df,
+        tick_timestamp=block_timestamp,
+    )
+
+    return f'{block_number} - {tick} - {block_timestamp}'
 
 
 # @app.task(

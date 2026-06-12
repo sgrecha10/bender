@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
+from typing import Literal
 
 from web3 import Web3
+from web3.types import BlockData
+
+BlockIdentifier = int | Literal['latest', 'pending', 'earliest']
+
 
 SWAP_TOPIC = Web3.to_hex(
     Web3.keccak(
@@ -115,17 +120,28 @@ class PoolHistoryService:
             abi=self.slot0,
         )
 
-    def get_tick(self, block_number: int):
+    def get_tick(self, block_number: BlockIdentifier = 'latest') -> int:
         pool_contract = self.pool_contract
         slot0 = pool_contract.functions.slot0().call(block_identifier=block_number)
         return slot0 and slot0[1]
 
+    def get_block(
+        self,
+        block_number: BlockIdentifier = 'latest',
+    ) -> BlockData:
+        return self.w3.eth.get_block(block_identifier=block_number)
+
     def get_block_datetime(
         self,
-        block_number: int,
+        block: BlockData,
     ) -> datetime:
-        block = self.w3.eth.get_block(block_number)
         return datetime.fromtimestamp(block['timestamp'], tz=timezone.utc)
+
+    def get_block_number(
+        self,
+        block: BlockData,
+    ) -> int:
+        return block['number']
 
     def find_block_by_timestamp(
         self,
